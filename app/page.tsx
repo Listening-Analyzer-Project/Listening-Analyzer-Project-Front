@@ -7,9 +7,9 @@ export default function HomePage() {
   return (
     <div className="container mx-auto py-8">
       <div className="text-center mb-12">
-        <h1 className="text-5xl font-extrabold text-gray-900 mb-4">Analyseur de Données Spotify</h1>
+        <h1 className="text-5xl font-extrabold text-gray-900 mb-4">Analyseur de Données d'Écoute</h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Uploadez vos données d'écoute Spotify et découvrez vos habitudes musicales avec des visualisations
+          Uploadez vos données d'écoute et découvrez vos habitudes musicales avec des visualisations
           interactives et des analyses détaillées.
         </p>
       </div>
