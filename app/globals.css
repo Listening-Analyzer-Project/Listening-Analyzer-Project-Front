@@ -6,12 +6,6 @@
   .text-balance {
     text-wrap: balance;
   }
-
-  .dark .text-balance {
-    text-wrap: balance;
-    overflow-wrap: break-word;
-    word-break: break-word;
-  }
 }
 
 @layer base {
