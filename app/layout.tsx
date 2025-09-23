@@ -1,0 +1,75 @@
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import Link from "next/link"
+import { Toaster } from "@/components/ui/toaster"
+import { Home, Upload, Table, Palette, BarChart, LineChart, Music } from "lucide-react" // Importation des icônes
+
+const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "Spotify Analyzer",
+  description: "Analyze your Spotify listening data.",
+    generator: 'v0.app'
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="fr">
+      <body className={inter.className}>
+        <div className="flex flex-col min-h-screen bg-[#F0FDF4]">
+          {" "}
+          {/* Light green background */}
+          <header className="bg-white text-gray-800 py-4 px-6 flex items-center justify-between shadow-sm">
+            <Link href="/" className="text-xl font-bold flex items-center gap-2">
+              <Music className="h-6 w-6 text-green-600" /> {/* Spotify-like green music note */}
+              Spotify Analyzer
+            </Link>
+            <nav className="flex gap-6">
+              <Link href="/" className="flex flex-col items-center text-sm hover:text-green-600 transition-colors">
+                <Home className="h-5 w-5" />
+                Accueil
+              </Link>
+              <Link
+                href="/upload"
+                className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
+              >
+                <Upload className="h-5 w-5" />
+                Upload
+              </Link>
+              <Link href="/data" className="flex flex-col items-center text-sm hover:text-green-600 transition-colors">
+                <Table className="h-5 w-5" />
+                Données
+              </Link>
+              <Link
+                href="/update"
+                className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
+              >
+                <Palette className="h-5 w-5" />
+                Update
+              </Link>
+              <Link href="/stats" className="flex flex-col items-center text-sm hover:text-green-600 transition-colors">
+                <BarChart className="h-5 w-5" />
+                Statistiques
+              </Link>
+              <Link
+                href="/graphs"
+                className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
+              >
+                <LineChart className="h-5 w-5" />
+                Analytics
+              </Link>
+            </nav>
+          </header>
+          <main className="flex-1 p-6">{children}</main>
+        </div>
+        <Toaster />
+      </body>
+    </html>
+  )
+}
