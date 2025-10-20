@@ -92,16 +92,14 @@ export interface DeezerListen {
   platform_model?: string | null;
 }
 
-export type columnMap = Record<string, string>;
-
-export const DEEZER_COLUMN_MAP: columnMap = {
-  "song title": "title",
-  artist: "artist",
-  "album title": "album",
-  "listening time": "listening_time",
-  date: "date",
-  "platform name": "platform_name",
-  "platform model": "platform_model",
-  "ip address": "ip_address",
-  isrc: "isrc",
-};
+export interface ColumnMapping {
+  title: number;
+  artist: number;
+  listening_time: number;
+  date: number;
+  isrc?: number;
+  album?: number;
+  ip_address?: number;
+  platform_name?: number;
+  platform_model?: number;
+}

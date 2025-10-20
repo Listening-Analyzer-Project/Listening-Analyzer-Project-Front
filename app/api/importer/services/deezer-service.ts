@@ -1,25 +1,9 @@
 // deezer-service.ts
 
 import Excel from "exceljs";
-import { DeezerListen } from "../types/listen-types";
+import { ColumnMapping, DeezerListen } from "../types/listen-types";
 
-// Interface for column mapping - essential columns are required
-interface ColumnMapping {
-  title: number;
-  artist: number;
-  listening_time: number;
-  date: number;
-  isrc?: number;
-  album?: number;
-  ip_address?: number;
-  platform_name?: number;
-  platform_model?: number;
-}
-
-/**
- * Creates column mapping based on header names
- * Essential columns are required, others are optional
- */
+// Creates a mapping from column headers to DeezerListen fields
 function createColumnMapping(headers: string[]): ColumnMapping {
   const findColumnIndex = (searchTerm: string): number | undefined => {
     const index = headers.findIndex((header) =>
@@ -71,10 +55,7 @@ function createColumnMapping(headers: string[]): ColumnMapping {
   return mapping;
 }
 
-/**
- * Maps a single Excel row to a DeezerListen object using the provided mapping
- * Handles missing columns and array bounds checking
- */
+// Maps a single Excel row to a DeezerListen object using the provided column mapping
 function mapExcelRowToDeezerListen(
   row: any,
   mapping: ColumnMapping
@@ -115,10 +96,7 @@ function mapExcelRowToDeezerListen(
   return deezerListen;
 }
 
-/**
- * Streams Deezer Excel rows in batches for memory efficiency
- * Automatically detects the correct sheet and handles resource cleanup
- */
+// Streams Deezer listening history from an Excel file in batches
 export async function* streamDeezerExcelRows(
   filePath: string,
   batchSize: number = 1000
@@ -217,9 +195,7 @@ export async function* streamDeezerExcelRows(
   }
 }
 
-/**
- * Helper function to report which optional columns were not found
- */
+// Identifies which optional columns are missing from the mappings
 function getMissingColumns(mapping: ColumnMapping, headers: string[]): string {
   const allOptionalColumns = [
     { key: "isrc", name: "ISRC" },

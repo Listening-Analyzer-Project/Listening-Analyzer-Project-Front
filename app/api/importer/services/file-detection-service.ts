@@ -1,4 +1,5 @@
 // file-detection-service.ts
+
 import Excel from "exceljs";
 import fs from "fs";
 import readline from "readline";
@@ -92,10 +93,7 @@ export async function detectFileType(filePath: string): Promise<FileType> {
   throw new Error(`Cannot detect file type for: ${filePath}`);
 }
 
-/**
- * Type guard for Spotify listen format.
- * Checks presence of key Spotify fields typical of Spotify "StreamingHistory" / export.
- */
+// Type guard for SpotifyListen format.
 export function isSpotifyListen(obj: unknown): obj is SpotifyListen {
   if (!obj || typeof obj !== "object") return false;
   const o = obj as any;
@@ -108,10 +106,7 @@ export function isSpotifyListen(obj: unknown): obj is SpotifyListen {
   );
 }
 
-/**
- * Type guard for CanonicalListen format.
- * Ensures the minimal canonical structure exists: ts, ms_played, track.title, track.artists[] with artist.name
- */
+// Type guard for CanonicalListen format.
 export function isCanonicalListen(obj: unknown): obj is CanonicalListen {
   if (!obj || typeof obj !== "object") return false;
   const o = obj as any;
