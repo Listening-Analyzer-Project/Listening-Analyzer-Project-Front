@@ -1,6 +1,7 @@
-import { CanonicalListen } from "../models/canonical-listen";
-import { SpotifyListen } from "../models/spotify-listen";
-import { normalizeDate } from "../utils/date-utils";
+// spotify-parser.ts
+
+import { normalizeDate } from "../services/date-service";
+import { CanonicalListen, SpotifyListen } from "../types/listen-types";
 
 export function parseSpotifyListen(
   input: SpotifyListen

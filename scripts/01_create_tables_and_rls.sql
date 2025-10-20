@@ -1,8 +1,6 @@
--- TODO : update tables to match new schema
-
 -- CREATION DE LA STRUCTURE DE BASE DE DONNEES SPOTIFY ANALYZER V2 (mise à jour)
 -- Ce script crée les tables, les index, active la RLS et définit des politiques de dev.
--- Il correspond au dernier schéma que tu as fourni (tables: user, playlist, playlist_track, albums, tag, track_tag, artists, categories, countries, events, geographical_regions, listens, genres, sub_genres, track_artists, tracks).
+-- Il correspond au dernier schéma fourni.
 
 -- 0. SUPPRESSION DES TABLES EXISTANTES (ordre inverse des dépendances)
 DROP TABLE IF EXISTS playlist_track CASCADE;
@@ -27,7 +25,8 @@ CREATE TABLE IF NOT EXISTS "user" (
   id SERIAL PRIMARY KEY,
   name VARCHAR NOT NULL UNIQUE,
   type INTEGER NOT NULL,
-  isadmin BOOLEAN NOT NULL
+  isadmin BOOLEAN NOT NULL,
+  syncro_status INTEGER NOT NULL
 );
 
 -- 2. PLAYLISTS
@@ -52,7 +51,7 @@ CREATE TABLE IF NOT EXISTS albums (
   popularity INTEGER
 );
 
--- 4. TAGS (ambiances renommé "tag") et liaison track_tag
+-- 4. TAGS (anciennement ambiances) et liaison track_tag
 CREATE TABLE IF NOT EXISTS tag (
   id SERIAL PRIMARY KEY,
   name VARCHAR NOT NULL UNIQUE
@@ -83,6 +82,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS events (
   id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
   start_date TIMESTAMP NOT NULL,
   end_date TIMESTAMP NOT NULL,
   category_id INTEGER,
@@ -154,11 +154,12 @@ CREATE TABLE IF NOT EXISTS tracks (
   tempo DOUBLE PRECISION,
   time_signature INTEGER,
   valence DOUBLE PRECISION,
-  is_edited INTEGER NOT NULL DEFAULT 0
+  is_edited INTEGER NOT NULL
 );
 
 -- 11. FOREIGN KEYS (ALTER TABLE ... ADD CONSTRAINT)
 ALTER TABLE playlist ADD CONSTRAINT fk_playlist_user_id FOREIGN KEY (user_id) REFERENCES "user"(id);
+
 ALTER TABLE playlist_track ADD CONSTRAINT fk_playlist_track_track_id FOREIGN KEY (track_id) REFERENCES tracks(id);
 ALTER TABLE playlist_track ADD CONSTRAINT fk_playlist_track_playlist_id FOREIGN KEY (playlist_id) REFERENCES playlist(id);
 
@@ -177,8 +178,6 @@ ALTER TABLE track_artists ADD CONSTRAINT fk_track_artists_artist_id FOREIGN KEY 
 
 ALTER TABLE track_tag ADD CONSTRAINT fk_track_tag_track_id FOREIGN KEY (track_id) REFERENCES tracks(id);
 ALTER TABLE track_tag ADD CONSTRAINT fk_track_tag_tag_id FOREIGN KEY (tag_id) REFERENCES tag(id);
-
-ALTER TABLE playlist_track ADD CONSTRAINT fk_playlist_track_playlist FOREIGN KEY (playlist_id) REFERENCES playlist(id);
 
 ALTER TABLE tracks ADD CONSTRAINT fk_tracks_album_id FOREIGN KEY (album_id) REFERENCES albums(id);
 ALTER TABLE tracks ADD CONSTRAINT fk_tracks_sub_genre_id FOREIGN KEY (sub_genre_id) REFERENCES sub_genres(id);
@@ -282,4 +281,4 @@ DROP POLICY IF EXISTS allow_all_operations ON tracks;
 CREATE POLICY allow_all_operations ON tracks FOR ALL TO public USING (true) WITH CHECK (true);
 
 -- 15. Message de succès
-SELECT 'Structure de base de donnees V2 (mise à jour) créée avec succès!' AS message;
+SELECT 'Structure de base de donnees créée avec succès!' AS message;

@@ -1,6 +1,7 @@
-import { CanonicalListen } from "../models/canonical-listen";
-import { DeezerListen } from "../models/deezer-listen";
-import { normalizeDate } from "../utils/date-utils";
+// deezer-parser.ts
+
+import { normalizeDate } from "../services/date-service";
+import { CanonicalListen, DeezerListen } from "../types/listen-types";
 
 export function parseDeezerListen(input: DeezerListen): CanonicalListen | null {
   if (!input) return null;
