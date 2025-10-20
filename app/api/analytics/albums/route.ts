@@ -2,6 +2,16 @@ import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
 // GET /api/analytics/albums - VERSION SCALABLE AVEC FONCTION SQL
+
+//------
+// Objectif : Il permet de récupérer des statistiques complètes sur les albums (écoutes valides, invalides, total, artistes, date de sortie, etc.),
+// Spécificité : iltrage, tri, pagination, et recherche textuelle — le tout exécuté directement en base PostgreSQL via une fonction SQL stockée.
+// A ajouter : TODO
+//------
+// Si les tables listens deviennent énormes, remplacer COUNT() + OFFSET par une approche window function + keyset pagination pour de meilleures perfs.
+// Ajouter un cache (Redis ou Supabase Edge Functions) pour éviter de recalculer les mêmes agrégations souvent.
+//------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/geographical-regions/[id]
+
+//------
+// Objectif : Récupérer une région par son id.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { data, error } = await supabase.from("geographical_regions").select("*").eq("id", params.id).single()
@@ -17,6 +24,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PUT /api/geographical-regions/[id]
+
+//------
+// Objectif : Mettre à jour une région existante.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
@@ -43,6 +57,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE /api/geographical-regions/[id]
+
+//------
+// Objectif : Supprimer une région par son id.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { error } = await supabase.from("geographical_regions").delete().eq("id", params.id)

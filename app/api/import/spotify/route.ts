@@ -8,6 +8,8 @@ import {
   validateSpotifyData,
 } from "@/lib/spotify-import"
 
+// TODO Beaucoup de chose à voir ici complexe et nécessaire dans l'idée je recois un batch avec les ecoutes et je dois les spliter en quatre pour (tracks, albums, artists, listens) et faire les insertions en bdd avec gestion des doublons etc...
+
 // POST /api/import/spotify - Import optimisé avec logs détaillés
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder()

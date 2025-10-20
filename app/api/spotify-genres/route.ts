@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/spotify-genres
+
+//------
+// Objectif : Récupérer la liste des genres Spotify.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function GET() {
   try {
     const { data, error } = await supabase.from("spotify_genres").select("*").order("name")
@@ -15,6 +22,13 @@ export async function GET() {
 }
 
 // POST /api/spotify-genres
+
+//------
+// Objectif : Ajouter un nouveau genre Spotify.
+// Spécificité : validation des données avant insertion.
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

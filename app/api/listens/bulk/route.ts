@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // POST /api/listens/bulk - Pour l'import en masse
+
+//------
+// Objectif : Insérer plusieurs écoutes en une seule requête.
+// Spécificité : non
+// A ajouter : TODO logique à implémenter en lien avec la logique d'imports coté back pour les écoute et potentiellement pour albums/morceaux/artistes.
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const { listens } = await request.json()

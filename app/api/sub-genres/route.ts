@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/sub-genres
+
+//------
+// Objectif : Récupérer les sous-genres, éventuellement filtrés par genre.
+// Spécificité : oui, possibilité de filtrer par genre via un paramètre de requête.
+// A ajouter : non
+//------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -33,6 +40,13 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/sub-genres
+
+//------
+// Objectif : Créer un nouveau sous-genre.
+// Spécificité : oui, validation des données avant insertion.
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

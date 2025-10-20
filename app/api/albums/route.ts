@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/albums
+
+//------
+// Objectif : Récupérer une liste paginée d’albums depuis la table albums dans la base Supabase, avec leurs artistes associés.
+// Spécificité : Quantité à récupérer + offset en fonction de la pagination + possibilité de recherche par titre d’album.
+// A ajouter : non je pense que celui de analytics album devrait etre suffisant
+//------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -40,6 +47,13 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/albums
+
+//------
+// Objectif : Créer un nouvel album dans la table albums.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

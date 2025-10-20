@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/categories
+
+//------
+// Objectif : récupéré categories avec sous categorie agrégées
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -24,6 +31,13 @@ export async function GET() {
 }
 
 // POST /api/categories
+
+//------
+// Objectif : crée categories
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

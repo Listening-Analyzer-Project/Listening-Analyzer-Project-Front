@@ -2,6 +2,18 @@ import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
 // GET /api/analytics/artists - VERSION SCALABLE AVEC FONCTION SQL
+
+//------
+// Objectif : Ce endpoint permet d’obtenir des statistiques analytiques détaillées sur les artistes, en agrégeant leurs écoutes (valides / invalides / totales),
+// Spécificité : leur pays, leurs genres Spotify, et en fournissant un classement dynamique (rank) selon le critère choisi.
+// A ajouter : TODO
+//------
+//Performance SQL : pour de grandes tables (listens, tracks), envisager :
+// index sur track_id, artist_id
+// agrégations pré-calculées (materialized views)
+// keyset pagination plutôt que OFFSET pour les gros volumes.
+//------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

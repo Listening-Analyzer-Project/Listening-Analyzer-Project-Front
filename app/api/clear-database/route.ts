@@ -2,6 +2,13 @@ import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
 // POST /api/clear-database - Vider la base de données (sauf tables de référence)
+
+//------
+// Objectif : Supprimer toutes les données des tables principales et de liaison, tout en préservant les tables de référence (countries, geographical_regions, events, categories, subcategories).
+// Spécificité : non
+// A ajouter : TODO Potentiellement une logique à refaire pour la suppression d'un user par exemple
+//------
+
 export async function POST() {
   try {
     // Tables avec clé primaire simple (ont une colonne id) - SANS les tables de référence

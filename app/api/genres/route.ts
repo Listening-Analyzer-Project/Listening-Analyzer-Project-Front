@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/genres
+
+//------
+// Objectif : Récupérer tous les genres avec leurs sous-genres liés.
+// Spécificité : non
+// A ajouter : TODO peu etre intéressant pas la grosse priorité
+//------
+
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -24,6 +31,13 @@ export async function GET() {
 }
 
 // POST /api/genres
+
+//------
+// Objectif : Créer un nouveau genre musical.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/countries
+
+//------
+// Objectif : Récupérer toutes les entrées de la table countries avec leurs geographical_regions.
+// Spécificité : non
+// A ajouter : TODO
+//------
+
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -24,6 +31,13 @@ export async function GET() {
 }
 
 // POST /api/countries
+
+//------
+// Objectif : Créer un nouveau pays dans la table countries.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

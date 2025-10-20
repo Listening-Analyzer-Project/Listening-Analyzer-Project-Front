@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/listens - VERSION AVEC VUE ANALYTICS
+
+//------
+// Objectif : Récupérer les écoutes depuis la vue analytics_listens, avec filtres avancés, recherche textuelle et pagination.
+// Spécificité : beaucoup de spécificité relire la fonction.
+// A ajouter : TODO
+//------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -189,6 +196,14 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/listens
+
+
+//------
+// Objectif : Créer une nouvelle écoute.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

@@ -2,6 +2,12 @@ import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
+//------
+// Objectif : Ce endpoint permet d’obtenir des artistes, en agrégeant certains infos comme pays etc
+// Spécificité : offseat limit search etc
+// A ajouter : non je pense que celui de analytics artist est suffisant
+//------
+
 // GET /api/artists
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +46,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+
+//------
+// Objectif : crée artist
+// Spécificité : non
+// A ajouter : non
+//------
 
 // POST /api/artists
 export async function POST(request: NextRequest) {

@@ -2,6 +2,13 @@ import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
 // DELETE /api/listens/bulk-delete
+
+//------
+// Objectif : Supprimer plusieurs écoutes en une seule requête.
+// Spécificité : non
+// A ajouter : TODO logique à implémenter en lien avec la logique de suppression d'utilisateur coté back pour les écoute et potentiellement pour albums/morceaux/artistes.
+//------
+
 export async function DELETE(request: NextRequest) {
   try {
     const { ids: listenIdsToDelete } = await request.json()

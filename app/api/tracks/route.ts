@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/tracks
+
+//------
+// Objectif : Récupérer les tracks, avec pagination et filtres optionnels.
+// Spécificité : oui, pagination et filtres par recherche et album.
+// A ajouter : non déja implémenter ailleurs
+//------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -63,6 +70,13 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/tracks
+
+//------
+// Objectif : Créer un nouveau track.
+// Spécificité : oui, validation des données avant insertion.
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

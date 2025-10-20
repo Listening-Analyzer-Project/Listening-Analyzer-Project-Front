@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/artists/[id]
+
+//------
+// Objectif : get par id
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { data, error } = await supabase.from("artists").select("*").eq("id", params.id).single()
@@ -17,6 +24,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PUT /api/artists/[id]
+
+//------
+// Objectif : modifier par id
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
@@ -43,6 +57,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE /api/artists/[id]
+
+//------
+// Objectif : supprimer par id
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { error } = await supabase.from("artists").delete().eq("id", params.id)

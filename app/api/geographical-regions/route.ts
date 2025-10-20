@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/geographical-regions
+
+//------
+// Objectif : Récupérer toutes les régions géographiques.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function GET() {
   try {
     const { data, error } = await supabase.from("geographical_regions").select("*").order("name")
@@ -15,6 +22,13 @@ export async function GET() {
 }
 
 // POST /api/geographical-regions
+
+//------
+// Objectif : Créer une nouvelle région géographique.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

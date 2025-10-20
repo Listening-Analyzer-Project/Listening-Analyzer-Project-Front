@@ -2,6 +2,15 @@ import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
 // GET /api/analytics/tracks - VERSION SCALABLE AVEC FONCTION SQL
+
+//------
+// Objectif : Ce endpoint fournit des statistiques sur les tracks Il regroupe pour chaque titre : ses métadonnées (titre, album, artistes, genre, sous-genre, ambiance) /
+// le nombre d’écoutes valides / invalides / totales,
+// ainsi qu’un rang dynamique calculé selon un critère choisi (ex. : nombre d’écoutes valides).
+// Spécificité : COmme les autre prend limit une search le orderby etc
+// A ajouter : TODO
+//------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

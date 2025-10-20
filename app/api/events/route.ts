@@ -3,6 +3,13 @@ import { supabase } from "@/lib/supabase"
 import { validateData, validations } from "@/lib/validations"
 
 // GET /api/events
+
+//------
+// Objectif : Récupérer les événements avec filtres possibles (category_id, start_date, end_date) et relations categories et subcategories.
+// Spécificité : non
+// A ajouter : TODO pour la liaison avec categories plus pour le trie par date (plus de subcategory)
+//------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -52,6 +59,13 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/events
+
+//------
+// Objectif : Créer un nouvel événement dans la table events.
+// Spécificité : non
+// A ajouter : non
+//------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
