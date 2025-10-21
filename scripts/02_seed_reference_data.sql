@@ -22,7 +22,7 @@ INSERT INTO geographical_regions (name) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Insertion des pays et liaison avec les regions geographiques
-INSERT INTO countries (name, region_id) VALUES
+INSERT INTO countries (name, geographical_region_id) VALUES
 ('Afghanistan', (SELECT id FROM geographical_regions WHERE name = 'Asie du Sud')),
 ('Afrique du Sud', (SELECT id FROM geographical_regions WHERE name = 'Afrique Australe')),
 ('Albanie', (SELECT id FROM geographical_regions WHERE name = 'Balkans')),
