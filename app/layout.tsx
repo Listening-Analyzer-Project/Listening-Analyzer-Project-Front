@@ -1,23 +1,32 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import Link from "next/link"
-import { Toaster } from "@/components/ui/toaster"
-import { Home, Upload, Table, Palette, BarChart, LineChart, Music } from "lucide-react" // Importation des icônes
+import { Toaster } from "@/components/ui/toaster";
+import UserMenu from "@/components/user/user-menu";
+import {
+  BarChart,
+  Home,
+  LineChart,
+  Music,
+  Palette,
+  Table,
+  Upload,
+} from "lucide-react"; // Importation des icônes
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import Link from "next/link";
+import type React from "react";
+import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Spotify Analyzer",
   description: "Analyze your Spotify listening data.",
-    generator: 'v0.app'
-}
+  generator: "v0.app",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="fr">
@@ -26,12 +35,22 @@ export default function RootLayout({
           {" "}
           {/* Light green background */}
           <header className="bg-white text-gray-800 py-4 px-6 flex items-center justify-between shadow-sm">
-            <Link href="/" className="text-xl font-bold flex items-center gap-2">
-              <Music className="h-6 w-6 text-green-600" /> {/* Spotify-like green music note */}
-              Spotify Analyzer
-            </Link>
+            <div className="flex items-center gap-4">
+              <UserMenu />
+              <Link
+                href="/"
+                className="text-xl font-bold flex items-center gap-2"
+              >
+                <Music className="h-6 w-6 text-green-600" />{" "}
+                {/* Spotify-like green music note */}
+                Spotify Analyzer
+              </Link>
+            </div>
             <nav className="flex gap-6">
-              <Link href="/" className="flex flex-col items-center text-sm hover:text-green-600 transition-colors">
+              <Link
+                href="/"
+                className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
+              >
                 <Home className="h-5 w-5" />
                 Accueil
               </Link>
@@ -42,7 +61,10 @@ export default function RootLayout({
                 <Upload className="h-5 w-5" />
                 Upload
               </Link>
-              <Link href="/data" className="flex flex-col items-center text-sm hover:text-green-600 transition-colors">
+              <Link
+                href="/data"
+                className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
+              >
                 <Table className="h-5 w-5" />
                 Données
               </Link>
@@ -53,7 +75,10 @@ export default function RootLayout({
                 <Palette className="h-5 w-5" />
                 Update
               </Link>
-              <Link href="/stats" className="flex flex-col items-center text-sm hover:text-green-600 transition-colors">
+              <Link
+                href="/stats"
+                className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
+              >
                 <BarChart className="h-5 w-5" />
                 Statistiques
               </Link>
@@ -71,5 +96,5 @@ export default function RootLayout({
         <Toaster />
       </body>
     </html>
-  )
+  );
 }
