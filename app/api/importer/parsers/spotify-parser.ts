@@ -1,12 +1,8 @@
-// spotify-parser.ts
+import { normalizeDate } from '../services/date-service'
+import { CanonicalListen, SpotifyListen } from '../types/listen-types'
 
-import { normalizeDate } from "../services/date-service";
-import { CanonicalListen, SpotifyListen } from "../types/listen-types";
-
-export function parseSpotifyListen(
-  input: SpotifyListen
-): CanonicalListen | null {
-  if (!input) return null;
+export function parseSpotifyListen(input: SpotifyListen): CanonicalListen | null {
+  if (!input) return null
 
   // Ignore podcasts and audiobooks
   if (
@@ -18,36 +14,28 @@ export function parseSpotifyListen(
     input.audiobook_chapter_uri ||
     input.audiobook_chapter_title
   ) {
-    return null;
+    return null
   }
 
   // Parse and normalize date
-  const ts = normalizeDate(input.ts);
+  const ts = normalizeDate(input.ts)
 
   // Basic validation
-  if (!ts) return null;
-  if (
-    typeof input.ms_played !== "number" ||
-    Number.isNaN(input.ms_played) ||
-    input.ms_played < 0
-  )
-    return null;
+  if (!ts) return null
+  if (typeof input.ms_played !== 'number' || Number.isNaN(input.ms_played) || input.ms_played < 0)
+    return null
 
   // Must have at least a track title and an artist name
-  const title = (input.master_metadata_track_name ?? "").toString().trim();
-  const artistName = (input.master_metadata_album_artist_name ?? "")
-    .toString()
-    .trim();
-  if (!title || !artistName) return null;
+  const title = (input.master_metadata_track_name ?? '').toString().trim()
+  const artistName = (input.master_metadata_album_artist_name ?? '').toString().trim()
+  if (!title || !artistName) return null
 
   // Album is optional — include only if present and non-empty
-  const albumTitle = (input.master_metadata_album_album_name ?? "")
-    .toString()
-    .trim();
-  const album = albumTitle ? { title: albumTitle } : undefined;
+  const albumTitle = (input.master_metadata_album_album_name ?? '').toString().trim()
+  const album = albumTitle ? { title: albumTitle } : undefined
 
   // Platform is optional — default to "unknown" if not present
-  const platform = (input.platform ?? "unknown").toString();
+  const platform = (input.platform ?? 'unknown').toString()
 
   // Build canonical object
   const canonical: CanonicalListen = {
@@ -69,7 +57,7 @@ export function parseSpotifyListen(
 
       tags: [],
     },
-  };
+  }
 
-  return canonical;
+  return canonical
 }
