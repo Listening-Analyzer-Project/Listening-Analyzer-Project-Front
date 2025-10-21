@@ -1,48 +1,37 @@
-import { Toaster } from "@/components/ui/toaster";
-import UserMenu from "@/components/user/user-menu";
-import {
-  BarChart,
-  Home,
-  LineChart,
-  Music,
-  Palette,
-  Table,
-  Upload,
-} from "lucide-react"; // Importation des icônes
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import Link from "next/link";
-import type React from "react";
-import "./globals.css";
+import { BarChart, Home, LineChart, Music, Palette, Table, Upload } from 'lucide-react'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import Link from 'next/link'
+import type React from 'react'
 
-const inter = Inter({ subsets: ["latin"] });
+import { Toaster } from '@/components/ui/toaster'
+import UserMenu from '@/components/user/user-menu'
+import './globals.css'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "Spotify Analyzer",
-  description: "Analyze your Spotify listening data.",
-  generator: "v0.app",
-};
+  title: 'Spotify Analyzer',
+  description: 'Analyze your Spotify listening data.',
+  generator: 'v0.app',
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="fr">
       <body className={inter.className}>
         <div className="flex flex-col min-h-screen bg-[#F0FDF4]">
-          {" "}
+          {' '}
           {/* Light green background */}
           <header className="bg-white text-gray-800 py-4 px-6 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-4">
               <UserMenu />
-              <Link
-                href="/"
-                className="text-xl font-bold flex items-center gap-2"
-              >
-                <Music className="h-6 w-6 text-green-600" />{" "}
-                {/* Spotify-like green music note */}
+              <Link href="/" className="text-xl font-bold flex items-center gap-2">
+                <Music className="h-6 w-6 text-green-600" /> {/* Spotify-like green music note */}
                 Spotify Analyzer
               </Link>
             </div>
@@ -96,5 +85,5 @@ export default function RootLayout({
         <Toaster />
       </body>
     </html>
-  );
+  )
 }

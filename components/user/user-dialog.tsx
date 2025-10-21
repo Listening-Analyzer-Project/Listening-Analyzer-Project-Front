@@ -1,39 +1,27 @@
 // user-dialog.tsx
 
-"use client";
+'use client'
 
-import { Button } from "@/components/ui/button";
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
-/**
- * Zod schema matching your "user" table
- */
-const userSchema = z.object({
-  id: z.number().optional(),
-  name: z.string().min(1, "Name is required"),
-  type: z.number().int().min(0).optional().default(0),
-  isadmin: z.boolean().optional().default(false),
-  syncro_status: z.number().int().min(0).optional().default(0),
-});
-type UserForm = z.infer<typeof userSchema>;
+export type UserForm = {
+  id?: number
+  name?: string
+  type?: number
+  isadmin?: boolean
+  syncro_status?: number
+}
 
 export default function UserDialog({
   open,
@@ -41,150 +29,83 @@ export default function UserDialog({
   defaultValues,
   onSave,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  defaultValues?: Partial<UserForm>;
-  onSave: (payload: UserForm) => Promise<void> | void;
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  defaultValues?: Partial<UserForm>
+  onSave: (payload: UserForm) => Promise<void> | void
 }) {
   const form = useForm<UserForm>({
-    resolver: zodResolver(userSchema),
-    defaultValues: (defaultValues as any) ?? {
-      name: "",
+    defaultValues: defaultValues ?? {
+      name: '',
       type: 0,
       isadmin: false,
       syncro_status: 0,
     },
-  });
+  })
 
+  // Reset form values when defaultValues or open change
   useEffect(() => {
-    form.reset(
-      (defaultValues as any) ?? {
-        name: "",
-        type: 0,
-        isadmin: false,
-        syncro_status: 0,
-      }
-    );
-  }, [defaultValues, open]);
+    form.reset(defaultValues ?? { name: '', type: 0, isadmin: false, syncro_status: 0 })
+  }, [defaultValues, open])
 
   const handleSubmit = async (data: UserForm) => {
     try {
-      await onSave(data);
-      onOpenChange(false);
+      await onSave(data)
+      onOpenChange(false)
     } catch (err) {
-      console.error("UserDialog save error", err);
-      alert("Erreur lors de la sauvegarde (voir console)");
+      console.error('UserDialog save error', err)
+      alert('Erreur lors de la sauvegarde (voir console)')
     }
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* We don't render DialogTrigger here — parent controls open state */}
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>
-            {defaultValues?.id ? "Modifier utilisateur" : "Créer utilisateur"}
+            {defaultValues?.id ? 'Modifier utilisateur' : 'Créer utilisateur'}
           </DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4 py-2"
-          >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <label className="text-sm font-medium">Name</label>
-                  <FormControl>
-                    <Input {...field} placeholder="Prénom Nom" autoFocus />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-2">
+          <div>
+            <label className="text-sm font-medium">Name</label>
+            <Input {...form.register('name')} placeholder="Prénom Nom" autoFocus />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <label className="text-sm font-medium">Type</label>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value === ""
-                            ? undefined
-                            : Number(e.target.value)
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          <div>
+            <label className="text-sm font-medium">Type</label>
+            <Input
+              type="number"
+              {...form.register('type', {
+                setValueAs: v => (v === '' ? undefined : Number(v)),
+              })}
             />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="isadmin"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Is admin</label>
-                  <FormControl>
-                    <input
-                      type="checkbox"
-                      checked={!!field.value}
-                      onChange={(e) => field.onChange(e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
+          <div className="flex items-center gap-2">
+            <input type="checkbox" {...form.register('isadmin')} className="h-4 w-4" />
+            <label className="text-sm font-medium">Is admin</label>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Syncro status</label>
+            <Input
+              type="number"
+              {...form.register('syncro_status', {
+                setValueAs: v => (v === '' ? undefined : Number(v)),
+              })}
             />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="syncro_status"
-              render={({ field }) => (
-                <FormItem>
-                  <label className="text-sm font-medium">Syncro status</label>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value === ""
-                            ? undefined
-                            : Number(e.target.value)
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">Save</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          <DialogFooter className="flex justify-end gap-2">
+            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">Save</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
