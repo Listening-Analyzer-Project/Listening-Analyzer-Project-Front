@@ -1,16 +1,8 @@
-"use client"
+//TODO
 
-import type React from "react"
-import { useState, useEffect, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Download, Search, X, Trash2, Loader2, ArrowUp, ArrowDown } from "lucide-react"
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useToast } from "@/hooks/use-toast"
-import { TooltipProvider } from "@/components/ui/tooltip"
+'use client'
+
+import { ListenTableRow } from '@/app/data/components/listen-table-row'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,9 +13,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { ListenTableRow } from "@/components/listen-table-row"
-import type { Album, Genre, SubGenre, Ambiance } from "@/types" // Importing missing types
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { useToast } from '@/lib/utils/use-toast'
+import { ArrowDown, ArrowUp, Download, Loader2, Search, Trash2, X } from 'lucide-react'
+import type React from 'react'
+import { useCallback, useEffect, useState } from 'react'
+
+type Album = {
+  id: number
+  title: string
+  release_date: string
+  cover_url: string | null
+}
+
+type Genre = {
+  id: number
+  name: string
+}
+
+type SubGenre = {
+  id: number
+  name: string
+}
+
+type Ambiance = {
+  id: number
+  name: string
+}
 
 // Define types for the data
 interface GeographicalRegion {
@@ -87,8 +116,8 @@ export interface Listen {
 export default function DataPage() {
   const { toast } = useToast()
   const [listens, setListens] = useState<Listen[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [activeSearchQuery, setActiveSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeSearchQuery, setActiveSearchQuery] = useState('')
   const [rowsPerPage, setRowsPerPage] = useState(1000)
   const [showInvalidRows, setShowInvalidRows] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -97,27 +126,27 @@ export default function DataPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedListenIds, setSelectedListenIds] = useState<Set<number>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
-  const [sortColumn, setSortColumn] = useState<string>("ts")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+  const [sortColumn, setSortColumn] = useState<string>('ts')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   const totalPages = Math.ceil(totalListens / rowsPerPage)
 
   const columnSortKeys: { [key: string]: string } = {
-    "Date & Heure": "ts",
-    Titre: "title",
-    Artistes: "artist",
-    Album: "album",
-    "Date de Sortie": "releaseDate",
-    "Style Musical": "genre",
-    "Sous-genre": "subGenre",
-    Ambiance: "ambiance",
-    Origine: "country",
-    "Temps d'écoute": "msPlayed",
-    "Reason Start": "reasonStart",
-    "Reason End": "reasonEnd",
-    Skipped: "skipped",
-    "Écoute ≥ 30s": "isValid",
-    Plateforme: "platform",
+    'Date & Heure': 'ts',
+    Titre: 'title',
+    Artistes: 'artist',
+    Album: 'album',
+    'Date de Sortie': 'releaseDate',
+    'Style Musical': 'genre',
+    'Sous-genre': 'subGenre',
+    Ambiance: 'ambiance',
+    Origine: 'country',
+    "Temps d'écoute": 'msPlayed',
+    'Reason Start': 'reasonStart',
+    'Reason End': 'reasonEnd',
+    Skipped: 'skipped',
+    'Écoute ≥ 30s': 'isValid',
+    Plateforme: 'platform',
   }
 
   const fetchListens = useCallback(async () => {
@@ -132,11 +161,11 @@ export default function DataPage() {
       })
 
       if (activeSearchQuery) {
-        params.append("search", activeSearchQuery)
+        params.append('search', activeSearchQuery)
       }
 
       if (!showInvalidRows) {
-        params.append("is_valid", "true")
+        params.append('is_valid', 'true')
       }
 
       const response = await fetch(`/api/listens?${params.toString()}`)
@@ -145,7 +174,7 @@ export default function DataPage() {
       }
       const data: Listen[] = await response.json()
 
-      const totalCountHeader = response.headers.get("X-Total-Count")
+      const totalCountHeader = response.headers.get('X-Total-Count')
       if (totalCountHeader) {
         setTotalListens(Number(totalCountHeader))
       } else {
@@ -156,16 +185,24 @@ export default function DataPage() {
       setSelectedListenIds(new Set())
       setSelectAll(false)
     } catch (e: any) {
-      setError(e.message || "Failed to fetch data.")
+      setError(e.message || 'Failed to fetch data.')
       toast({
-        title: "Erreur de chargement",
+        title: 'Erreur de chargement',
         description: e.message || "Impossible de charger les données d'écoute.",
-        variant: "destructive",
+        variant: 'destructive',
       })
     } finally {
       setLoading(false)
     }
-  }, [currentPage, rowsPerPage, showInvalidRows, activeSearchQuery, sortColumn, sortDirection, toast])
+  }, [
+    currentPage,
+    rowsPerPage,
+    showInvalidRows,
+    activeSearchQuery,
+    sortColumn,
+    sortDirection,
+    toast,
+  ])
 
   useEffect(() => {
     fetchListens()
@@ -177,13 +214,13 @@ export default function DataPage() {
   }
 
   const handleClearSearch = () => {
-    setSearchQuery("")
-    setActiveSearchQuery("")
+    setSearchQuery('')
+    setActiveSearchQuery('')
     setCurrentPage(1)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       handleSearchClick()
     }
   }
@@ -191,21 +228,21 @@ export default function DataPage() {
   const handleSort = useCallback(
     (columnKey: string) => {
       if (sortColumn === columnKey) {
-        setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+        setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
       } else {
         setSortColumn(columnKey)
-        setSortDirection(columnKey === "ts" ? "desc" : "asc")
+        setSortDirection(columnKey === 'ts' ? 'desc' : 'asc')
       }
       setCurrentPage(1)
     },
-    [sortColumn],
+    [sortColumn]
   )
 
   const formatDuration = useCallback((ms: number) => {
     const totalSeconds = Math.floor(ms / 1000)
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }, [])
 
   const renderPaginationControls = () => (
@@ -216,18 +253,23 @@ export default function DataPage() {
         </span>
         <span>-</span>
         <span>
-          Affichage de {(currentPage - 1) * rowsPerPage + 1} à {Math.min(currentPage * rowsPerPage, totalListens)} sur{" "}
-          {totalListens} données totales
+          Affichage de {(currentPage - 1) * rowsPerPage + 1} à{' '}
+          {Math.min(currentPage * rowsPerPage, totalListens)} sur {totalListens} données totales
         </span>
       </div>
       <div className="flex items-center justify-center gap-2 mt-2">
-        <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} disabled={currentPage === 1 || loading}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1 || loading}
+        >
           Début
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
           disabled={currentPage === 1 || loading}
         >
           Précédent
@@ -235,7 +277,7 @@ export default function DataPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
           disabled={currentPage === totalPages || loading}
         >
           Suivant
@@ -253,7 +295,7 @@ export default function DataPage() {
   )
 
   const handleSelectRow = useCallback((id: number, checked: boolean) => {
-    setSelectedListenIds((prev) => {
+    setSelectedListenIds(prev => {
       const newSet = new Set(prev)
       if (checked) {
         newSet.add(id)
@@ -267,15 +309,15 @@ export default function DataPage() {
   const handleSelectAllRows = useCallback(
     (checked: boolean) => {
       setSelectAll(checked)
-      setSelectedListenIds((prev) => {
+      setSelectedListenIds(prev => {
         const newSet = new Set<number>()
         if (checked) {
-          listens.forEach((listen) => newSet.add(listen.id))
+          listens.forEach(listen => newSet.add(listen.id))
         }
         return newSet
       })
     },
-    [listens],
+    [listens]
   )
 
   const handleDeleteSelected = async () => {
@@ -283,31 +325,33 @@ export default function DataPage() {
 
     setLoading(true)
     try {
-      const response = await fetch("/api/listens/bulk-delete", {
-        method: "DELETE",
+      const response = await fetch('/api/listens/bulk-delete', {
+        method: 'DELETE',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ ids: Array.from(selectedListenIds) }),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || "Erreur lors de la suppression des écoutes sélectionnées.")
+        throw new Error(
+          errorData.error || 'Erreur lors de la suppression des écoutes sélectionnées.'
+        )
       }
 
       const result = await response.json()
 
       toast({
-        title: "Suppression réussie",
+        title: 'Suppression réussie',
         description: result.message,
       })
       await fetchListens()
     } catch (e: any) {
       toast({
-        title: "Erreur de suppression",
-        description: e.message || "Impossible de supprimer les écoutes sélectionnées.",
-        variant: "destructive",
+        title: 'Erreur de suppression',
+        description: e.message || 'Impossible de supprimer les écoutes sélectionnées.',
+        variant: 'destructive',
       })
     } finally {
       setLoading(false)
@@ -317,26 +361,26 @@ export default function DataPage() {
   const handleClearDatabase = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/clear-database", {
-        method: "POST",
+      const response = await fetch('/api/clear-database', {
+        method: 'POST',
       })
 
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || "Erreur lors du vidage")
+        throw new Error(result.error || 'Erreur lors du vidage')
       }
 
       toast({
-        title: "Base de données vidée",
+        title: 'Base de données vidée',
         description: "Toutes les données d'écoute ont été supprimées avec succès.",
       })
       await fetchListens()
     } catch (error: any) {
       toast({
-        title: "Erreur de vidage",
-        description: error.message || "Impossible de vider la base de données.",
-        variant: "destructive",
+        title: 'Erreur de vidage',
+        description: error.message || 'Impossible de vider la base de données.',
+        variant: 'destructive',
       })
     } finally {
       setLoading(false)
@@ -371,15 +415,18 @@ export default function DataPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Êtes-vous absolument sûr ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  <span className="font-bold text-red-600">⚠️ ATTENTION !</span> Cette action est irréversible. Cela
-                  supprimera <span className="font-bold">TOUTES</span> les données d'écoute, les artistes, albums et
-                  titres de votre base de données. Seules les tables de référence (pays, régions, catégories,
-                  événements) seront préservées.
+                  <span className="font-bold text-red-600">⚠️ ATTENTION !</span> Cette action est
+                  irréversible. Cela supprimera <span className="font-bold">TOUTES</span> les
+                  données d'écoute, les artistes, albums et titres de votre base de données. Seules
+                  les tables de référence (pays, régions, catégories, événements) seront préservées.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={handleClearDatabase} className="bg-red-600 hover:bg-red-700">
+                <AlertDialogAction
+                  onClick={handleClearDatabase}
+                  className="bg-red-600 hover:bg-red-700"
+                >
                   Oui, vider la base
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -396,7 +443,7 @@ export default function DataPage() {
               type="text"
               placeholder="Rechercher par titre, artiste..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               className="pl-9 pr-2 py-2 rounded-md border border-gray-300 focus:ring-0 focus:border-gray-400 w-full"
               disabled={loading}
@@ -423,7 +470,7 @@ export default function DataPage() {
           )}
           <Select
             value={String(rowsPerPage)}
-            onValueChange={(value) => {
+            onValueChange={value => {
               setRowsPerPage(Number(value))
               setCurrentPage(1)
             }}
@@ -454,14 +501,14 @@ export default function DataPage() {
           <Checkbox
             id="show-invalid-rows"
             checked={showInvalidRows}
-            onCheckedChange={setShowInvalidRows}
+            onCheckedChange={checked => setShowInvalidRows(checked === true)}
             disabled={loading}
           />
           <label
             htmlFor="show-invalid-rows"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Afficher les écoutes {"< 30s"}
+            Afficher les écoutes {'< 30s'}
           </label>
         </div>
       </div>
@@ -495,44 +542,44 @@ export default function DataPage() {
                     <TableHead
                       key={sortKey}
                       className={`text-xs cursor-pointer hover:bg-gray-200 transition-colors ${
-                        sortKey === "ts"
-                          ? "w-[160px]"
-                          : sortKey === "title"
-                            ? "w-[170px]"
-                            : sortKey === "artist"
-                              ? "w-[170px]"
-                              : sortKey === "album"
-                                ? "w-[130px]"
-                                : sortKey === "releaseDate"
-                                  ? "w-[80px]"
-                                  : sortKey === "genre"
-                                    ? "w-[100px]"
-                                    : sortKey === "subGenre"
-                                      ? "w-[100px]"
-                                      : sortKey === "ambiance"
-                                        ? "w-[80px]"
-                                        : sortKey === "country"
-                                          ? "w-[80px]"
-                                          : sortKey === "msPlayed"
-                                            ? "w-[80px]"
-                                            : sortKey === "reasonStart"
-                                              ? "w-[90px]"
-                                              : sortKey === "reasonEnd"
-                                                ? "w-[90px]"
-                                                : sortKey === "skipped"
-                                                  ? "w-[60px]"
-                                                  : sortKey === "isValid"
-                                                    ? "w-[60px]"
-                                                    : sortKey === "platform"
-                                                      ? "w-[80px]"
-                                                      : ""
+                        sortKey === 'ts'
+                          ? 'w-[160px]'
+                          : sortKey === 'title'
+                          ? 'w-[170px]'
+                          : sortKey === 'artist'
+                          ? 'w-[170px]'
+                          : sortKey === 'album'
+                          ? 'w-[130px]'
+                          : sortKey === 'releaseDate'
+                          ? 'w-[80px]'
+                          : sortKey === 'genre'
+                          ? 'w-[100px]'
+                          : sortKey === 'subGenre'
+                          ? 'w-[100px]'
+                          : sortKey === 'ambiance'
+                          ? 'w-[80px]'
+                          : sortKey === 'country'
+                          ? 'w-[80px]'
+                          : sortKey === 'msPlayed'
+                          ? 'w-[80px]'
+                          : sortKey === 'reasonStart'
+                          ? 'w-[90px]'
+                          : sortKey === 'reasonEnd'
+                          ? 'w-[90px]'
+                          : sortKey === 'skipped'
+                          ? 'w-[60px]'
+                          : sortKey === 'isValid'
+                          ? 'w-[60px]'
+                          : sortKey === 'platform'
+                          ? 'w-[80px]'
+                          : ''
                       }`}
                       onClick={() => handleSort(sortKey)}
                     >
                       <div className="flex items-center gap-1">
                         {headerText}
                         {sortColumn === sortKey &&
-                          (sortDirection === "asc" ? (
+                          (sortDirection === 'asc' ? (
                             <ArrowUp className="h-3 w-3" />
                           ) : (
                             <ArrowDown className="h-3 w-3" />
@@ -543,7 +590,7 @@ export default function DataPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {listens.map((listen) => (
+                {listens.map(listen => (
                   <ListenTableRow
                     key={listen.id}
                     listen={listen}
