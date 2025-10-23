@@ -7,7 +7,7 @@ import { validateData, validations } from "@/lib/validations"
 //------
 // Objectif : Récupérer toutes les entrées de la table countries avec leurs geographical_regions.
 // Spécificité : non
-// A ajouter : TODO
+// A ajouter : DONE
 //------
 
 export async function GET() {

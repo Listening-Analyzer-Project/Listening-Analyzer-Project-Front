@@ -7,7 +7,7 @@ import { validateData, validations } from "@/lib/validations"
 //------
 // Objectif : Récupérer les événements avec filtres possibles (category_id, start_date, end_date) et relations categories et subcategories.
 // Spécificité : non
-// A ajouter : TODO pour la liaison avec categories plus pour le trie par date (plus de subcategory)
+// A ajouter : DONE pour la liaison avec categories plus pour le trie par date (plus de subcategory)
 //------
 
 export async function GET(request: NextRequest) {

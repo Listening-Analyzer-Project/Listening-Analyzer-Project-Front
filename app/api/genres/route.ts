@@ -7,7 +7,7 @@ import { validateData, validations } from "@/lib/validations"
 //------
 // Objectif : Récupérer tous les genres avec leurs sous-genres liés.
 // Spécificité : non
-// A ajouter : TODO peu etre intéressant pas la grosse priorité
+// A ajouter : Done peu etre intéressant pas la grosse priorité
 //------
 
 export async function GET() {

@@ -7,7 +7,7 @@ import { validateData, validations } from "@/lib/validations"
 //------
 // Objectif : Insérer plusieurs écoutes en une seule requête.
 // Spécificité : non
-// A ajouter : TODO logique à implémenter en lien avec la logique d'imports coté back pour les écoute et potentiellement pour albums/morceaux/artistes.
+// A ajouter : DONE logique à implémenter en lien avec la logique d'imports coté back pour les écoute et potentiellement pour albums/morceaux/artistes.
 //------
 
 export async function POST(request: NextRequest) {

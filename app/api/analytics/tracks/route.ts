@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase"
 // le nombre d’écoutes valides / invalides / totales,
 // ainsi qu’un rang dynamique calculé selon un critère choisi (ex. : nombre d’écoutes valides).
 // Spécificité : COmme les autre prend limit une search le orderby etc
-// A ajouter : TODO
+// A ajouter : Done
 //------
 
 export async function GET(request: NextRequest) {

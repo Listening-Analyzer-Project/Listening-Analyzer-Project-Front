@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 //------
 // Objectif : Récupère une liste de pays classés selon leur utilisation (nombre d’artistes) et tri alphabétique.
 // Spécificité : Retourner les pays priorisés pour affichage, en combinant : Pays avec le plus d’artistes (top 5) / Autres pays avec artistes / Pays sans artistes
-// A ajouter : TODO
+// A ajouter : Done
 //------
 
 export async function GET() {

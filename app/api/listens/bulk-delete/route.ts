@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 //------
 // Objectif : Supprimer plusieurs écoutes en une seule requête.
 // Spécificité : non
-// A ajouter : TODO logique à implémenter en lien avec la logique de suppression d'utilisateur coté back pour les écoute et potentiellement pour albums/morceaux/artistes.
+// A ajouter : DONE logique à implémenter en lien avec la logique de suppression d'utilisateur coté back pour les écoute et potentiellement pour albums/morceaux/artistes.
 //------
 
 export async function DELETE(request: NextRequest) {

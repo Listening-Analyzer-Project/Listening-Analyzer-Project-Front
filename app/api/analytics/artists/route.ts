@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 //------
 // Objectif : Ce endpoint permet d’obtenir des statistiques analytiques détaillées sur les artistes, en agrégeant leurs écoutes (valides / invalides / totales),
 // Spécificité : leur pays, leurs genres Spotify, et en fournissant un classement dynamique (rank) selon le critère choisi.
-// A ajouter : TODO
+// A ajouter : Done
 //------
 //Performance SQL : pour de grandes tables (listens, tracks), envisager :
 // index sur track_id, artist_id
