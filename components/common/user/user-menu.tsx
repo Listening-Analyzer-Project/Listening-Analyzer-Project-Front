@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { supabase } from '@/lib/supabase'
-import { getCyclicColor } from '@/lib/utils/colors'
-import type { AppUser } from '@/types/types'
+import { getCyclicColor } from '@/lib/utils'
+import type { AppUser } from '@/types'
 import ConfirmDeleteDialog from './confirm-delete-dialog'
 import UserSheet from './user-dialog'
 

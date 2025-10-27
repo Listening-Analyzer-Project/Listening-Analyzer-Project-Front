@@ -1,5 +1,3 @@
-// TODO
-
 'use client'
 
 import { ArtistTableRow } from '@/app/update/components/artist-table-row'
@@ -15,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { useToast } from '@/lib/utils/use-toast'
+import { useToast } from '@/lib/utils'
 import { ArrowDown, ArrowUp, Loader2, RefreshCcw, Save, Search, User2, X } from 'lucide-react'
 import Link from 'next/link'
 import type React from 'react'

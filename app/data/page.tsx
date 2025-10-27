@@ -1,8 +1,12 @@
-//TODO
-
 'use client'
 
+import { ArrowDown, ArrowUp, Download, Loader2, Trash2 } from 'lucide-react'
+import type React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
 import { ListenTableRow } from '@/app/data/components/listen-table-row'
+import TableNavigation from '@/components/common/tables/table-navigation'
+import TableToolbar from '@/components/common/tables/table-toolbar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,111 +21,22 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableHeader, TableRow, TableHead as TH } from '@/components/ui/table'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { useToast } from '@/lib/utils/use-toast'
-import { ArrowDown, ArrowUp, Download, Loader2, Search, Trash2, X } from 'lucide-react'
-import type React from 'react'
-import { useCallback, useEffect, useState } from 'react'
-
-type Album = {
-  id: number
-  title: string
-  release_date: string
-  cover_url: string | null
-}
-
-type Genre = {
-  id: number
-  name: string
-}
-
-type SubGenre = {
-  id: number
-  name: string
-}
-
-type Ambiance = {
-  id: number
-  name: string
-}
-
-// Define types for the data
-interface GeographicalRegion {
-  id: number
-  name: string
-}
-
-interface Country {
-  id: number
-  name: string
-  geographical_regions: GeographicalRegion | null
-}
-
-// Simplified Artist type for the aggregated 'all_track_artists'
-interface AggregatedArtist {
-  id: number
-  name: string
-  is_primary: boolean
-}
-
-// New type for Spotify Genre (from primary_artist_spotify_genres)
-interface SpotifyGenre {
-  id: number
-  name: string
-}
-
-export interface Track {
-  id: number
-  title: string
-  albums: Album
-  // Now an array of simplified artists
-  track_artists: AggregatedArtist[]
-  genres: Genre | null
-  sub_genres: SubGenre | null
-  ambiances: Ambiance | null
-}
-
-export interface Listen {
-  id: number
-  ts: string
-  platform: string
-  ms_played: number
-  is_valid: boolean
-  conn_country: string
-  ip_addr: string | null
-  track_id: number
-  reason_start: string
-  reason_end: string
-  shuffle: boolean
-  skipped: boolean
-  offline: boolean
-  incognito_mode: boolean
-  tracks: Track
-  // Add primary artist details directly to Listen for easier access in table row
-  primary_artist_id: number | null
-  primary_artist_name: string | null
-  primary_artist_country: string | null
-  primary_artist_spotify_genres: SpotifyGenre[] | null // Array of spotify genres for primary artist
-}
+import { useToast } from '@/lib/utils'
+import type { FListen } from '@/types'
 
 export default function DataPage() {
   const { toast } = useToast()
-  const [listens, setListens] = useState<Listen[]>([])
+
+  // Raw list coming from the backend (one page)
+  const [rawListens, setRawListens] = useState<FListen[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [activeSearchQuery, setActiveSearchQuery] = useState('')
   const [rowsPerPage, setRowsPerPage] = useState(1000)
   const [showInvalidRows, setShowInvalidRows] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalListens, setTotalListens] = useState(0)
+  const [totalListens, setTotalListens] = useState(0) // total count from server if provided, otherwise fallback to rawListens length
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedListenIds, setSelectedListenIds] = useState<Set<number>>(new Set())
@@ -129,8 +44,7 @@ export default function DataPage() {
   const [sortColumn, setSortColumn] = useState<string>('ts')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
-  const totalPages = Math.ceil(totalListens / rowsPerPage)
-
+  // Column header -> sort key mapping (used to render header)
   const columnSortKeys: { [key: string]: string } = {
     'Date & Heure': 'ts',
     Titre: 'title',
@@ -139,7 +53,6 @@ export default function DataPage() {
     'Date de Sortie': 'releaseDate',
     'Style Musical': 'genre',
     'Sous-genre': 'subGenre',
-    Ambiance: 'ambiance',
     Origine: 'country',
     "Temps d'écoute": 'msPlayed',
     'Reason Start': 'reasonStart',
@@ -148,6 +61,17 @@ export default function DataPage() {
     'Écoute ≥ 30s': 'isValid',
     Plateforme: 'platform',
   }
+
+  // Visible listens after client-side filtering (hide listens < 30s if showInvalidRows===false)
+  const visibleListens = useMemo(() => {
+    if (showInvalidRows) return rawListens
+    return rawListens.filter(l => (l.ms_played ?? 0) >= 30000)
+  }, [rawListens, showInvalidRows])
+
+  // Derived values for pagination display
+  const totalPages = Math.max(1, Math.ceil((totalListens || visibleListens.length) / rowsPerPage))
+  const fromIndex = (currentPage - 1) * rowsPerPage + 1
+  const toIndex = (currentPage - 1) * rowsPerPage + visibleListens.length
 
   const fetchListens = useCallback(async () => {
     setLoading(true)
@@ -164,15 +88,15 @@ export default function DataPage() {
         params.append('search', activeSearchQuery)
       }
 
-      if (!showInvalidRows) {
-        params.append('is_valid', 'true')
-      }
+      // NOTE: we do not append 'is_valid' here because backend shape may differ.
+      // We keep client-side filtering for showInvalidRows.
 
       const response = await fetch(`/api/listens?${params.toString()}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const data: Listen[] = await response.json()
+
+      const data: FListen[] = await response.json()
 
       const totalCountHeader = response.headers.get('X-Total-Count')
       if (totalCountHeader) {
@@ -181,7 +105,7 @@ export default function DataPage() {
         setTotalListens(data.length)
       }
 
-      setListens(data)
+      setRawListens(data)
       setSelectedListenIds(new Set())
       setSelectAll(false)
     } catch (e: any) {
@@ -194,15 +118,7 @@ export default function DataPage() {
     } finally {
       setLoading(false)
     }
-  }, [
-    currentPage,
-    rowsPerPage,
-    showInvalidRows,
-    activeSearchQuery,
-    sortColumn,
-    sortDirection,
-    toast,
-  ])
+  }, [currentPage, rowsPerPage, activeSearchQuery, sortColumn, sortDirection, toast])
 
   useEffect(() => {
     fetchListens()
@@ -220,9 +136,7 @@ export default function DataPage() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearchClick()
-    }
+    if (e.key === 'Enter') handleSearchClick()
   }
 
   const handleSort = useCallback(
@@ -245,63 +159,12 @@ export default function DataPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }, [])
 
-  const renderPaginationControls = () => (
-    <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-      <div className="flex items-center gap-2 text-center">
-        <span>
-          Page {currentPage} sur {totalPages}
-        </span>
-        <span>-</span>
-        <span>
-          Affichage de {(currentPage - 1) * rowsPerPage + 1} à{' '}
-          {Math.min(currentPage * rowsPerPage, totalListens)} sur {totalListens} données totales
-        </span>
-      </div>
-      <div className="flex items-center justify-center gap-2 mt-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(1)}
-          disabled={currentPage === 1 || loading}
-        >
-          Début
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-          disabled={currentPage === 1 || loading}
-        >
-          Précédent
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-          disabled={currentPage === totalPages || loading}
-        >
-          Suivant
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(totalPages)}
-          disabled={currentPage === totalPages || loading}
-        >
-          Fin
-        </Button>
-      </div>
-    </div>
-  )
-
+  // Selection handlers
   const handleSelectRow = useCallback((id: number, checked: boolean) => {
     setSelectedListenIds(prev => {
       const newSet = new Set(prev)
-      if (checked) {
-        newSet.add(id)
-      } else {
-        newSet.delete(id)
-      }
+      if (checked) newSet.add(id)
+      else newSet.delete(id)
       return newSet
     })
   }, [])
@@ -309,15 +172,17 @@ export default function DataPage() {
   const handleSelectAllRows = useCallback(
     (checked: boolean) => {
       setSelectAll(checked)
-      setSelectedListenIds(prev => {
+      setSelectedListenIds(() => {
         const newSet = new Set<number>()
         if (checked) {
-          listens.forEach(listen => newSet.add(listen.id))
+          rawListens.forEach(listen => {
+            if (listen.id != null) newSet.add(listen.id)
+          })
         }
         return newSet
       })
     },
-    [listens]
+    [rawListens]
   )
 
   const handleDeleteSelected = async () => {
@@ -327,9 +192,7 @@ export default function DataPage() {
     try {
       const response = await fetch('/api/listens/bulk-delete', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: Array.from(selectedListenIds) }),
       })
 
@@ -341,11 +204,7 @@ export default function DataPage() {
       }
 
       const result = await response.json()
-
-      toast({
-        title: 'Suppression réussie',
-        description: result.message,
-      })
+      toast({ title: 'Suppression réussie', description: result.message })
       await fetchListens()
     } catch (e: any) {
       toast({
@@ -361,16 +220,9 @@ export default function DataPage() {
   const handleClearDatabase = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/clear-database', {
-        method: 'POST',
-      })
-
+      const response = await fetch('/api/clear-database', { method: 'POST' })
       const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erreur lors du vidage')
-      }
-
+      if (!response.ok) throw new Error(result.error || 'Erreur lors du vidage')
       toast({
         title: 'Base de données vidée',
         description: "Toutes les données d'écoute ont été supprimées avec succès.",
@@ -400,6 +252,7 @@ export default function DataPage() {
               Explorez votre historique d'écoute complet.
             </CardDescription>
           </div>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
@@ -418,7 +271,7 @@ export default function DataPage() {
                   <span className="font-bold text-red-600">⚠️ ATTENTION !</span> Cette action est
                   irréversible. Cela supprimera <span className="font-bold">TOUTES</span> les
                   données d'écoute, les artistes, albums et titres de votre base de données. Seules
-                  les tables de référence (pays, régions, catégories, événements) seront préservées.
+                  les tables de référence seront préservées.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -435,85 +288,61 @@ export default function DataPage() {
         </CardHeader>
       </Card>
 
-      <div className="flex flex-col gap-4 mb-6 p-2 bg-white rounded-lg shadow-sm border">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-            <Input
-              type="text"
-              placeholder="Rechercher par titre, artiste..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="pl-9 pr-2 py-2 rounded-md border border-gray-300 focus:ring-0 focus:border-gray-400 w-full"
-              disabled={loading}
-            />
-          </div>
-          <Button
-            onClick={handleSearchClick}
-            className="bg-gray-800 text-white hover:bg-gray-700 rounded-md px-4 py-2"
-            disabled={loading}
-          >
-            Rechercher
-          </Button>
-          {searchQuery && (
+      {/* Toolbar: we pass delete button + show-invalid toggle via rightSlot */}
+      <TableToolbar
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        onSearch={handleSearchClick}
+        onClearSearch={handleClearSearch}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={n => {
+          setRowsPerPage(n)
+          setCurrentPage(1)
+        }}
+        loading={loading}
+        optionalSlot={
+          <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant="destructive"
+              onClick={handleDeleteSelected}
+              disabled={selectedListenIds.size === 0 || loading}
+              className="rounded-md flex-shrink-0 bg-red-600 hover:bg-red-700 text-white"
               size="icon"
-              onClick={handleClearSearch}
-              className="rounded-md h-9 w-9 flex-shrink-0 bg-transparent"
-              disabled={loading}
             >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Effacer la recherche</span>
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Supprimer sélection</span>
             </Button>
-          )}
-          <Select
-            value={String(rowsPerPage)}
-            onValueChange={value => {
-              setRowsPerPage(Number(value))
-              setCurrentPage(1)
-            }}
-            disabled={loading}
-          >
-            <SelectTrigger className="w-[150px] rounded-md flex-shrink-0">
-              <SelectValue placeholder="1000 par page" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="100">100 par page</SelectItem>
-              <SelectItem value="500">500 par page</SelectItem>
-              <SelectItem value="1000">1000 par page</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="destructive"
-            onClick={handleDeleteSelected}
-            disabled={selectedListenIds.size === 0 || loading}
-            className="rounded-md flex-shrink-0 bg-red-600 hover:bg-red-700 text-white"
-            size="icon"
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="sr-only">Supprimer sélection</span>
-          </Button>
-        </div>
 
-        <div className="flex items-center gap-2 mt-2">
-          <Checkbox
-            id="show-invalid-rows"
-            checked={showInvalidRows}
-            onCheckedChange={checked => setShowInvalidRows(checked === true)}
-            disabled={loading}
-          />
-          <label
-            htmlFor="show-invalid-rows"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            Afficher les écoutes {'< 30s'}
-          </label>
-        </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="show-invalid-rows"
+                checked={showInvalidRows}
+                onCheckedChange={checked => setShowInvalidRows(checked === true)}
+                disabled={loading}
+              />
+              <label htmlFor="show-invalid-rows" className="text-sm font-medium leading-none">
+                Afficher les écoutes {'< 30s'}
+              </label>
+            </div>
+          </div>
+        }
+      />
+
+      {/* Top pagination */}
+      <div className="mb-4">
+        <TableNavigation
+          currentPage={currentPage}
+          totalPages={totalPages}
+          from={fromIndex}
+          to={toIndex}
+          totalItems={totalListens || visibleListens.length}
+          loading={loading}
+          onFirst={() => setCurrentPage(1)}
+          onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          onLast={() => setCurrentPage(totalPages)}
+        />
       </div>
-
-      {renderPaginationControls()}
 
       <div className="overflow-x-auto mt-4 border rounded-md">
         {loading ? (
@@ -522,7 +351,7 @@ export default function DataPage() {
           </div>
         ) : error ? (
           <div className="p-4 text-center text-red-500">Erreur: {error}</div>
-        ) : listens.length === 0 ? (
+        ) : visibleListens.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground">
             Aucune donnée disponible. Veuillez uploader des fichiers ou ajuster votre recherche.
           </div>
@@ -531,15 +360,16 @@ export default function DataPage() {
             <Table className="table-fixed">
               <TableHeader className="bg-gray-100">
                 <TableRow>
-                  <TableHead className="w-[40px] text-xs">
+                  <TH className="w-[40px] text-xs">
                     <Checkbox
                       checked={selectAll}
                       onCheckedChange={handleSelectAllRows}
-                      disabled={loading || listens.length === 0}
+                      disabled={loading || rawListens.length === 0}
                     />
-                  </TableHead>
+                  </TH>
+
                   {Object.entries(columnSortKeys).map(([headerText, sortKey]) => (
-                    <TableHead
+                    <TH
                       key={sortKey}
                       className={`text-xs cursor-pointer hover:bg-gray-200 transition-colors ${
                         sortKey === 'ts'
@@ -555,8 +385,6 @@ export default function DataPage() {
                           : sortKey === 'genre'
                           ? 'w-[100px]'
                           : sortKey === 'subGenre'
-                          ? 'w-[100px]'
-                          : sortKey === 'ambiance'
                           ? 'w-[80px]'
                           : sortKey === 'country'
                           ? 'w-[80px]'
@@ -585,16 +413,17 @@ export default function DataPage() {
                             <ArrowDown className="h-3 w-3" />
                           ))}
                       </div>
-                    </TableHead>
+                    </TH>
                   ))}
                 </TableRow>
               </TableHeader>
+
               <TableBody>
-                {listens.map(listen => (
+                {visibleListens.map(listen => (
                   <ListenTableRow
-                    key={listen.id}
+                    key={listen.id ?? listen.ts}
                     listen={listen}
-                    isSelected={selectedListenIds.has(listen.id)}
+                    isSelected={listen.id != null ? selectedListenIds.has(listen.id) : false}
                     onSelect={handleSelectRow}
                     formatDuration={formatDuration}
                     showInvalidRows={showInvalidRows}
@@ -606,7 +435,21 @@ export default function DataPage() {
           </TooltipProvider>
         )}
       </div>
-      <div className="mt-4">{renderPaginationControls()}</div>
+
+      <div className="mt-4">
+        <TableNavigation
+          currentPage={currentPage}
+          totalPages={totalPages}
+          from={fromIndex}
+          to={toIndex}
+          totalItems={totalListens || visibleListens.length}
+          loading={loading}
+          onFirst={() => setCurrentPage(1)}
+          onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          onLast={() => setCurrentPage(totalPages)}
+        />
+      </div>
     </div>
   )
 }

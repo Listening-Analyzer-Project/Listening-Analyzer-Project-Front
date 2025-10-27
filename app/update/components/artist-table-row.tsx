@@ -11,8 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TableCell, TableRow } from '@/components/ui/table'
+import { cn } from '@/lib/cn'
 import { useDebounce } from '@/lib/hooks/use-debounce'
-import { cn } from '@/lib/utils'
 import { Save, Search, XCircle } from 'lucide-react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 

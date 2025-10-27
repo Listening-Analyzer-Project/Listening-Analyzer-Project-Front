@@ -1,8 +1,7 @@
-"use client"
+import { useEffect, useRef, useState } from 'react'
 
-import { useRef, useState, useEffect } from "react"
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/cn'
 
 interface TruncatedTextWithTooltipProps {
   text: string | null | undefined
@@ -13,7 +12,7 @@ export function TruncatedTextWithTooltip({ text, className }: TruncatedTextWithT
   const textRef = useRef<HTMLDivElement>(null)
   const [isTruncated, setIsTruncated] = useState(false)
 
-  const content = text || "N/A"
+  const content = text || 'N/A'
 
   useEffect(() => {
     const element = textRef.current
@@ -28,7 +27,7 @@ export function TruncatedTextWithTooltip({ text, className }: TruncatedTextWithT
 
     const initialCheckTimeout = setTimeout(checkTruncation, 50)
 
-    const resizeObserver = new ResizeObserver((entries) => {
+    const resizeObserver = new ResizeObserver(entries => {
       requestAnimationFrame(() => {
         checkTruncation()
       })
@@ -45,7 +44,10 @@ export function TruncatedTextWithTooltip({ text, className }: TruncatedTextWithT
   const truncatedElement = (
     <div
       ref={textRef}
-      className={cn("block w-full whitespace-nowrap overflow-hidden text-ellipsis min-w-0", className)}
+      className={cn(
+        'block w-full whitespace-nowrap overflow-hidden text-ellipsis min-w-0',
+        className
+      )}
     >
       {content}
     </div>
@@ -57,7 +59,7 @@ export function TruncatedTextWithTooltip({ text, className }: TruncatedTextWithT
         <Tooltip>
           <TooltipTrigger asChild>{truncatedElement}</TooltipTrigger>
           <TooltipContent>
-            <p className="text-xs">{content}</p> {/* Applied text-xs here */}
+            <p className="text-xs">{content}</p>
           </TooltipContent>
         </Tooltip>
       ) : (
