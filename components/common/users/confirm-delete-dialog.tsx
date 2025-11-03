@@ -1,6 +1,4 @@
-// confirm-delete-dialog.tsx
-
-"use client";
+'use client'
 
 import {
   AlertDialog,
@@ -11,21 +9,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 
 export default function ConfirmDeleteDialog({
   open,
   onOpenChange,
   onConfirm,
-  title = "Supprimer cet utilisateur ?",
-  description = "Cette action est irréversible. Voulez-vous continuer ?",
+  title = 'Supprimer cet utilisateur ?',
+  description = 'Cette action est irréversible. Voulez-vous continuer ?',
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onConfirm: () => Promise<void> | void;
-  title?: string;
-  description?: string;
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onConfirm: () => Promise<void> | void
+  title?: string
+  description?: string
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -44,8 +42,8 @@ export default function ConfirmDeleteDialog({
             <Button
               className="bg-red-600 hover:bg-red-700"
               onClick={async () => {
-                await onConfirm();
-                onOpenChange(false);
+                await onConfirm()
+                onOpenChange(false)
               }}
             >
               Supprimer
@@ -54,5 +52,5 @@ export default function ConfirmDeleteDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
+  )
 }

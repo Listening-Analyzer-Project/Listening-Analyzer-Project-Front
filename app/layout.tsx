@@ -4,7 +4,7 @@ import { Inter } from 'next/font/google'
 import Link from 'next/link'
 import type React from 'react'
 
-import UserMenu from '@/components/common/user/user-menu'
+import UsersMenu from '@/components/common/users/users-menu'
 import { Toaster } from '@/components/ui/toaster'
 import '../styles/globals.css'
 
@@ -29,7 +29,7 @@ export default function RootLayout({
           {/* Light green background */}
           <header className="bg-white text-gray-800 py-4 px-6 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-4">
-              <UserMenu />
+              <UsersMenu />
               <Link href="/" className="text-xl font-bold flex items-center gap-2">
                 <Music className="h-6 w-6 text-green-600" /> {/* Spotify-like green music note */}
                 Spotify Analyzer
