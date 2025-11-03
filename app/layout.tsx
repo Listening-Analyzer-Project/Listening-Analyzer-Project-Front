@@ -4,9 +4,9 @@ import { Inter } from 'next/font/google'
 import Link from 'next/link'
 import type React from 'react'
 
+import UserMenu from '@/components/common/user/user-menu'
 import { Toaster } from '@/components/ui/toaster'
-import UserMenu from '@/components/user/user-menu'
-import './globals.css'
+import '../styles/globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 

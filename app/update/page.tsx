@@ -1,17 +1,23 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Search, X, RefreshCcw, ArrowUp, ArrowDown, User2, Loader2, Save } from "lucide-react"
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import Link from "next/link"
-import { useToast } from "@/hooks/use-toast"
-import { ArtistTableRow } from "@/components/artist-table-row"
+import { ArtistTableRow } from '@/app/update/components/artist-table-row'
+import { Button } from '@/components/ui/button'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { useToast } from '@/lib/utils'
+import { ArrowDown, ArrowUp, Loader2, RefreshCcw, Save, Search, User2, X } from 'lucide-react'
+import Link from 'next/link'
+import type React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface ArtistAnalytics {
   artist_id: number
@@ -33,15 +39,15 @@ interface Country {
 export default function UpdatePage() {
   const { toast } = useToast()
   const [artists, setArtists] = useState<ArtistAnalytics[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [activeSearchQuery, setActiveSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeSearchQuery, setActiveSearchQuery] = useState('')
   const [rowsPerPage, setRowsPerPage] = useState(100)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalArtists, setTotalArtists] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sortColumn, setSortColumn] = useState<string>("valid_listens")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+  const [sortColumn, setSortColumn] = useState<string>('valid_listens')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [modifiedArtists, setModifiedArtists] = useState<Map<number, number | null>>(new Map())
 
   const [countries, setCountries] = useState<Country[]>([])
@@ -65,12 +71,12 @@ export default function UpdatePage() {
   }, [currentPage, rowsPerPage, activeSearchQuery, sortColumn, sortDirection])
 
   const columnSortKeys: { [key: string]: string } = {
-    "Écoutes ≥ 30s": "valid_listens",
-    "Écoutes < 30s": "invalid_listens",
-    "Nom de l'Artiste": "artist_name",
-    Origine: "country_name",
-    "Genres Spotify": "spotify_genres_list",
-    Actions: "actions",
+    'Écoutes ≥ 30s': 'valid_listens',
+    'Écoutes < 30s': 'invalid_listens',
+    "Nom de l'Artiste": 'artist_name',
+    Origine: 'country_name',
+    'Genres Spotify': 'spotify_genres_list',
+    Actions: 'actions',
   }
 
   const fetchArtists = useCallback(async () => {
@@ -85,7 +91,7 @@ export default function UpdatePage() {
       })
 
       if (activeSearchQueryRef.current) {
-        params.append("search", activeSearchQueryRef.current)
+        params.append('search', activeSearchQueryRef.current)
       }
 
       const response = await fetch(`/api/analytics/artists?${params.toString()}`)
@@ -94,7 +100,7 @@ export default function UpdatePage() {
       }
       const data: ArtistAnalytics[] = await response.json()
 
-      const totalCountHeader = response.headers.get("X-Total-Count")
+      const totalCountHeader = response.headers.get('X-Total-Count')
       if (totalCountHeader) {
         setTotalArtists(Number(totalCountHeader))
       } else {
@@ -104,11 +110,11 @@ export default function UpdatePage() {
       setArtists(data)
       setModifiedArtists(new Map())
     } catch (e: any) {
-      setError(e.message || "Failed to fetch data.")
+      setError(e.message || 'Failed to fetch data.')
       toast({
-        title: "Erreur de chargement",
-        description: e.message || "Impossible de charger les données des artistes.",
-        variant: "destructive",
+        title: 'Erreur de chargement',
+        description: e.message || 'Impossible de charger les données des artistes.',
+        variant: 'destructive',
       })
     } finally {
       setLoading(false)
@@ -117,7 +123,7 @@ export default function UpdatePage() {
 
   const fetchCountries = useCallback(async () => {
     try {
-      const response = await fetch("/api/countries/ranked")
+      const response = await fetch('/api/countries/ranked')
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -125,9 +131,9 @@ export default function UpdatePage() {
       setCountries(data)
     } catch (e: any) {
       toast({
-        title: "Erreur de chargement",
-        description: e.message || "Impossible de charger la liste des pays.",
-        variant: "destructive",
+        title: 'Erreur de chargement',
+        description: e.message || 'Impossible de charger la liste des pays.',
+        variant: 'destructive',
       })
     }
   }, [toast])
@@ -148,13 +154,13 @@ export default function UpdatePage() {
   }
 
   const handleClearSearch = () => {
-    setSearchQuery("")
-    setActiveSearchQuery("")
+    setSearchQuery('')
+    setActiveSearchQuery('')
     setCurrentPage(1)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       handleSearchClick()
     }
   }
@@ -162,38 +168,43 @@ export default function UpdatePage() {
   const handleSort = useCallback(
     (columnKey: string) => {
       if (sortColumn === columnKey) {
-        setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+        setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
       } else {
         setSortColumn(columnKey)
         setSortDirection(
-          columnKey === "artist_name" || columnKey === "country_name" || columnKey === "spotify_genres_list"
-            ? "asc"
-            : "desc",
+          columnKey === 'artist_name' ||
+            columnKey === 'country_name' ||
+            columnKey === 'spotify_genres_list'
+            ? 'asc'
+            : 'desc'
         )
       }
       setCurrentPage(1)
     },
-    [sortColumn],
+    [sortColumn]
   )
 
-  const handleArtistModified = useCallback((artistId: number, newCountryId: number | null, isModified: boolean) => {
-    setModifiedArtists((prev) => {
-      const newMap = new Map(prev)
-      if (isModified) {
-        newMap.set(artistId, newCountryId)
-      } else {
-        newMap.delete(artistId)
-      }
-      return newMap
-    })
-  }, [])
+  const handleArtistModified = useCallback(
+    (artistId: number, newCountryId: number | null, isModified: boolean) => {
+      setModifiedArtists(prev => {
+        const newMap = new Map(prev)
+        if (isModified) {
+          newMap.set(artistId, newCountryId)
+        } else {
+          newMap.delete(artistId)
+        }
+        return newMap
+      })
+    },
+    []
+  )
 
   const handleSaveCountry = useCallback(
     async (artistId: number, countryId: number | null, shouldRefetch = true) => {
       try {
         const response = await fetch(`/api/artists/${artistId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ country_id: countryId }),
         })
 
@@ -203,7 +214,7 @@ export default function UpdatePage() {
         }
 
         if (shouldRefetch) {
-          toast({ title: "Succès", description: "Origine de l'artiste mise à jour." })
+          toast({ title: 'Succès', description: "Origine de l'artiste mise à jour." })
           // Only refetch artists, countries are stable now
           await fetchArtists()
         }
@@ -211,35 +222,35 @@ export default function UpdatePage() {
       } catch (e: any) {
         if (shouldRefetch) {
           toast({
-            title: "Erreur",
+            title: 'Erreur',
             description: e.message || "Impossible de mettre à jour l'origine.",
-            variant: "destructive",
+            variant: 'destructive',
           })
         }
         return false
       }
     },
-    [toast, fetchArtists],
+    [toast, fetchArtists]
   )
 
   const handleSaveAllModified = useCallback(async () => {
     setLoading(true)
     const updates = Array.from(modifiedArtists.entries()).map(([artistId, countryId]) =>
-      handleSaveCountry(artistId, countryId, false).then((success) => ({ artistId, success })),
+      handleSaveCountry(artistId, countryId, false).then(success => ({ artistId, success }))
     )
 
     const results = await Promise.all(updates)
-    const successfulUpdates = results.filter((r) => r.success).length
+    const successfulUpdates = results.filter(r => r.success).length
     const failedUpdates = results.length - successfulUpdates
 
     if (successfulUpdates > 0) {
-      toast({ title: "Succès", description: `${successfulUpdates} artiste(s) mis à jour.` })
+      toast({ title: 'Succès', description: `${successfulUpdates} artiste(s) mis à jour.` })
     }
     if (failedUpdates > 0) {
       toast({
-        title: "Erreur",
+        title: 'Erreur',
         description: `${failedUpdates} artiste(s) n'ont pas pu être mis à jour.`,
-        variant: "destructive",
+        variant: 'destructive',
       })
     }
 
@@ -256,18 +267,23 @@ export default function UpdatePage() {
         </span>
         <span>-</span>
         <span>
-          Affichage de {(currentPage - 1) * rowsPerPage + 1} à {Math.min(currentPage * rowsPerPage, totalArtists)} sur{" "}
-          {totalArtists} artistes totaux
+          Affichage de {(currentPage - 1) * rowsPerPage + 1} à{' '}
+          {Math.min(currentPage * rowsPerPage, totalArtists)} sur {totalArtists} artistes totaux
         </span>
       </div>
       <div className="flex items-center justify-center gap-2 mt-2">
-        <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} disabled={currentPage === 1 || loading}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1 || loading}
+        >
           Début
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
           disabled={currentPage === 1 || loading}
         >
           Précédent
@@ -275,7 +291,7 @@ export default function UpdatePage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
           disabled={currentPage === totalPages || loading}
         >
           Suivant
@@ -326,7 +342,7 @@ export default function UpdatePage() {
         <div className="ml-auto flex items-center gap-2">
           <Select
             value={String(rowsPerPage)}
-            onValueChange={(value) => {
+            onValueChange={value => {
               setRowsPerPage(Number(value))
               setCurrentPage(1)
             }}
@@ -351,7 +367,7 @@ export default function UpdatePage() {
             type="text"
             placeholder="Rechercher un artiste..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             className="pl-9 pr-2 py-2 rounded-md border border-gray-300 focus:ring-0 focus:border-gray-400 w-full"
             disabled={loading}
@@ -404,24 +420,24 @@ export default function UpdatePage() {
                     <TableHead
                       key={sortKey}
                       className={`text-xs cursor-pointer hover:bg-gray-200 transition-colors ${
-                        sortKey === "valid_listens"
-                          ? "w-[100px]"
-                          : sortKey === "invalid_listens"
-                            ? "w-[100px]"
-                            : sortKey === "artist_name"
-                              ? "w-[180px]"
-                              : sortKey === "country_name"
-                                ? "w-[160px]"
-                                : sortKey === "spotify_genres_list"
-                                  ? "w-[160px]"
-                                  : sortKey === "actions"
-                                    ? "w-[100px]"
-                                    : ""
+                        sortKey === 'valid_listens'
+                          ? 'w-[100px]'
+                          : sortKey === 'invalid_listens'
+                          ? 'w-[100px]'
+                          : sortKey === 'artist_name'
+                          ? 'w-[180px]'
+                          : sortKey === 'country_name'
+                          ? 'w-[160px]'
+                          : sortKey === 'spotify_genres_list'
+                          ? 'w-[160px]'
+                          : sortKey === 'actions'
+                          ? 'w-[100px]'
+                          : ''
                       }`}
                       onClick={() => handleSort(sortKey)}
                     >
                       <div className="flex items-center gap-1">
-                        {headerText === "Actions" ? (
+                        {headerText === 'Actions' ? (
                           <Button
                             size="icon"
                             variant="ghost"
@@ -436,7 +452,7 @@ export default function UpdatePage() {
                           <>
                             {headerText}
                             {sortColumn === sortKey &&
-                              (sortDirection === "asc" ? (
+                              (sortDirection === 'asc' ? (
                                 <ArrowUp className="h-3 w-3" />
                               ) : (
                                 <ArrowDown className="h-3 w-3" />
@@ -449,7 +465,7 @@ export default function UpdatePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {artists.map((artist) => (
+                {artists.map(artist => (
                   <ArtistTableRow
                     key={artist.artist_id}
                     artist={artist}
