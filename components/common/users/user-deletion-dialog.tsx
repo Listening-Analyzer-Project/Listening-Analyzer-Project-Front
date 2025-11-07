@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 
-export default function ConfirmDeleteDialog({
+export default function UserDeletionDialog({
   open,
   onOpenChange,
   onConfirm,

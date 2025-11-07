@@ -11,12 +11,22 @@ export const userService = {
   search: (q: string, opts?: { signal?: AbortSignal }) =>
     apiClient.get<FUser[]>('/api/users', { query: { q }, signal: opts?.signal }),
 
-  create: (payload: Partial<FUser>) => apiClient.post<FUser>('/api/users', payload),
+  create: async (payload: Partial<FUser>) => {
+    const result = await apiClient.post<FUser>('/api/users', payload)
+    apiClient.invalidateCache('/api/users')
+    return result
+  },
 
-  update: (id: string | number, payload: Partial<FUser>) =>
-    apiClient.patch<FUser>(`/api/users/${id}`, payload),
+  update: async (id: string | number, payload: Partial<FUser>) => {
+    const result = await apiClient.put<FUser>(`/api/users?id=${id}`, payload)
+    apiClient.invalidateCache('/api/users')
+    return result
+  },
 
-  remove: (id: string | number) => apiClient.delete<void>(`/api/users/${id}`),
+  remove: async (id: string | number) => {
+    await apiClient.delete<void>(`/api/users?id=${id}`)
+    apiClient.invalidateCache('/api/users')
+  },
 }
 
 export default userService
