@@ -104,8 +104,12 @@ export default function UserItem({
         <input
           type="checkbox"
           checked={selected}
-          onChange={() => onToggleSelect(id)}
-          onClick={stopPropagation}
+          onChange={() => {
+            onToggleSelect(id)
+          }}
+          onClick={e => {
+            e.stopPropagation()
+          }}
           className="h-4 w-4"
         />
         <div
@@ -141,7 +145,6 @@ export default function UserItem({
         </div>
       </div>
 
-      {/* DropdownMenu avec gestion d'événements améliorée */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button

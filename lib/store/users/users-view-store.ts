@@ -1,3 +1,4 @@
+// lib/store/users/users-view-store.ts
 import { getCyclicColor } from '@/lib/utils'
 import type { LuminancePreset } from '@/lib/utils/colors'
 import type { FUser } from '@/types'
@@ -36,6 +37,8 @@ export type ViewAction =
   | { type: 'DELETE_GROUP'; payload: { id: string } }
   | { type: 'RENAME_GROUP'; payload: { id: string; name: string } }
   | { type: 'TOGGLE_COLLAPSE'; payload: { id: string } }
+  // NEW: restore entire view state from persisted payload
+  | { type: 'RESTORE_VIEWSTATE'; payload: { viewState: ViewState } }
 
 /* -------------------------
    Id helpers
@@ -106,7 +109,7 @@ function removeIds(items: Record<string, ViewItem>, order: string[], ids: string
       * if group is inside parent => replace group's id in parent's children by onlyChild
   This operation is applied repeatedly until no group has <=1 child.
 */
-function pruneGroups(items: Record<string, ViewItem>, order: string[]) {
+export function pruneGroups(items: Record<string, ViewItem>, order: string[]) {
   let itemsCopy = { ...items }
   let orderCopy = [...order]
   let changed = true
@@ -150,7 +153,10 @@ function pruneGroups(items: Record<string, ViewItem>, order: string[]) {
   return { items: itemsCopy, order: orderCopy }
 }
 
-function enforceAliasBelowParent(items: Record<string, ViewItem>, order: string[]): string[] {
+export function enforceAliasBelowParent(
+  items: Record<string, ViewItem>,
+  order: string[]
+): string[] {
   const orderCopy = [...order]
 
   const indexMap: Record<string, number> = {}
@@ -465,6 +471,10 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       return { ...state, collapseMap: { ...state.collapseMap, [id]: !state.collapseMap[id] } }
     }
 
+    case 'RESTORE_VIEWSTATE': {
+      return action.payload.viewState
+    }
+
     default:
       return state
   }
@@ -497,4 +507,8 @@ export const viewActions = {
     payload: { id, name },
   }),
   toggleCollapse: (id: string) => ({ type: 'TOGGLE_COLLAPSE' as const, payload: { id } }),
+  restoreViewState: (viewState: ViewState) => ({
+    type: 'RESTORE_VIEWSTATE' as const,
+    payload: { viewState },
+  }),
 }

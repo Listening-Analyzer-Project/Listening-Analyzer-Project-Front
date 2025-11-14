@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 
 import { userService } from '@/lib/api'
@@ -10,8 +9,8 @@ import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import type { FUser } from '@/types'
 
 // types
-import type { ViewState } from '@/lib/store'
-import type { GroupViewItem } from '@/lib/store/users/users-view-store'
+import type { GroupViewItem, ViewState } from '@/lib/store'
+import { buildRestoredPayload, loadPersistedPayload, savePersistedPayload } from '@/lib/store'
 
 // dnd-kit
 import {
@@ -42,11 +41,12 @@ const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
 const LUMINANCE_PRESET = 'shortlist' as const
 
-// Simple Sortable wrapper for an item
-function SortableItem({ id, children }: { id: string; children: ReactNode }) {
+// Simple Sortable wrapper with a drag handle
+function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
   })
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -54,8 +54,27 @@ function SortableItem({ id, children }: { id: string; children: ReactNode }) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      {children}
+    <div ref={setNodeRef} style={style} className="relative">
+      <div className="flex items-center">
+        <div className="flex-1">{children}</div>
+
+        <button
+          {...attributes}
+          {...listeners}
+          aria-label="Drag user"
+          className="p-1 ml-2 rounded hover:bg-gray-100"
+          onClick={e => e.stopPropagation()}
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              d="M10 6h4M10 12h4M10 18h4"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }
@@ -115,6 +134,8 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     toggleSelection,
     createGroup,
     addChildToGroup,
+    restoreViewState,
+    setSelection,
   } = useUsersViewStore()
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -125,12 +146,38 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null)
 
-  // Initialize the view state with users from API
+  // Restore persisted view + selection (reconcile with users from API)
   useEffect(() => {
-    if (usersRaw) {
+    if (!usersRaw) return
+    let mounted = true
+
+    try {
+      const loaded = loadPersistedPayload() // null si aucune persistence
+      const restored = buildRestoredPayload(loaded, usersRaw)
+
+      if (!mounted) return
+
+      // restore the viewState and the selection into the provider
+      restoreViewState(restored.viewState)
+      setSelection(restored.selectionState.selectedIds)
+
+      // persist cleaned result immediately (ensures we store pruned/normalized state)
+      try {
+        savePersistedPayload(restored)
+      } catch (e) {
+        // best-effort - ignore errors in persistence
+        console.warn('savePersistedPayload failed', e)
+      }
+    } catch (err) {
+      console.error('error restoring persisted users view', err)
+      // Fallback: if anything fails, fall back to initFromUsers so UI still loads
       initFromUsers(usersRaw)
     }
-  }, [usersRaw, initFromUsers])
+
+    return () => {
+      mounted = false
+    }
+  }, [usersRaw, restoreViewState, setSelection, initFromUsers])
 
   // Build color map based on view state and users
   const usersById = new Map(
@@ -147,7 +194,9 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   )
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })

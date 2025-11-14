@@ -1,7 +1,15 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from 'react'
 
 import {
   initialSelectionState,
@@ -14,6 +22,13 @@ import {
   type ViewState,
 } from '@/lib/store'
 import type { FUser } from '@/types'
+
+// Persistence helpers (localStorage payload containing viewState + selectionState)
+import {
+  clearPersistedPayload,
+  savePersistedPayload,
+  type PersistedPayload,
+} from './users-view-persistence'
 
 type UserViewContextValue = {
   viewState: ViewState
@@ -36,6 +51,10 @@ type UserViewContextValue = {
   setSelection: (ids: string[]) => void
   clearSelection: () => void
   syncSelectionWithView: (useDisplayOrder?: boolean) => void
+
+  // persistence helpers
+  restoreViewState: (vs: ViewState) => void
+  clearPersistedState: () => void
 }
 
 const UserViewContext = createContext<UserViewContextValue | undefined>(undefined)
@@ -43,24 +62,6 @@ const UserViewContext = createContext<UserViewContextValue | undefined>(undefine
 export function UserViewProvider({ children }: { children: ReactNode }) {
   const [viewState, viewDispatch] = useReducer(viewReducer, initialViewState)
   const [selectionState, selectionDispatch] = useReducer(selectionReducer, initialSelectionState)
-
-  // ✅ DEBUG : log quand la sélection change
-  useEffect(() => {
-    console.log(
-      '%c[UserViewProvider] selectionState changed:',
-      'color: #4ade80; font-weight: bold;',
-      selectionState
-    )
-  }, [selectionState])
-
-  // ✅ DEBUG : log quand la structure des items change
-  useEffect(() => {
-    console.log(
-      '%c[UserViewProvider] viewState changed:',
-      'color: #60a5fa; font-weight: bold;',
-      viewState
-    )
-  }, [viewState])
 
   // Stable callbacks for view actions (depend only on dispatch which is stable)
   const initFromUsers = useCallback(
@@ -133,7 +134,7 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     [viewDispatch]
   )
 
-  // Stable callbacks for selection actions (depend only on selectionDispatch)
+  // Selection actions
   const toggleSelection = useCallback(
     (id: string) => {
       selectionDispatch(selectionActions.toggle(id))
@@ -152,7 +153,6 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     selectionDispatch(selectionActions.clear())
   }, [selectionDispatch])
 
-  // syncSelectionWithView depends on current viewState because it uses it to compute sync action
   const syncSelectionWithView = useCallback(
     (useDisplayOrder?: boolean) => {
       selectionDispatch(selectionActions.syncWithView(viewState, !!useDisplayOrder))
@@ -160,6 +160,60 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     [selectionDispatch, viewState]
   )
 
+  // Persistence: restore (dispatches RESTORE_VIEWSTATE)
+  const restoreViewState = useCallback(
+    (vs: ViewState) => {
+      viewDispatch(viewActions.restoreViewState(vs))
+    },
+    [viewDispatch]
+  )
+
+  // Clear persisted payload (localStorage)
+  const clearPersistedState = useCallback(() => {
+    try {
+      clearPersistedPayload()
+    } catch (e) {
+      console.error('clearPersistedPayload failed', e)
+    }
+  }, [])
+
+  // Autosave debounced: persist viewState + selectionState to localStorage
+  const saveTimerRef = useRef<number | null>(null)
+  useEffect(() => {
+    // debounce writes to avoid blocking on many quick changes
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      try {
+        // Build payload and save synchronously (localStorage)
+        const payload: PersistedPayload = {
+          viewState,
+          selectionState,
+          meta: { savedAt: new Date().toISOString() },
+        }
+        savePersistedPayload(payload)
+      } catch (e) {
+        console.error('savePersistedPayload failed', e)
+      } finally {
+        if (saveTimerRef.current) {
+          window.clearTimeout(saveTimerRef.current)
+          saveTimerRef.current = null
+        }
+      }
+    }, 300) // 300ms debounce
+
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+    }
+  }, [viewState, selectionState])
+
+  // Expose context value
   const value = useMemo<UserViewContextValue>(() => {
     return {
       viewState,
@@ -180,6 +234,9 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
       setSelection,
       clearSelection,
       syncSelectionWithView,
+
+      restoreViewState,
+      clearPersistedState,
     }
   }, [
     viewState,
@@ -198,6 +255,8 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     setSelection,
     clearSelection,
     syncSelectionWithView,
+    restoreViewState,
+    clearPersistedState,
   ])
 
   return <UserViewContext.Provider value={value}>{children}</UserViewContext.Provider>

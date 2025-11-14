@@ -1,4 +1,7 @@
 'use client'
+
+import { MoreHorizontal } from 'lucide-react'
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { GroupViewItem } from '@/lib/store'
-import { MoreHorizontal } from 'lucide-react'
 import InlineRenameInput from './inline-rename-input'
 
 export default function UsersGroupItem({
@@ -52,9 +54,15 @@ export default function UsersGroupItem({
             onClick={e => e.stopPropagation()}
             className="h-4 w-4"
           />
+
+          {/* Collapse button: stopPropagation so it doesn't bubble to parent/drag */}
           <button
-            onClick={() => onToggleCollapse(id)}
+            onClick={e => {
+              e.stopPropagation()
+              onToggleCollapse(id)
+            }}
             className="text-sm font-medium flex items-center gap-2"
+            aria-label={collapsed ? 'Expand group' : 'Collapse group'}
           >
             <span className="w-6 text-xs">{collapsed ? '▸' : '▾'}</span>
             {isEditingLabel ? (
@@ -72,14 +80,19 @@ export default function UsersGroupItem({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Dropdown menu: prevent clicks from bubbling up */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="p-1 rounded hover:bg-gray-100" aria-label="Group actions">
+              <button
+                className="p-1 rounded hover:bg-gray-100"
+                aria-label="Group actions"
+                onClick={e => e.stopPropagation()}
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
               <DropdownMenuItem
                 onSelect={e => {
                   e.preventDefault()
@@ -99,6 +112,24 @@ export default function UsersGroupItem({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Drag handle: Sortable wrapper will spread attributes/listeners here */}
+          <button
+            // attributes & listeners will be spread here by the Sortable wrapper (in users-menu.tsx)
+            // keep a stopPropagation on click to avoid bubbling
+            onClick={e => e.stopPropagation()}
+            aria-label="Drag group"
+            className="p-1 ml-1 rounded hover:bg-gray-100"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                d="M10 6h4M10 12h4M10 18h4"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
       </div>
     </li>
