@@ -312,6 +312,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
       if (type === 'user') {
         const userId = parseInt(id.split(':')[1])
         deleteUser(userId)
+        await userService.remove(userId)
       } else if (type === 'alias') {
         deleteAlias(id)
       } else if (type === 'group') {
