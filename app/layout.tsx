@@ -27,14 +27,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <UserViewProvider>
           <div className="flex flex-col min-h-screen bg-[#F0FDF4]">
-            {' '}
-            {/* Light green background */}
             <header className="bg-white text-gray-800 py-4 px-6 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
                 <UsersMenu />
                 <Link href="/" className="text-xl font-bold flex items-center gap-2">
-                  <Music className="h-6 w-6 text-green-600" /> {/* Spotify-like green music note */}
-                  Spotify Analyzer
+                  <Music className="h-6 w-6 text-green-600" />
+                  Listening Analyzer
                 </Link>
               </div>
               <nav className="flex gap-6">

@@ -1,4 +1,8 @@
 'use client'
+
+import { MoreHorizontal } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,8 +12,7 @@ import {
 import { userService } from '@/lib/api'
 import type { ViewItem } from '@/lib/store'
 import type { FUser } from '@/types'
-import { MoreHorizontal } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import InlineRenameInput from './inline-rename-input'
 
 export default function UserItem({
   id,
@@ -20,6 +23,7 @@ export default function UserItem({
   onEditUserClick,
   onDelete,
   onAfterUserRename,
+  onCreateAlias,
   color,
 }: {
   id: string
@@ -30,6 +34,7 @@ export default function UserItem({
   onEditUserClick: (u: FUser) => void
   onDelete: (id: string, type: 'user' | 'alias') => void
   onAfterUserRename?: () => Promise<void>
+  onCreateAlias?: (userId: number) => void
   color?: string
 }) {
   const isUser = item.type === 'user'
@@ -40,48 +45,83 @@ export default function UserItem({
   const baseName = user?.name ?? 'User'
   const label = isAlias ? `${baseName} ALIAS` : baseName
 
+  // rename state
   const [renaming, setRenaming] = useState(false)
   const [value, setValue] = useState(label)
+
+  // controlled dropdown open state + pending rename flag
+  const [menuOpen, setMenuOpen] = useState(false)
+  const pendingRenameRef = useRef(false)
+
+  // input ref for rename (not strictly needed since InlineRenameInput manages focus)
+  const renameInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     setValue(label)
   }, [label])
 
-  const commitRename = async () => {
-    const trimmed = (value ?? '').trim()
+  // When dropdown closes and a rename was requested, start renaming
+  useEffect(() => {
+    if (!menuOpen && pendingRenameRef.current) {
+      pendingRenameRef.current = false
+      const timer = setTimeout(() => {
+        setRenaming(true)
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [menuOpen])
+
+  // commit logic extracted to accept a provided value
+  const commitRenameWithValue = async (newName: string) => {
+    const trimmed = (newName ?? '').trim()
     if (!trimmed) {
-      setRenaming(false)
-      setValue(label)
+      // nothing - caller should close renaming
       return
     }
     if (trimmed === label) {
-      setRenaming(false)
+      // no change
       return
     }
 
     if (isUser) {
       try {
-        await userService.update(item.userId, { name: trimmed })
+        let existingUser = usersById.get(item.userId)
+
+        if (!existingUser) {
+          try {
+            existingUser = await userService.fetchById(item.userId)
+          } catch (fetchErr) {
+            console.warn('Could not fetch full user, proceeding with minimal payload', fetchErr)
+          }
+        }
+
+        let payload: Partial<FUser> = {}
+        if (existingUser) {
+          payload = { ...existingUser, name: trimmed }
+          if (typeof existingUser.isadmin === 'boolean')
+            payload.isadmin = existingUser.isadmin ? 1 : 0
+        } else {
+          payload = { name: trimmed }
+        }
+
+        await userService.update(item.userId, payload)
+
         if (onAfterUserRename) await onAfterUserRename()
-      } catch (err) {
+      } catch (err: any) {
         console.error('rename user error', err)
-      } finally {
-        setRenaming(false)
+        const msg = err?.message ?? 'Erreur lors du renommage'
+        // replace by your toast if available
+        alert(`Impossible de renommer l'utilisateur : ${msg}`)
+        // rethrow? we swallow because we want UI to keep working
       }
     } else {
-      setRenaming(false)
+      // alias case: nothing to update server-side here by default
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      commitRename()
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      setRenaming(false)
-      setValue(label)
-    }
+  // StopPropagation for the trigger button only
+  const stopPropagation = (e: React.MouseEvent) => {
+    e.stopPropagation()
   }
 
   const initials = baseName
@@ -92,11 +132,6 @@ export default function UserItem({
     .toUpperCase()
 
   const avatarBg = color || `hsl(${(item.userId * 37) % 360} 60% 40%)`
-
-  // Fonction pour empêcher la propagation des événements
-  const stopPropagation = (e: React.MouseEvent) => {
-    e.stopPropagation()
-  }
 
   return (
     <li className="flex items-center justify-between gap-3 rounded p-2 hover:bg-gray-50">
@@ -120,22 +155,25 @@ export default function UserItem({
         </div>
         <div className="flex-1">
           {renaming ? (
-            <input
-              value={value}
-              onChange={e => setValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={commitRename}
-              className="w-full rounded border px-2 py-1 text-sm"
-              aria-label="Rename"
-              autoFocus
+            <InlineRenameInput
+              initialValue={value}
+              onSave={async v => {
+                setValue(v)
+                try {
+                  await commitRenameWithValue(v)
+                } finally {
+                  setRenaming(false)
+                }
+              }}
+              onCancel={() => {
+                setRenaming(false)
+                setValue(label)
+              }}
+              className=""
+              placeholder="Rename"
             />
           ) : (
-            <div
-              className="cursor-pointer"
-              onClick={() => {
-                if (user) onEditUserClick(user)
-              }}
-            >
+            <div>
               <div className="text-sm font-medium">{label}</div>
               <div className="text-xs text-muted-foreground">
                 type: {user?.type ?? '-'} {user?.isadmin ? ' · admin' : ''}
@@ -145,7 +183,7 @@ export default function UserItem({
         </div>
       </div>
 
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={(o: boolean) => setMenuOpen(o)}>
         <DropdownMenuTrigger asChild>
           <button
             className="p-1 rounded hover:bg-gray-100"
@@ -156,12 +194,13 @@ export default function UserItem({
           </button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" onClick={stopPropagation}>
+        <DropdownMenuContent align="end">
           {isUser && (
             <DropdownMenuItem
-              onSelect={e => {
-                e.preventDefault()
-                setRenaming(true)
+              onSelect={() => {
+                // mark intention and close menu; effect on menuOpen -> triggers renaming when closed
+                pendingRenameRef.current = true
+                setMenuOpen(false)
               }}
             >
               Rename
@@ -169,18 +208,33 @@ export default function UserItem({
           )}
           {isUser && user && (
             <DropdownMenuItem
-              onSelect={e => {
-                e.preventDefault()
+              onSelect={() => {
+                // close menu then open edit dialog
+                setMenuOpen(false)
                 onEditUserClick(user)
               }}
             >
               Edit
             </DropdownMenuItem>
           )}
+          {isUser && (
+            <DropdownMenuItem
+              onSelect={() => {
+                setMenuOpen(false)
+                onCreateAlias?.(item.userId)
+              }}
+            >
+              Create alias
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
-            onSelect={e => {
-              e.preventDefault()
-              onDelete(id, isUser ? 'user' : 'alias')
+            onSelect={() => {
+              setMenuOpen(false)
+              if (isAlias) {
+                onDelete(id, 'alias')
+              } else {
+                onDelete(id, isUser ? 'user' : 'alias')
+              }
             }}
           >
             Delete

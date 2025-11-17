@@ -1,5 +1,3 @@
-// lib/store/users/users-view-persistence.ts
-
 import type { FUser } from '@/types'
 import type { SelectionState } from './users-selection-store'
 import { syncSelectionWithView } from './users-selection-store'

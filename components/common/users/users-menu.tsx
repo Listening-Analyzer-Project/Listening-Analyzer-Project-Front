@@ -136,6 +136,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     addChildToGroup,
     restoreViewState,
     setSelection,
+    createAlias,
   } = useUsersViewStore()
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -323,9 +324,13 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   }
 
   const handleDeleteClick = (id: string, type: 'user' | 'alias' | 'group') => {
-    setToDeleteId(id)
-    setToDeleteType(type)
-    setDeleteDialogOpen(true)
+    if (type === 'alias') {
+      handleDelete(id, type)
+    } else {
+      setToDeleteId(id)
+      setToDeleteType(type)
+      setDeleteDialogOpen(true)
+    }
   }
 
   const handleConfirmDelete = async () => {
@@ -340,6 +345,21 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   const handleRenameGroup = async (id: string, newName: string) => {
     renameGroup(id, newName)
     setRenamingGroupId(null)
+  }
+
+  const handleCreateAlias = (userId: number) => {
+    try {
+      const userViewId = `u:${userId}`
+      const userIndex = viewState.order.indexOf(userViewId)
+
+      if (userIndex !== -1) {
+        createAlias(userId, userIndex + 1)
+      } else {
+        createAlias(userId)
+      }
+    } catch (err) {
+      console.error('create alias error', err)
+    }
   }
 
   // renderItemContent returns the component for a given id (user/alias or group)
@@ -365,6 +385,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
           }}
           onDelete={handleDeleteClick}
           onAfterUserRename={refetch}
+          onCreateAlias={handleCreateAlias}
           color={colorMap.get(id) ?? colorMap.get(String(item.userId))}
         />
       )
@@ -412,8 +433,11 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
       <div className="flex items-center">
         <button
           onClick={() => setMenuOpen(true)}
-          className="h-10 w-10 rounded-full inline-flex items-center justify-center font-semibold text-white shadow-sm"
+          className="h-10 w-10 rounded-full inline-flex items-center justify-center bg-transparent border-none shadow-none"
           aria-label="Open users menu"
+          style={{
+            boxShadow: 'none',
+          }}
         >
           <AvatarStack
             selectedIds={selectionState.selectedIds}

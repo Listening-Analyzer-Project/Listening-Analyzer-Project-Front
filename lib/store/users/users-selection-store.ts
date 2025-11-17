@@ -64,6 +64,15 @@ export function syncSelectionWithView(
 }
 
 /* -------------------------
+   Ordered selection helper
+   ------------------------- */
+
+export function getOrderedSelection(selectedIds: string[], viewState: ViewState): string[] {
+  const structuralOrder = buildStructuralOrder(viewState)
+  return selectedIds.sort((a, b) => structuralOrder.indexOf(a) - structuralOrder.indexOf(b))
+}
+
+/* -------------------------
    Action creators
    ------------------------- */
 

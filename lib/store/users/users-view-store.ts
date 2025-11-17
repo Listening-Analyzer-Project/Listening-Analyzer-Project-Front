@@ -158,26 +158,21 @@ export function enforceAliasBelowParent(
   order: string[]
 ): string[] {
   const orderCopy = [...order]
-
-  const indexMap: Record<string, number> = {}
-  orderCopy.forEach((id, idx) => (indexMap[id] = idx))
-
   let changed = true
+
   while (changed) {
     changed = false
-    for (const id of orderCopy) {
+    for (let i = 0; i < orderCopy.length; i++) {
+      const id = orderCopy[i]
       const item = items[id]
+
       if (item?.type === 'alias') {
         const userId = item.userId
         const userViewId = makeUserViewId(userId)
-        const aliasIdx = indexMap[id]
-        const userIdx = indexMap[userViewId]
-        if (userIdx === undefined) continue
-        if (aliasIdx < userIdx) {
-          orderCopy.splice(aliasIdx, 1)
-          const newUserIdx = indexMap[userViewId]
-          orderCopy.splice(newUserIdx + 1, 0, id)
-          orderCopy.forEach((id, idx) => (indexMap[id] = idx))
+        const userIndex = orderCopy.indexOf(userViewId)
+
+        if (userIndex !== -1 && i < userIndex) {
+          ;[orderCopy[i], orderCopy[userIndex]] = [orderCopy[userIndex], orderCopy[i]]
           changed = true
           break
         }

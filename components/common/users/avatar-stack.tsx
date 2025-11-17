@@ -1,6 +1,9 @@
 'use client'
 
+import { useMemo } from 'react'
+
 import type { ViewState } from '@/lib/store'
+import { getOrderedSelection } from '@/lib/store'
 import type { FUser } from '@/types'
 
 function initials(name = '') {
@@ -27,6 +30,10 @@ export default function AvatarStack({
   max?: number
   size?: number
 }) {
+  const orderedSelectedIds = useMemo(() => {
+    return getOrderedSelection(selectedIds, viewState)
+  }, [selectedIds, viewState])
+
   const seen = new Set<number>()
   const userIds: number[] = []
 
@@ -43,7 +50,7 @@ export default function AvatarStack({
     }
   }
 
-  for (const id of selectedIds) expand(id)
+  for (const id of orderedSelectedIds) expand(id)
 
   if (userIds.length === 0) {
     const firstTop = viewState.order[0]
@@ -78,20 +85,27 @@ export default function AvatarStack({
   }
 
   const avatarSize = size
-  const offset = Math.round(avatarSize * 0.28)
+  const offsetLeft = Math.round(avatarSize * 0.85)
+  const offsetTop = 0
 
   return (
     <div
-      style={{ width: avatarSize + (displayCount - 1) * (avatarSize - offset) }}
+      style={{
+        width: avatarSize + (displayCount - 1) * (avatarSize - offsetLeft),
+        height: avatarSize,
+      }}
       className="relative"
     >
       {avatarItems.map((a, idx) => {
-        const left = idx * (avatarSize - offset)
+        const left = idx * (avatarSize - offsetLeft)
+        const top = -idx * offsetTop
+
         return (
           <div
             key={idx}
             style={{
               left,
+              top,
               width: avatarSize,
               height: avatarSize,
               borderRadius: '9999px',
@@ -102,8 +116,8 @@ export default function AvatarStack({
               color: 'white',
               fontWeight: 700,
               position: 'absolute',
-              boxShadow: '0 1px 0 rgba(0,0,0,0.15)',
-              zIndex: idx,
+              boxShadow: '-1px 1px 3px rgba(0,0,0,0.30)',
+              border: '1px solid white',
             }}
           >
             <span style={{ fontSize: Math.round(avatarSize / 2.5) }}>{a.initialsText}</span>
@@ -113,7 +127,8 @@ export default function AvatarStack({
       {overflow && (
         <div
           style={{
-            left: displayCount * (avatarSize - offset) - (avatarSize - offset),
+            left: displayCount * (avatarSize - offsetLeft) - (avatarSize - offsetLeft),
+            top: -(displayCount - 1) * offsetTop,
             width: avatarSize,
             height: avatarSize,
             borderRadius: '9999px',
@@ -124,8 +139,9 @@ export default function AvatarStack({
             color: 'white',
             fontWeight: 700,
             position: 'absolute',
-            boxShadow: '0 1px 0 rgba(0,0,0,0.15)',
-            zIndex: displayCount + 1,
+            boxShadow: '-1px 1px 3px rgba(0,0,0,0.30)',
+            zIndex: 0,
+            border: '1px solid white',
           }}
         >
           <span style={{ fontSize: Math.round(avatarSize / 2.8) }}>...</span>
