@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/cn"
 import { UploadCloud, X } from "lucide-react"
-import { fileService } from "@/lib/api"
+import { importService } from "@/lib/api"
 
-function UploadArea() {
+function UploadArea({ userId }: { userId: number | undefined }) {
   const [files, setFiles] = useState<File[]>([])
   const [isDragging, setIsDragging] = useState(false)
 
@@ -32,7 +32,8 @@ function UploadArea() {
   const onDragLeave = () => setIsDragging(false)
 
   const onUploadFiles = () => {
-    fileService.uploadAndParse(files)
+    if (!userId) return // TODO: gérer l'erreur
+    importService.uploadAndParse(files, userId)
     resetFiles()
   };
 

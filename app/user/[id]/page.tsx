@@ -216,7 +216,7 @@ export default function UserSettingsPage() {
                     <p className="text-sm text-muted-foreground">
                         ⚠️ Si vous uploadez de nouveaux fichiers, cela remplacera les fichiers existants pour cet utilisateur.
                     </p>
-                    <UploadArea />
+                    <UploadArea userId={user.id} />
                 </CardContent>
             </Card>
           )}
