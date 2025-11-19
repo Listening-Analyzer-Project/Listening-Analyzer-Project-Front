@@ -13,6 +13,7 @@ import { userService } from '@/lib/api'
 import type { ViewItem } from '@/lib/store'
 import type { FUser } from '@/types'
 import InlineRenameInput from './inline-rename-input'
+import { useRouter } from 'next/navigation'
 
 export default function UserItem({
   id,
@@ -20,23 +21,26 @@ export default function UserItem({
   usersById,
   selected,
   onToggleSelect,
-  onEditUserClick,
   onDelete,
   onAfterUserRename,
   onCreateAlias,
   color,
+  onCloseMenu,
 }: {
   id: string
   item: ViewItem
   usersById: Map<number, FUser>
   selected: boolean
   onToggleSelect: (id: string) => void
-  onEditUserClick: (u: FUser) => void
   onDelete: (id: string, type: 'user' | 'alias') => void
   onAfterUserRename?: () => Promise<void>
   onCreateAlias?: (userId: number) => void
   color?: string
+  onCloseMenu?: () => void
 }) {
+  // navigation
+  const router = useRouter()
+
   const isUser = item.type === 'user'
   const isAlias = item.type === 'alias'
   if (!isUser && !isAlias) return null
@@ -208,13 +212,13 @@ export default function UserItem({
           )}
           {isUser && user && (
             <DropdownMenuItem
-              onSelect={() => {
-                // close menu then open edit dialog
-                setMenuOpen(false)
-                onEditUserClick(user)
+              onSelect={() => {  
+                setMenuOpen(false)  
+                onCloseMenu?.()
+                router.push(`/user/${user.id}`)
               }}
             >
-              Edit
+              Settings
             </DropdownMenuItem>
           )}
           {isUser && (

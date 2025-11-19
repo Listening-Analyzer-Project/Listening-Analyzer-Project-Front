@@ -1,3 +1,4 @@
+//TODO : use chad/cn Button
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -33,7 +34,7 @@ import { CSS } from '@dnd-kit/utilities'
 
 import AvatarStack from './avatar-stack'
 import UserDeletionDialog from './user-deletion-dialog'
-import UserDialog from './user-dialog'
+import UserCreateDialog from './user-create-dialog'
 import UserItem from './user-item'
 import UsersGroupItem from './users-group-item'
 
@@ -141,7 +142,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<Partial<FUser> | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [toDeleteId, setToDeleteId] = useState<string | null>(null)
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
@@ -298,7 +298,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
       }
       await refetch()
       setDialogOpen(false)
-      setEditingUser(null)
       if (savedUser.id && onSelect) {
         onSelect(savedUser)
       }
@@ -380,14 +379,11 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
           usersById={usersById}
           selected={isSelected}
           onToggleSelect={toggleSelection}
-          onEditUserClick={user => {
-            setEditingUser(user)
-            setDialogOpen(true)
-          }}
           onDelete={handleDeleteClick}
           onAfterUserRename={refetch}
           onCreateAlias={handleCreateAlias}
           color={colorMap.get(id) ?? colorMap.get(String(item.userId))}
+          onCloseMenu={() => setMenuOpen(false)}
         />
       )
     } else if (item.type === 'group') {
@@ -490,7 +486,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         <div className="border-t bg-white p-4">
           <button
             onClick={() => {
-              setEditingUser(null)
               setDialogOpen(true)
             }}
             className="w-full rounded-md bg-green-600 text-white py-2 text-sm font-medium hover:bg-green-700"
@@ -519,22 +514,13 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         onConfirm={handleConfirmDelete}
       />
 
-      <UserDialog
+      <UserCreateDialog
         open={dialogOpen}
         onOpenChange={v => {
           setDialogOpen(v)
-          if (!v) setEditingUser(null)
         }}
-        defaultValues={
-          editingUser
-            ? {
-                ...editingUser,
-                isadmin: !!editingUser.isadmin,
-              }
-            : undefined
-        }
-        onSave={async payload => {
-          const toSave: Partial<FUser> = {
+        onCreate={async payload => {
+          const toSave = {
             ...payload,
             isadmin: payload.isadmin ? 1 : 0,
           }
