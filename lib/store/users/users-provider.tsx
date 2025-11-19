@@ -179,6 +179,7 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
 
   // Autosave debounced: persist viewState + selectionState to localStorage
   const saveTimerRef = useRef<number | null>(null)
+
   useEffect(() => {
     // debounce writes to avoid blocking on many quick changes
     if (saveTimerRef.current) {
@@ -203,7 +204,7 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
           saveTimerRef.current = null
         }
       }
-    }, 300) // 300ms debounce
+    }, 300)
 
     return () => {
       if (saveTimerRef.current) {
@@ -218,7 +219,6 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     return {
       viewState,
       selectionState,
-
       initFromUsers,
       reorder,
       createAlias,
@@ -229,12 +229,10 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
       deleteGroup,
       renameGroup,
       toggleCollapse,
-
       toggleSelection,
       setSelection,
       clearSelection,
       syncSelectionWithView,
-
       restoreViewState,
       clearPersistedState,
     }

@@ -1,12 +1,8 @@
-// lib/store/users/users-view-store.ts
 import { getCyclicColor } from '@/lib/utils'
 import type { LuminancePreset } from '@/lib/utils/colors'
 import type { FUser } from '@/types'
 
-/* -------------------------
-   Types
-   ------------------------- */
-
+/* ------------------------- Types ------------------------- */
 export type ViewItemType = 'user' | 'alias' | 'group'
 
 export type UserViewItem = { id: string; type: 'user'; userId: number }
@@ -22,10 +18,7 @@ export type ViewState = {
   collapseMap: Record<string, boolean>
 }
 
-/* -------------------------
-   Actions
-   ------------------------- */
-
+/* ------------------------- Actions ------------------------- */
 export type ViewAction =
   | { type: 'INIT_FROM_USERS'; payload: FUser[] }
   | { type: 'REORDER'; payload: { newOrder: string[] } }
@@ -37,21 +30,14 @@ export type ViewAction =
   | { type: 'DELETE_GROUP'; payload: { id: string } }
   | { type: 'RENAME_GROUP'; payload: { id: string; name: string } }
   | { type: 'TOGGLE_COLLAPSE'; payload: { id: string } }
-  // NEW: restore entire view state from persisted payload
   | { type: 'RESTORE_VIEWSTATE'; payload: { viewState: ViewState } }
 
-/* -------------------------
-   Id helpers
-   ------------------------- */
-
+/* ------------------------- Id helpers ------------------------- */
 export const makeUserViewId = (userId: number) => `u:${userId}`
 const makeAliasViewId = (userId: number, localId: number) => `a:${userId}:${localId}`
 const makeGroupViewId = (localId: number) => `g:${localId}`
 
-/* -------------------------
-   Pure helpers
-   ------------------------- */
-
+/* ------------------------- Pure helpers ------------------------- */
 function findParent(items: Record<string, ViewItem>, targetId: string): string | null {
   for (const [id, it] of Object.entries(items)) {
     if (it.type === 'group' && (it as GroupViewItem).children.includes(targetId)) return id
@@ -66,6 +52,7 @@ function isDescendant(
 ): boolean {
   const parent = items[parentId] as GroupViewItem | undefined
   if (!parent || parent.type !== 'group') return false
+
   for (const c of parent.children) {
     if (c === candidateId) return true
     if (items[c]?.type === 'group') {
@@ -102,28 +89,32 @@ function removeIds(items: Record<string, ViewItem>, order: string[], ids: string
   return { items: itemsCopy, order: orderCopy }
 }
 
-/** prune groups with <=1 child:
-  - If group has 0 child -> delete group
-  - If group has 1 child -> remove group and "extract" its only child:
-      * if group is top-level => replace group in order by onlyChild
-      * if group is inside parent => replace group's id in parent's children by onlyChild
-  This operation is applied repeatedly until no group has <=1 child.
-*/
+/**
+ * prune groups with <=1 child:
+ * - If group has 0 child -> delete group
+ * - If group has 1 child -> remove group and "extract" its only child:
+ *   * if group is top-level => replace group in order by onlyChild
+ *   * if group is inside parent => replace group's id in parent's children by onlyChild
+ * This operation is applied repeatedly until no group has <=1 child.
+ */
 export function pruneGroups(items: Record<string, ViewItem>, order: string[]) {
   let itemsCopy = { ...items }
   let orderCopy = [...order]
   let changed = true
+
   while (changed) {
     changed = false
     for (const [id, it] of Object.entries({ ...itemsCopy })) {
       if (it.type !== 'group') continue
       const g = it as GroupViewItem
+
       if (g.children.length === 0) {
         delete itemsCopy[id]
         orderCopy = orderCopy.filter(o => o !== id)
         changed = true
         continue
       }
+
       if (g.children.length === 1) {
         const only = g.children[0]
         const parentId = findParent(itemsCopy, id)
@@ -150,43 +141,11 @@ export function pruneGroups(items: Record<string, ViewItem>, order: string[]) {
       }
     }
   }
+
   return { items: itemsCopy, order: orderCopy }
 }
 
-export function enforceAliasBelowParent(
-  items: Record<string, ViewItem>,
-  order: string[]
-): string[] {
-  const orderCopy = [...order]
-  let changed = true
-
-  while (changed) {
-    changed = false
-    for (let i = 0; i < orderCopy.length; i++) {
-      const id = orderCopy[i]
-      const item = items[id]
-
-      if (item?.type === 'alias') {
-        const userId = item.userId
-        const userViewId = makeUserViewId(userId)
-        const userIndex = orderCopy.indexOf(userViewId)
-
-        if (userIndex !== -1 && i < userIndex) {
-          ;[orderCopy[i], orderCopy[userIndex]] = [orderCopy[userIndex], orderCopy[i]]
-          changed = true
-          break
-        }
-      }
-    }
-  }
-
-  return orderCopy
-}
-
-/* -------------------------
-   Color mapping
-   ------------------------- */
-
+/* ------------------------- Color mapping ------------------------- */
 export function buildColorMap(
   viewState: ViewState,
   usersById: Map<number, FUser>,
@@ -209,17 +168,41 @@ export function buildColorMap(
         // Assign colors to children with group's color as parentColor
         assignColorsToItems(item.children, groupColor)
       } else if (item.type === 'user') {
-        // User gets new color unless parent provides one
-        const userColor = parentColor || getCyclicColor(baseColor, count, preset, ++colorIndex)
+        // If a previous alias already assigned a color to this user, reuse it.
+        const numericKey = String(item.userId)
+        const existingColor = colorMap.get(id) || colorMap.get(numericKey) || parentColor
+
+        const userColor =
+          existingColor ??
+          // no existing color -> generate a new one
+          getCyclicColor(baseColor, count, preset, ++colorIndex)
+
         colorMap.set(id, userColor) // keyed by view id (e.g. "u:1")
         colorMap.set(String(item.userId), userColor) // keyed by numeric id string (e.g. "1")
       } else if (item.type === 'alias') {
-        // Alias gets same color as original user (or parent fallback)
+        // Alias should inherit the user's color if already set.
+        // If not set (alias appears before user), we *assign a new color* and also set it for the user.
         const userViewId = makeUserViewId(item.userId)
-        const userColor = colorMap.get(userViewId) || parentColor || '#64748b'
+        const numericKey = String(item.userId)
+
+        const existingUserColor = colorMap.get(userViewId) || colorMap.get(numericKey)
+
+        let userColor: string
+        if (existingUserColor) {
+          userColor = existingUserColor
+        } else if (parentColor) {
+          userColor = parentColor
+          // also persist it under the user id so later user will reuse it
+          colorMap.set(userViewId, userColor)
+          colorMap.set(numericKey, userColor)
+        } else {
+          // alias before user and no parent color => generate a new color and assign it to the user too
+          userColor = getCyclicColor(baseColor, count, preset, ++colorIndex)
+          colorMap.set(userViewId, userColor)
+          colorMap.set(numericKey, userColor)
+        }
+
         colorMap.set(id, userColor) // alias key (e.g. "a:1:1")
-        // ensure numeric user key also exists (useful for AvatarStack)
-        colorMap.set(String(item.userId), userColor)
       }
     }
   }
@@ -228,10 +211,7 @@ export function buildColorMap(
   return colorMap
 }
 
-/* -------------------------
-   Order helpers (for selection store)
-   ------------------------- */
-
+/* ------------------------- Order helpers (for selection store) ------------------------- */
 export function buildStructuralOrder(viewState: ViewState): string[] {
   const res: string[] = []
   const visit = (id: string) => {
@@ -263,11 +243,13 @@ export function buildDisplayOrder(viewState: ViewState): string[] {
   return res
 }
 
-/* -------------------------
-   Reducer
-   ------------------------- */
-
-export const initialViewState: ViewState = { items: {}, order: [], nextId: 1, collapseMap: {} }
+/* ------------------------- Reducer ------------------------- */
+export const initialViewState: ViewState = {
+  items: {},
+  order: [],
+  nextId: 1,
+  collapseMap: {},
+}
 
 export function viewReducer(state: ViewState, action: ViewAction): ViewState {
   switch (action.type) {
@@ -285,9 +267,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
     }
 
     case 'REORDER': {
-      // enforce alias always below parent
-      const newOrder = enforceAliasBelowParent(state.items, action.payload.newOrder)
-      return { ...state, order: newOrder }
+      return { ...state, order: action.payload.newOrder }
     }
 
     case 'CREATE_ALIAS': {
@@ -300,9 +280,6 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       const pos = index ?? order.length
       order.splice(pos, 0, id)
 
-      // enforce alias below parent
-      order = enforceAliasBelowParent(state.items, order)
-
       return {
         ...state,
         items: { ...state.items, [id]: alias },
@@ -313,6 +290,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
 
     case 'CREATE_GROUP': {
       const { memberIds, index, name } = action.payload
+
       for (const a of memberIds) {
         for (const b of memberIds) {
           if (a !== b && state.items[a]?.type === 'group' && isDescendant(state.items, a, b)) {
@@ -332,8 +310,9 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         for (const [pid, it] of Object.entries(itemsCopy)) {
           if (it.type === 'group') {
             const g = it as GroupViewItem
-            if (g.children.includes(m))
+            if (g.children.includes(m)) {
               itemsCopy[pid] = { ...g, children: g.children.filter(c => c !== m) }
+            }
           }
         }
       }
@@ -345,19 +324,23 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         name: name ?? `Group ${local}`,
       }
       itemsCopy = { ...itemsCopy, [gid]: group }
+
       const pos = index ?? orderCopy.length
       orderCopy.splice(pos, 0, gid)
 
-      // enforce alias below parent
-      orderCopy = enforceAliasBelowParent(itemsCopy, orderCopy)
-
-      return { ...state, items: itemsCopy, order: orderCopy, nextId: local + 1 }
+      return {
+        ...state,
+        items: itemsCopy,
+        order: orderCopy,
+        nextId: local + 1,
+      }
     }
 
     case 'ADD_CHILD_TO_GROUP': {
       const { groupId, childId, index } = action.payload
       const group = state.items[groupId] as GroupViewItem | undefined
       if (!group || group.type !== 'group') return state
+
       if (state.items[childId]?.type === 'group' && isDescendant(state.items, childId, groupId)) {
         console.warn('Refuse ADD_CHILD_TO_GROUP: would create cycle', childId, groupId)
         return state
@@ -372,9 +355,11 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       newChildren.splice(pos, 0, childId)
       removed.items[groupId] = { ...tgt, children: newChildren }
 
-      // enforce alias below parent
-      const newOrder = enforceAliasBelowParent(removed.items, removed.order)
-      return { ...state, items: removed.items, order: newOrder }
+      return {
+        ...state,
+        items: removed.items,
+        order: removed.order,
+      }
     }
 
     case 'DELETE_USER': {
@@ -387,12 +372,17 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       const removed = removeIds(state.items, state.order, idsToRemove)
       const pruned = pruneGroups(removed.items, removed.order)
 
-      const prunedOrder = enforceAliasBelowParent(pruned.items, pruned.order)
       const collapseMap: Record<string, boolean> = {}
-      for (const k of Object.keys(state.collapseMap))
+      for (const k of Object.keys(state.collapseMap)) {
         if (pruned.items[k]) collapseMap[k] = state.collapseMap[k]
+      }
 
-      return { ...state, items: pruned.items, order: prunedOrder, collapseMap }
+      return {
+        ...state,
+        items: pruned.items,
+        order: pruned.order,
+        collapseMap,
+      }
     }
 
     case 'DELETE_ALIAS': {
@@ -400,12 +390,17 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       const removed = removeIds(state.items, state.order, [id])
       const pruned = pruneGroups(removed.items, removed.order)
 
-      const prunedOrder = enforceAliasBelowParent(pruned.items, pruned.order)
       const collapseMap: Record<string, boolean> = {}
-      for (const k of Object.keys(state.collapseMap))
+      for (const k of Object.keys(state.collapseMap)) {
         if (pruned.items[k]) collapseMap[k] = state.collapseMap[k]
+      }
 
-      return { ...state, items: pruned.items, order: prunedOrder, collapseMap }
+      return {
+        ...state,
+        items: pruned.items,
+        order: pruned.order,
+        collapseMap,
+      }
     }
 
     case 'DELETE_GROUP': {
@@ -445,12 +440,18 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       }
 
       const pruned = pruneGroups(itemsCopy, orderCopy)
-      const prunedOrder = enforceAliasBelowParent(pruned.items, pruned.order)
-      const collapseMap: Record<string, boolean> = {}
-      for (const k of Object.keys(state.collapseMap))
-        if (pruned.items[k]) collapseMap[k] = state.collapseMap[k]
 
-      return { ...state, items: pruned.items, order: prunedOrder, collapseMap }
+      const collapseMap: Record<string, boolean> = {}
+      for (const k of Object.keys(state.collapseMap)) {
+        if (pruned.items[k]) collapseMap[k] = state.collapseMap[k]
+      }
+
+      return {
+        ...state,
+        items: pruned.items,
+        order: pruned.order,
+        collapseMap,
+      }
     }
 
     case 'RENAME_GROUP': {
@@ -463,7 +464,13 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
 
     case 'TOGGLE_COLLAPSE': {
       const { id } = action.payload
-      return { ...state, collapseMap: { ...state.collapseMap, [id]: !state.collapseMap[id] } }
+      return {
+        ...state,
+        collapseMap: {
+          ...state.collapseMap,
+          [id]: !state.collapseMap[id],
+        },
+      }
     }
 
     case 'RESTORE_VIEWSTATE': {
@@ -475,10 +482,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
   }
 }
 
-/* -------------------------
-   Action creators (helpers)
-   ------------------------- */
-
+/* ------------------------- Action creators (helpers) ------------------------- */
 export const viewActions = {
   initFromUsers: (users: FUser[]) => ({ type: 'INIT_FROM_USERS' as const, payload: users }),
   reorder: (newOrder: string[]) => ({ type: 'REORDER' as const, payload: { newOrder } }),

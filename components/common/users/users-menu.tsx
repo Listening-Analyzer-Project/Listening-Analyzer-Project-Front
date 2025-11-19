@@ -1,18 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { userService } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
-import { buildColorMap } from '@/lib/store'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import type { FUser } from '@/types'
 
-// types
-import type { GroupViewItem, ViewState } from '@/lib/store'
-import { buildRestoredPayload, loadPersistedPayload, savePersistedPayload } from '@/lib/store'
+import {
+  buildRestoredPayload,
+  loadPersistedPayload,
+  savePersistedPayload,
+} from '@/lib/store/users/users-view-persistence'
+import type { GroupViewItem, ViewState } from '@/lib/store/users/users-view-store'
+import { buildColorMap } from '@/lib/store/users/users-view-store'
 
-// dnd-kit
 import {
   closestCenter,
   DndContext,
@@ -41,7 +43,6 @@ const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
 const LUMINANCE_PRESET = 'shortlist' as const
 
-// Simple Sortable wrapper with a drag handle
 function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
@@ -51,12 +52,15 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 9999 : undefined,
+    maxWidth: '100%',
+    width: '100%',
+    position: 'relative',
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
-      <div className="flex items-center">
-        <div className="flex-1">{children}</div>
+    <div ref={setNodeRef} style={style} className="relative w-full">
+      <div className="flex items-center w-full">
+        <div className="flex-1 min-w-0">{children}</div>
 
         <button
           {...attributes}
@@ -79,9 +83,7 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
   )
 }
 
-// Helpers typed with ViewState / GroupViewItem
 function findParentId(viewState: ViewState, targetId: string): string | null {
-  // search top-level groups first
   for (const id of viewState.order) {
     const it = viewState.items[id]
     if (!it) continue
@@ -89,7 +91,6 @@ function findParentId(viewState: ViewState, targetId: string): string | null {
       const g = it as GroupViewItem
       if (g.children.includes(targetId)) return id
 
-      // search nested groups (if present)
       const stack = [...g.children]
       while (stack.length) {
         const cid = stack.shift()!
@@ -104,13 +105,6 @@ function findParentId(viewState: ViewState, targetId: string): string | null {
     }
   }
   return null
-}
-
-function indexInParent(viewState: ViewState, parentId: string | null, id: string) {
-  if (parentId == null) return viewState.order.indexOf(id)
-  const parent = viewState.items[parentId] as GroupViewItem | undefined
-  if (!parent || parent.type !== 'group') return -1
-  return parent.children.indexOf(id)
 }
 
 export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void }) {
@@ -147,31 +141,50 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null)
 
-  // Restore persisted view + selection (reconcile with users from API)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const dragScrollRef = useRef<number | null>(null)
+
+  // Fonction pour gérer le scroll automatique pendant le drag
+  const handleDragScroll = (activeId: string, y: number) => {
+    if (!scrollContainerRef.current) return
+
+    const container = scrollContainerRef.current
+    const containerRect = container.getBoundingClientRect()
+
+    // Zone de déclenchement du scroll (50px du bord)
+    const scrollThreshold = 50
+    const scrollSpeed = 10
+
+    // Scroll vers le bas
+    if (y > containerRect.bottom - scrollThreshold) {
+      container.scrollTop += scrollSpeed
+    }
+    // Scroll vers le haut
+    else if (y < containerRect.top + scrollThreshold) {
+      container.scrollTop -= scrollSpeed
+    }
+  }
+
   useEffect(() => {
     if (!usersRaw) return
     let mounted = true
 
     try {
-      const loaded = loadPersistedPayload() // null si aucune persistence
+      const loaded = loadPersistedPayload()
       const restored = buildRestoredPayload(loaded, usersRaw)
 
       if (!mounted) return
 
-      // restore the viewState and the selection into the provider
       restoreViewState(restored.viewState)
       setSelection(restored.selectionState.selectedIds)
 
-      // persist cleaned result immediately (ensures we store pruned/normalized state)
       try {
         savePersistedPayload(restored)
       } catch (e) {
-        // best-effort - ignore errors in persistence
         console.warn('savePersistedPayload failed', e)
       }
     } catch (err) {
       console.error('error restoring persisted users view', err)
-      // Fallback: if anything fails, fall back to initFromUsers so UI still loads
       initFromUsers(usersRaw)
     }
 
@@ -180,7 +193,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     }
   }, [usersRaw, restoreViewState, setSelection, initFromUsers])
 
-  // Build color map based on view state and users
   const usersById = new Map(
     usersRaw
       ?.filter((u): u is FUser & { id: number } => u.id !== undefined && u.id !== null)
@@ -203,7 +215,45 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     })
   )
 
+  function handleDragStart(event: any) {
+    const { active } = event
+    const activeId = String(active.id)
+
+    // Démarrer le scroll automatique
+    dragScrollRef.current = window.requestAnimationFrame(() => {
+      const activeElement = document.querySelector(`[data-id="${activeId}"]`)
+      if (activeElement) {
+        const rect = activeElement.getBoundingClientRect()
+        handleDragScroll(activeId, rect.top)
+      }
+    })
+  }
+
+  function handleDragMove(event: any) {
+    const { active } = event
+    const activeId = String(active.id)
+
+    // Mettre à jour le scroll automatique
+    if (dragScrollRef.current) {
+      cancelAnimationFrame(dragScrollRef.current)
+    }
+
+    dragScrollRef.current = window.requestAnimationFrame(() => {
+      const activeElement = document.querySelector(`[data-id="${activeId}"]`)
+      if (activeElement) {
+        const rect = activeElement.getBoundingClientRect()
+        handleDragScroll(activeId, rect.top)
+      }
+    })
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    // Arrêter le scroll automatique
+    if (dragScrollRef.current) {
+      cancelAnimationFrame(dragScrollRef.current)
+      dragScrollRef.current = null
+    }
+
     const { active, over } = event
     if (!over) return
 
@@ -213,14 +263,11 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
 
     const activeItem = viewState.items[activeId]
     const overItem = viewState.items[overId]
+    const activeParent = findParentId(viewState, activeId)
+    const overParent = findParentId(viewState, overId)
 
-    const activeParent = findParentId(viewState, activeId) // null for top-level
-    const overParent = findParentId(viewState, overId) // null for top-level
-
-    // Case 1: moving inside the same list (top-level or same group's children)
     if (activeParent === overParent) {
       if (activeParent === null) {
-        // top-level reorder
         const oldIndex = viewState.order.indexOf(activeId)
         const newIndex = viewState.order.indexOf(overId)
         if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
@@ -229,45 +276,39 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         }
         return
       } else {
-        // same group -> reinsert inside that group
         const parentId = activeParent
         const parent = viewState.items[parentId] as GroupViewItem
         const overIdx = parent.children.indexOf(overId)
-        const insertIndex = overIdx // place before overId; adjust +1 for after
+        const insertIndex = overIdx
         addChildToGroup(parentId, activeId, insertIndex)
-        return
       }
+
+      return
     }
 
-    // Case 2: dropping ON ANOTHER USER => create a new group containing both (Android-like)
     if (
       (overItem?.type === 'user' || overItem?.type === 'alias') &&
       (activeItem?.type === 'user' || activeItem?.type === 'alias')
     ) {
-      // Determine insertion index in top-level order (prefer to replace the over item position)
       let idx = 0
       if (overParent === null) {
         idx = viewState.order.indexOf(overId)
         if (idx === -1) idx = viewState.order.length
       } else {
-        // target is inside a group — we choose to insert group next to that parent in top-level.
         idx = viewState.order.indexOf(overParent)
         if (idx === -1) idx = viewState.order.length
       }
 
-      // create group with [overId, activeId]
       createGroup([overId, activeId], idx)
       return
     }
 
-    // Case 3: dropping onto a GROUP -> add child to that group (append by default)
     if (overItem?.type === 'group') {
       const groupId = overId
       addChildToGroup(groupId, activeId)
       return
     }
 
-    // Fallback: if over is within a group (overParent exists), insert before over inside that group
     if (overParent) {
       const parentId = overParent
       const parent = viewState.items[parentId] as GroupViewItem
@@ -277,7 +318,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
       return
     }
 
-    // Otherwise fallback to simple top-level reorder
     {
       const oldIndex = viewState.order.indexOf(activeId)
       const newIndex = viewState.order.indexOf(overId)
@@ -285,6 +325,14 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         const newOrder = arrayMove(viewState.order, oldIndex, newIndex)
         reorder(newOrder)
       }
+    }
+  }
+
+  function handleDragCancel() {
+    // Arrêter le scroll automatique
+    if (dragScrollRef.current) {
+      cancelAnimationFrame(dragScrollRef.current)
+      dragScrollRef.current = null
     }
   }
 
@@ -363,7 +411,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     }
   }
 
-  // renderItemContent returns the component for a given id (user/alias or group)
   const renderItemContent = (id: string, depth = 0) => {
     const item = viewState.items[id]
     if (!item) return null
@@ -391,7 +438,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         />
       )
     } else if (item.type === 'group') {
-      // group header + its children (children wrapped in SortableContext)
       return (
         <div key={id} className="space-y-1">
           <UsersGroupItem
@@ -452,42 +498,65 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
       </div>
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-80 bg-white shadow transform transition-transform duration-200 flex flex-col ${
+        className={`fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-xl transform transition-transform duration-200 flex flex-col ${
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-semibold">Utilisateurs</h3>
           <button onClick={() => setMenuOpen(false)} className="p-1 rounded hover:bg-gray-100">
             ✕
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4">
-          {loading ? (
-            <div>Chargement...</div>
-          ) : viewState.order.length === 0 ? (
-            <div className="text-sm text-muted-foreground">Aucun utilisateur trouvé.</div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={viewState.order} strategy={verticalListSortingStrategy}>
-                <ul className="space-y-1">
-                  {viewState.order.map(id => (
-                    <SortableItem id={id} key={id}>
-                      {renderItemContent(id)}
-                    </SortableItem>
-                  ))}
-                </ul>
-              </SortableContext>
-            </DndContext>
-          )}
+        {/* Conteneur principal avec hauteur fixe et scroll contrôlé */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto overflow-x-hidden"
+            style={{
+              maxHeight: 'calc(100vh - 140px)',
+              height: '100%',
+            }}
+          >
+            <div className="px-4 pt-4 pb-4">
+              {loading ? (
+                <div>Chargement...</div>
+              ) : viewState.order.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Aucun utilisateur trouvé.</div>
+              ) : (
+                <DndContext
+                  autoScroll={false}
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragMove={handleDragMove}
+                  onDragEnd={handleDragEnd}
+                  onDragCancel={handleDragCancel}
+                  modifiers={[
+                    // Restriction horizontale seulement
+                    ({ transform }) => ({
+                      ...transform,
+                      x: 0,
+                    }),
+                  ]}
+                >
+                  <SortableContext items={viewState.order} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-1">
+                      {viewState.order.map(id => (
+                        <SortableItem id={id} key={id}>
+                          {renderItemContent(id)}
+                        </SortableItem>
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="border-t bg-white p-4">
+        <div className="flex-shrink-0 border-t bg-white p-4">
           <button
             onClick={() => {
               setEditingUser(null)
