@@ -166,7 +166,7 @@ export function buildColorMap(
         const groupColor = getCyclicColor(baseColor, count, preset, ++colorIndex)
         colorMap.set(id, groupColor)
         // Assign colors to children with group's color as parentColor
-        assignColorsToItems(item.children, groupColor)
+        assignColorsToItems(item.children)
       } else if (item.type === 'user') {
         // If a previous alias already assigned a color to this user, reuse it.
         const numericKey = String(item.userId)
@@ -317,11 +317,29 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         }
       }
 
+      let groupName = name
+      if (!groupName) {
+        const usedNumbers = new Set<number>()
+        for (const it of Object.values(state.items)) {
+          if (it.type === 'group' && it.name) {
+            const match = it.name.match(/^Group (\d+)$/)
+            if (match) {
+              usedNumbers.add(parseInt(match[1], 10))
+            }
+          }
+        }
+        let nextNum = 1
+        while (usedNumbers.has(nextNum)) {
+          nextNum++
+        }
+        groupName = `Group ${nextNum}`
+      }
+
       const group: GroupViewItem = {
         id: gid,
         type: 'group',
         children: [...memberIds],
-        name: name ?? `Group ${local}`,
+        name: groupName,
       }
       itemsCopy = { ...itemsCopy, [gid]: group }
 
@@ -346,7 +364,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         return state
       }
 
-      const removed = removeIds(state.items, state.order, [childId])
+      const removed = removeIdFromAll(state.items, state.order, childId)
       const tgt = removed.items[groupId] as GroupViewItem | undefined
       if (!tgt || tgt.type !== 'group') return state
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
 import { userService } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
@@ -12,13 +13,14 @@ import type { GroupViewItem, ViewState } from '@/lib/store/users/users-view-stor
 import { buildColorMap } from '@/lib/store/users/users-view-store'
 import type { FUser } from '@/types'
 import {
-  closestCenter,
+  closestCorners,
   DndContext,
   DragEndEvent,
+  DragStartEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
-  useSensors,
+  useSensors
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -33,14 +35,26 @@ import AvatarStack from './avatar-stack'
 import UserDeletionDialog from './user-deletion-dialog'
 import UserDialog from './user-dialog'
 import UserItem from './user-item'
-import UsersGroupItem from './users-group-item'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
 const LUMINANCE_PRESET = 'shortlist' as const
 
-function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
+function SortableItem({
+  id,
+  children,
+  depth = 0,
+  disabled = false,
+}: {
+  id: string
+  children: React.ReactNode
+  depth?: number
+  disabled?: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id,
+    disabled,
+  })
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -49,13 +63,15 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
 
   return (
     <div ref={setNodeRef} style={style}>
-      <div className="flex items-center">
-        <div className="flex-1">{children}</div>
+      <div className="flex items-start">
+        <div className="flex-1 min-w-0" style={{ paddingLeft: `${depth * 1.5}rem` }}>
+          {children}
+        </div>
         <button
           {...attributes}
           {...listeners}
           aria-label="Drag user"
-          className="p-1 ml-2 rounded hover:bg-gray-100"
+          className="p-1 ml-2 rounded hover:bg-gray-100 mt-2"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
@@ -124,9 +140,16 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [toDeleteId, setToDeleteId] = useState<string | null>(null)
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
-  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  
+  const canCreateGroup =
+    selectionState.selectedIds.length > 1 &&
+    selectionState.selectedIds.every(
+      (id, _, arr) => findParentId(viewState, id) === findParentId(viewState, arr[0])
+    )
 
   useEffect(() => {
     if (!usersRaw) return
@@ -169,7 +192,12 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id))
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null)
     const { active, over } = event
     if (!over) return
 
@@ -177,54 +205,29 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     const overId = String(over.id)
     if (activeId === overId) return
 
-    const activeItem = viewState.items[activeId]
-    const overItem = viewState.items[overId]
     const activeParent = findParentId(viewState, activeId)
     const overParent = findParentId(viewState, overId)
 
-    if (activeParent === overParent) {
-      if (activeParent === null) {
-        const oldIndex = viewState.order.indexOf(activeId)
-        const newIndex = viewState.order.indexOf(overId)
-        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-          reorder(arrayMove(viewState.order, oldIndex, newIndex))
-        }
-        return
-      } else {
-        const parent = viewState.items[activeParent] as GroupViewItem
-        const insertIndex = parent.children.indexOf(overId)
-        addChildToGroup(activeParent, activeId, insertIndex)
+    // STRICT RESTRICTION: Only allow drag if parents are identical.
+    // This prevents dragging in/out of groups, and prevents auto-group creation.
+    if (activeParent !== overParent) {
+      return
+    }
+
+    // If parents are same, it's a reorder
+    if (activeParent === null) {
+      // Root reorder
+      const oldIndex = viewState.order.indexOf(activeId)
+      const newIndex = viewState.order.indexOf(overId)
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        reorder(arrayMove(viewState.order, oldIndex, newIndex))
       }
-      return
-    }
-
-    if (
-      (overItem?.type === 'user' || overItem?.type === 'alias') &&
-      (activeItem?.type === 'user' || activeItem?.type === 'alias')
-    ) {
-      let idx =
-        overParent === null ? viewState.order.indexOf(overId) : viewState.order.indexOf(overParent)
-      if (idx === -1) idx = viewState.order.length
-      createGroup([overId, activeId], idx)
-      return
-    }
-
-    if (overItem?.type === 'group') {
-      addChildToGroup(overId, activeId)
-      return
-    }
-
-    if (overParent) {
-      const parent = viewState.items[overParent] as GroupViewItem
+    } else {
+      // Group reorder
+      const parent = viewState.items[activeParent] as GroupViewItem
       const insertIndex = parent.children.indexOf(overId)
-      addChildToGroup(overParent, activeId, insertIndex)
-      return
-    }
-
-    const oldIndex = viewState.order.indexOf(activeId)
-    const newIndex = viewState.order.indexOf(overId)
-    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-      reorder(arrayMove(viewState.order, oldIndex, newIndex))
+      // addChildToGroup handles moving the child to the new index within the same group
+      addChildToGroup(activeParent, activeId, insertIndex)
     }
   }
 
@@ -260,7 +263,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   }
 
   const handleDeleteClick = (id: string, type: 'user' | 'alias' | 'group') => {
-    if (type === 'alias') {
+    if (type === 'alias' || type === 'group') {
       handleDelete(id, type)
     } else {
       setToDeleteId(id)
@@ -280,7 +283,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
 
   const handleRenameGroup = async (id: string, newName: string) => {
     renameGroup(id, newName)
-    setRenamingGroupId(null)
   }
 
   const handleCreateAlias = (userId: number) => {
@@ -297,7 +299,28 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     }
   }
 
-  const renderItemContent = (id: string) => {
+  const handleCreateGroupClick = () => {
+    const selectedIds = selectionState.selectedIds
+    if (selectedIds.length < 2) return
+
+    const firstId = selectedIds[0]
+    const parentId = findParentId(viewState, firstId)
+
+    let index = 0
+    if (parentId) {
+      const parent = viewState.items[parentId] as GroupViewItem
+      index = parent.children.indexOf(firstId)
+    } else {
+      index = viewState.order.indexOf(firstId)
+    }
+
+    if (index === -1) index = 0
+
+    createGroup(selectedIds, index)
+    setSelection([])
+  }
+
+  const renderItemContent = (id: string, depth = 0) => {
     const item = viewState.items[id]
     if (!item) return null
     const isSelected = selectionState.selectedIds.includes(id)
@@ -325,30 +348,34 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     } else if (item.type === 'group') {
       return (
         <div key={id} className="space-y-1">
-          <UsersGroupItem
+          <UserItem
             id={id}
-            group={item}
-            collapsed={isCollapsed}
-            onToggleCollapse={toggleCollapse}
+            item={item}
+            usersById={usersById}
             selected={isSelected}
             onToggleSelect={toggleSelection}
-            isEditingLabel={renamingGroupId === id}
-            onRenameStart={setRenamingGroupId}
-            onRenameSave={handleRenameGroup}
-            onRenameCancel={() => setRenamingGroupId(null)}
-            onDeleteGroup={() => handleDeleteClick(id, 'group')}
+            onRenameGroup={handleRenameGroup}
+            onToggleCollapse={toggleCollapse}
+            collapsed={isCollapsed}
+            onDelete={handleDeleteClick}
             color={colorMap.get(id)}
-            colorMap={colorMap}
           />
           {!isCollapsed && (
             <SortableContext
               items={(item as GroupViewItem).children}
               strategy={verticalListSortingStrategy}
             >
-              <div className="ml-6 border-l-2 border-gray-200 pl-2 space-y-1">
+              <div className="space-y-1">
                 {(item as GroupViewItem).children.map(childId => (
-                  <SortableItem id={childId} key={childId}>
-                    {renderItemContent(childId)}
+                  <SortableItem
+                    id={childId}
+                    key={childId}
+                    depth={depth + 1}
+                    disabled={
+                      activeId !== null && findParentId(viewState, activeId) !== id
+                    }
+                  >
+                    {renderItemContent(childId, depth + 1)}
                   </SortableItem>
                 ))}
               </div>
@@ -406,7 +433,8 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
               ) : (
                 <DndContext
                   sensors={sensors}
-                  collisionDetection={closestCenter}
+                  collisionDetection={closestCorners}
+                  onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   modifiers={[({ transform }) => ({ ...transform, x: 0 })]}
                   autoScroll={{
@@ -420,7 +448,13 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
                   <SortableContext items={viewState.order} strategy={verticalListSortingStrategy}>
                     <div className="space-y-1">
                       {viewState.order.map(id => (
-                        <SortableItem id={id} key={id}>
+                        <SortableItem
+                          id={id}
+                          key={id}
+                          disabled={
+                            activeId !== null && findParentId(viewState, activeId) !== null
+                          }
+                        >
                           {renderItemContent(id)}
                         </SortableItem>
                       ))}
@@ -432,16 +466,23 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
           </div>
         </div>
 
-        <div className="flex-shrink-0 border-t bg-white p-4">
-          <button
+        <div className="flex-shrink-0 border-t bg-white p-4 flex gap-2">
+          <Button
             onClick={() => {
               setEditingUser(null)
               setDialogOpen(true)
             }}
-            className="w-full rounded-md bg-green-600 text-white py-2 text-sm font-medium hover:bg-green-700"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
           >
-            + Créer un utilisateur
-          </button>
+            + utilisateur
+          </Button>
+          <Button
+            className="flex-1"
+            disabled={!canCreateGroup}
+            onClick={handleCreateGroupClick}
+          >
+            + groupe
+          </Button>
         </div>
       </div>
 
