@@ -141,6 +141,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   const [toDeleteId, setToDeleteId] = useState<string | null>(null)
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [preCollapseMap, setPreCollapseMap] = useState<Record<string, boolean> | null>(null)
 
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -193,12 +194,61 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
   )
 
   function handleDragStart(event: DragStartEvent) {
-    setActiveId(String(event.active.id))
+    const draggedId = String(event.active.id)
+    setActiveId(draggedId)
+    
+    const parentId = findParentId(viewState, draggedId)
+    
+    // If dragging a root item or group (not a child), collapse all groups
+    if (parentId === null) {
+      // Save current collapse state
+      setPreCollapseMap({ ...viewState.collapseMap })
+      
+      // Collapse all groups
+      const allGroupIds = viewState.order.filter(id => {
+        const item = viewState.items[id]
+        return item?.type === 'group'
+      })
+      
+      allGroupIds.forEach(groupId => {
+        if (!viewState.collapseMap[groupId]) {
+          toggleCollapse(groupId)
+        }
+      })
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveId(null)
     const { active, over } = event
+    
+    // Restore collapse state if we had saved it
+    if (preCollapseMap) {
+      // Restore the original collapse state for each group
+      Object.keys(preCollapseMap).forEach(groupId => {
+        const wasCollapsed = preCollapseMap[groupId]
+        const isCurrentlyCollapsed = !!viewState.collapseMap[groupId]
+        
+        // Only toggle if state has changed
+        if (wasCollapsed !== isCurrentlyCollapsed) {
+          toggleCollapse(groupId)
+        }
+      })
+      
+      // Also check for groups that weren't in the original map
+      viewState.order.forEach(id => {
+        const item = viewState.items[id]
+        if (item?.type === 'group' && !(id in preCollapseMap)) {
+          const isCurrentlyCollapsed = !!viewState.collapseMap[id]
+          if (isCurrentlyCollapsed) {
+            toggleCollapse(id)
+          }
+        }
+      })
+      
+      setPreCollapseMap(null)
+    }
+    
     if (!over) return
 
     const activeId = String(active.id)
@@ -439,7 +489,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
                   modifiers={[({ transform }) => ({ ...transform, x: 0 })]}
                   autoScroll={{
                     enabled: true,
-                    threshold: { x: 0.08, y: 0.08 },
+                    threshold: { x: 0.15, y: 0.15 },
                     layoutShiftCompensation: false,
                     acceleration: 2,
                     interval: 10,
@@ -474,14 +524,14 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
             }}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
           >
-            + utilisateur
+            + Utilisateur
           </Button>
           <Button
             className="flex-1"
             disabled={!canCreateGroup}
             onClick={handleCreateGroupClick}
           >
-            + groupe
+            Créer groupe
           </Button>
         </div>
       </div>
