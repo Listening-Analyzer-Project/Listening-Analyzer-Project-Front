@@ -1,8 +1,8 @@
 import type { FUser } from '@/types'
 import type { SelectionState } from './users-selection-store'
 import { syncSelectionWithView } from './users-selection-store'
+import { makeUserViewId, pruneGroups } from './users-view-logic'
 import type { ViewState } from './users-view-store'
-import { makeUserViewId, pruneGroups } from './users-view-store'
 
 const STORAGE_VERSION = 1
 const STORE_KEY = `users.viewState.v${STORAGE_VERSION}`
