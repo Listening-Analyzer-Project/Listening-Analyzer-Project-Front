@@ -30,7 +30,9 @@ export const importService = {
       insertedListens: 0,
     }
 
-    for await (const batch of parseAndBatch(files, { batchSize: 400 })) {
+    await importService.dropIndexes()
+
+    for await (const batch of parseAndBatch(files, { batchSize: 10000 })) {
         try {
             // apiClient.post renvoie directement les données JSON
             const r = await apiClient.post<typeof cumulativeResult>(`/api/import?id=${userId}`, batch)
@@ -55,9 +57,18 @@ export const importService = {
         }
     }
 
+    await importService.restoreIndexes()
 
     console.log('Résultat cumulé de tous les batches:', cumulativeResult)
     return cumulativeResult
+  },
+
+  dropIndexes: async () => {
+    await apiClient.post<void>('/api/import/drop-indexes')
+  },
+
+  restoreIndexes: async () => {
+    await apiClient.post<void>('/api/import/create-indexes')
   },
 }
 
