@@ -23,9 +23,10 @@ export const userService = {
     return result
   },
 
-  remove: async (id: string | number) => {
-    await apiClient.delete<void>(`/api/users?id=${id}`)
+  remove: async (id: string | number, deleteUser: boolean = true) => {
+    const result = await apiClient.delete<void>(`/api/delete-user?id=${id}`, { deleteUser: deleteUser })
     apiClient.invalidateCache('/api/users')
+    return result
   },
 }
 

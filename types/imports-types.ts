@@ -78,3 +78,18 @@ export interface SpotifyListen {
   offline_timestamp?: string | null
   incognito_mode?: boolean
 }
+
+export type ImportResult = {
+  totalListens: number
+  existingTrackGroups: number
+  newTrackGroups: number
+  insertedGenres: number
+  insertedSubGenres: number
+  insertedAlbums: number
+  insertedArtists: number
+  insertedTags: number
+  insertedTracks: number
+  insertedTrackArtists: number
+  insertedTrackTags: number
+  insertedListens: number
+}

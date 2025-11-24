@@ -9,6 +9,8 @@ import { buildColorMap } from '@/lib/store'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import type { FUser } from '@/types'
 
+import { USER_UPDATED_EVENT } from '@/lib/events'
+
 // types
 import type { GroupViewItem, ViewState } from '@/lib/store'
 import { buildRestoredPayload, loadPersistedPayload, savePersistedPayload } from '@/lib/store'
@@ -114,13 +116,25 @@ function indexInParent(viewState: ViewState, parentId: string | null, id: string
   return parent.children.indexOf(id)
 }
 
-export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void }) {
+export default function UsersMenu() {
   const {
     data: usersRaw,
     loading,
     error,
     refetch,
   } = useApi<FUser[]>((signal?: AbortSignal) => userService.fetchAll({ signal }), [])
+
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      refetch()
+    }
+
+    window.addEventListener(USER_UPDATED_EVENT, handleUserUpdate)
+
+    return () => {
+      window.removeEventListener(USER_UPDATED_EVENT, handleUserUpdate)
+    }
+  }, [refetch])
 
   const {
     viewState,
@@ -298,9 +312,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
       }
       await refetch()
       setDialogOpen(false)
-      if (savedUser.id && onSelect) {
-        onSelect(savedUser)
-      }
     } catch (err) {
       console.error('save user error', err)
     }

@@ -1,25 +1,23 @@
-import { CanonicalListen, DeezerListen } from '../../../../types/imports-types'
+import { CanonicalListen } from '../../../../types/imports-types'
 import { normalizeDate } from '../services/date-service'
 
-export function parseDeezerListen(input: DeezerListen): CanonicalListen | null {
+export function parseDeezerListen(input: any): CanonicalListen | null {
   if (!input) return null
 
-  // Required fields validation
-  const title = (input.title ?? '').toString().trim()
-  const artistName = (input.artist ?? '').toString().trim()
+  // Extract fields using the keys from the raw Excel export
+  const title = (input['Song Title'] ?? '').toString().trim()
+  const artistName = (input['Artist'] ?? '').toString().trim()
+
   if (!title || !artistName) return null
 
-  // Normalize date and listening time using shared utilities
-  const date = normalizeDate(input.date)
-  const listeningTimeMs = parseListeningTimeToMs(input.listening_time)
+  const date = normalizeDate(input['Date'])
+  const listeningTimeMs = parseListeningTimeToMs(input['Listening Time'])
 
-  // Optional fields with proper defaults
-  const albumTitle = (input.album ?? '').toString().trim()
+  const albumTitle = (input['Album Title'] ?? '').toString().trim()
   const album = albumTitle ? { title: albumTitle } : undefined
 
-  const platform = (input.platform_name ?? 'unknown').toString()
+  const platform = (input['Platform Name'] ?? 'unknown').toString()
 
-  // Build canonical object
   const canonical: CanonicalListen = {
     ts: date || new Date().toISOString(),
     platform,

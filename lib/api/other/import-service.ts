@@ -1,5 +1,8 @@
 import { parseAndBatch } from '@/lib/utils/importer/streamers/unified-streamer'
 import apiClient from '../api-clients'
+import { userService } from '@/lib/api'
+import { FUser } from '@/types'
+import { USER_UPDATED_EVENT } from '@/lib/events'
 
 export type ParsedFileResult = {
   filename: string
@@ -12,8 +15,19 @@ export const importService = {
    * Upload et parse les fichiers côté front, envoie batch par batch au serveur,
    * attend la réponse pour chaque batch, et cumule les résultats.
    */
-  uploadAndParse: async (files: File[], userId: number) => {
+  uploadAndParse: async (files: File[], user: FUser, onProgress?: (percent: number) => void) => {
     if (files.length === 0) return null
+
+    if (user.syncro_status === 1) return null //TODO: géré erreurs (en cours d'import donc pas possible d'upload)
+
+    const payload = {
+      name: user.name,
+      type: user.type,
+      isadmin: user.isadmin,
+      syncro_status: 1,
+    }
+    await userService.update(user.id?.toString() || '', payload)
+    window.dispatchEvent(new Event(USER_UPDATED_EVENT))
 
     const cumulativeResult = {
       totalListens: 0,
@@ -30,32 +44,40 @@ export const importService = {
       insertedListens: 0,
     }
 
+    if (user.syncro_status !== 0) {
+      await userService.remove(user.id?.toString() || '', false)
+    }
+
     await importService.dropIndexes()
 
-    for await (const batch of parseAndBatch(files, { batchSize: 10000 })) {
-        try {
-            // apiClient.post renvoie directement les données JSON
-            const r = await apiClient.post<typeof cumulativeResult>(`/api/import?id=${userId}`, batch)
+    for await (const batch of parseAndBatch(files, { batchSize: 10000, onProgress })) {
+      try {
+        // apiClient.post renvoie directement les données JSON
+        const r = await apiClient.post<typeof cumulativeResult>(`/api/import?id=${user.id}`, batch)
 
-            // Cumuler les résultats
-            cumulativeResult.totalListens += r.totalListens
-            cumulativeResult.existingTrackGroups += r.existingTrackGroups
-            cumulativeResult.newTrackGroups += r.newTrackGroups
-            cumulativeResult.insertedGenres += r.insertedGenres
-            cumulativeResult.insertedSubGenres += r.insertedSubGenres
-            cumulativeResult.insertedAlbums += r.insertedAlbums
-            cumulativeResult.insertedArtists += r.insertedArtists
-            cumulativeResult.insertedTags += r.insertedTags
-            cumulativeResult.insertedTracks += r.insertedTracks
-            cumulativeResult.insertedTrackArtists += r.insertedTrackArtists
-            cumulativeResult.insertedTrackTags += r.insertedTrackTags
-            cumulativeResult.insertedListens += r.insertedListens
+        // Cumuler les résultats
+        cumulativeResult.totalListens += r.totalListens
+        cumulativeResult.existingTrackGroups += r.existingTrackGroups
+        cumulativeResult.newTrackGroups += r.newTrackGroups
+        cumulativeResult.insertedGenres += r.insertedGenres
+        cumulativeResult.insertedSubGenres += r.insertedSubGenres
+        cumulativeResult.insertedAlbums += r.insertedAlbums
+        cumulativeResult.insertedArtists += r.insertedArtists
+        cumulativeResult.insertedTags += r.insertedTags
+        cumulativeResult.insertedTracks += r.insertedTracks
+        cumulativeResult.insertedTrackArtists += r.insertedTrackArtists
+        cumulativeResult.insertedTrackTags += r.insertedTrackTags
+        cumulativeResult.insertedListens += r.insertedListens
 
-        } catch (err) {
-            console.error('Erreur lors de l’envoi du batch:', err)
-            // tu peux décider de continuer ou de throw pour stopper
-        }
+      } catch (err) {
+        console.error('Erreur lors de l’envoi du batch:', err)
+        // TODO: géré erreurs
+      }
     }
+
+    payload.syncro_status = 2
+    await userService.update(user.id?.toString() || '', payload)
+    window.dispatchEvent(new Event(USER_UPDATED_EVENT))
 
     await importService.restoreIndexes()
 

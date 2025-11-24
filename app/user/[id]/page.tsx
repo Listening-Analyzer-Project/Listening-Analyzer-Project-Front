@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { userService } from '@/lib/api'
 import type { FUser } from '@/types'
 import UploadArea from './components/upload-area'
+import { USER_UPDATED_EVENT } from '@/lib/events'
 
 export default function UserSettingsPage() {
   const router = useRouter()
@@ -60,6 +61,7 @@ export default function UserSettingsPage() {
 
   async function handleSave(data: Omit<FUser, 'id'>) {
     await userService.update(id, data)
+    window.dispatchEvent(new Event(USER_UPDATED_EVENT))
     router.refresh()
   }
 
@@ -216,7 +218,7 @@ export default function UserSettingsPage() {
                     <p className="text-sm text-muted-foreground">
                         ⚠️ Si vous uploadez de nouveaux fichiers, cela remplacera les fichiers existants pour cet utilisateur.
                     </p>
-                    <UploadArea userId={user.id} />
+                    <UploadArea user={user} />
                 </CardContent>
             </Card>
           )}
