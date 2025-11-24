@@ -31,23 +31,6 @@ export function findParent(items: Record<string, ViewItem>, targetId: string): s
   return null
 }
 
-export function isDescendant(
-  items: Record<string, ViewItem>,
-  parentId: string,
-  candidateId: string
-): boolean {
-  const parent = items[parentId] as GroupViewItem | undefined
-  if (!parent || parent.type !== 'group') return false
-
-  for (const c of parent.children) {
-    if (c === candidateId) return true
-    if (items[c]?.type === 'group') {
-      if (isDescendant(items, c, candidateId)) return true
-    }
-  }
-  return false
-}
-
 export function removeIdFromAll(items: Record<string, ViewItem>, order: string[], idToRemove: string) {
   const itemsCopy: Record<string, ViewItem> = {}
   for (const [k, v] of Object.entries(items)) {
@@ -75,15 +58,11 @@ export function removeIds(items: Record<string, ViewItem>, order: string[], ids:
   return { items: itemsCopy, order: orderCopy }
 }
 
-/**
- * prune groups with <=1 child:
- * - If group has 0 child -> delete group
- * - If group has 1 child -> remove group and "extract" its only child:
- *   * if group is top-level => replace group in order by onlyChild
- *   * if group is inside parent => replace group's id in parent's children by onlyChild
- * This operation is applied repeatedly until no group has <=1 child.
- */
-export function pruneGroups(items: Record<string, ViewItem>, order: string[]) {
+// Kill groups with <=1 child:
+// - If group has 0 child -> delete group
+// - If group has 1 child -> remove group and "extract" its only child:
+// This operation is applied repeatedly until no group has <=1 child.
+export function killGroups(items: Record<string, ViewItem>, order: string[]) {
   let itemsCopy = { ...items }
   let orderCopy = [...order]
   let changed = true
@@ -103,23 +82,9 @@ export function pruneGroups(items: Record<string, ViewItem>, order: string[]) {
 
       if (g.children.length === 1) {
         const only = g.children[0]
-        const parentId = findParent(itemsCopy, id)
-        if (parentId) {
-          const parent = itemsCopy[parentId] as GroupViewItem
-          const idx = parent.children.indexOf(id)
-          if (idx !== -1) {
-            const newChildren = [
-              ...parent.children.slice(0, idx),
-              only,
-              ...parent.children.slice(idx + 1),
-            ]
-            itemsCopy[parentId] = { ...parent, children: newChildren }
-          }
-        } else {
-          const idx = orderCopy.indexOf(id)
-          if (idx !== -1) {
-            orderCopy.splice(idx, 1, only)
-          }
+        const idx = orderCopy.indexOf(id)
+        if (idx !== -1) {
+          orderCopy.splice(idx, 1, only)
         }
         delete itemsCopy[id]
         changed = true
@@ -131,7 +96,7 @@ export function pruneGroups(items: Record<string, ViewItem>, order: string[]) {
   return { items: itemsCopy, order: orderCopy }
 }
 
-/* ------------------------- Color mapping ------------------------- */
+/* ----------------------- Color mapping ----------------------- */
 export function buildColorMap(
   viewState: ViewState,
   usersById: Map<number, FUser>,
@@ -142,7 +107,7 @@ export function buildColorMap(
   const colorMap = new Map<string, string>()
   let colorIndex = 0
 
-  const assignColorsToItems = (itemIds: string[], parentColor?: string) => {
+  const assignColorsToItems = (itemIds: string[]) => {
     for (const id of itemIds) {
       const item = viewState.items[id]
       if (!item) continue
@@ -151,44 +116,22 @@ export function buildColorMap(
         // Group gets new color
         const groupColor = getCyclicColor(baseColor, count, preset, ++colorIndex)
         colorMap.set(id, groupColor)
-        // Assign colors to children with group's color as parentColor
+        // Recurse for children
         assignColorsToItems(item.children)
-      } else if (item.type === 'user') {
-        // If a previous alias already assigned a color to this user, reuse it.
+      } else if (item.type === 'user' || item.type === 'alias') {
+        // Users and aliases share the same color based on userId
         const numericKey = String(item.userId)
-        const existingColor = colorMap.get(id) || colorMap.get(numericKey) || parentColor
+        let userColor = colorMap.get(numericKey)
 
-        const userColor =
-          existingColor ??
-          // no existing color -> generate a new one
-          getCyclicColor(baseColor, count, preset, ++colorIndex)
-
-        colorMap.set(id, userColor) // keyed by view id (e.g. "u:1")
-        colorMap.set(String(item.userId), userColor) // keyed by numeric id string (e.g. "1")
-      } else if (item.type === 'alias') {
-        // Alias should inherit the user's color if already set.
-        // If not set (alias appears before user), we *assign a new color* and also set it for the user.
-        const userViewId = makeUserViewId(item.userId)
-        const numericKey = String(item.userId)
-
-        const existingUserColor = colorMap.get(userViewId) || colorMap.get(numericKey)
-
-        let userColor: string
-        if (existingUserColor) {
-          userColor = existingUserColor
-        } else if (parentColor) {
-          userColor = parentColor
-          // also persist it under the user id so later user will reuse it
-          colorMap.set(userViewId, userColor)
-          colorMap.set(numericKey, userColor)
-        } else {
-          // alias before user and no parent color => generate a new color and assign it to the user too
+        if (!userColor) {
           userColor = getCyclicColor(baseColor, count, preset, ++colorIndex)
-          colorMap.set(userViewId, userColor)
           colorMap.set(numericKey, userColor)
+          // Also set for the main user view id if it exists, for consistency/lookup
+          const mainUserViewId = makeUserViewId(item.userId)
+          colorMap.set(mainUserViewId, userColor)
         }
 
-        colorMap.set(id, userColor) // alias key (e.g. "a:1:1")
+        colorMap.set(id, userColor)
       }
     }
   }
@@ -197,7 +140,7 @@ export function buildColorMap(
   return colorMap
 }
 
-/* ------------------------- Order helpers (for selection store) ------------------------- */
+/* ------------- Order helpers (for selection store) ------------- */
 export function buildStructuralOrder(viewState: ViewState): string[] {
   const res: string[] = []
   const visit = (id: string) => {

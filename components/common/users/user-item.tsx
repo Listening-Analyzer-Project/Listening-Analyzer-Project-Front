@@ -127,7 +127,7 @@ export default function UserItem({
         alert(`Impossible de renommer l'utilisateur : ${msg}`)
       }
     } else {
-      // alias case: nothing to update server-side here by default
+      // alias and group case: nothing to update server-side here by default
     }
   }
 
@@ -145,113 +145,106 @@ export default function UserItem({
 
   const avatarBg = color || `hsl(${(isGroup ? 0 : item.userId * 37) % 360} 60% 40%)`
 
-  const renderContent = () => {
-    if (isGroup) {
-      return (
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggleSelect(id)}
-            onClick={e => e.stopPropagation()}
-            className="h-4 w-4"
-          />
-          
-          {/* Collapse button */}
-          <button
-            onClick={e => {
-              e.stopPropagation()
-              onToggleCollapse?.(id)
-            }}
-            className="text-sm font-medium flex items-center gap-2 flex-1 min-w-0"
-            aria-label={collapsed ? 'Expand group' : 'Collapse group'}
-          >
-            <span className="w-6 text-lg shrink-0">{collapsed ? '▸' : '▾'}</span>
-            {renaming ? (
-              <InlineRenameInput
-                initialValue={value}
-                onSave={async v => {
-                  setValue(v)
-                  try {
-                    await commitRenameWithValue(v)
-                  } finally {
-                    setRenaming(false)
-                  }
-                }}
-                onCancel={() => {
-                  setRenaming(false)
-                  setValue(label)
-                }}
-                className=""
-                placeholder="Rename Group"
-              />
-            ) : (
-              <TruncatedTextWithTooltip text={label} className="text-sm font-medium text-left" />
-            )}
-          </button>
-        </div>
-      )
-    }
-
-    // User or Alias
-    return (
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={() => {
-            onToggleSelect(id)
-          }}
-          onClick={e => {
-            e.stopPropagation()
-          }}
-          className="h-4 w-4"
-        />
-        <div
-          className="h-9 w-9 rounded-full flex items-center justify-center font-semibold text-white shrink-0"
-          style={{ background: avatarBg }}
-        >
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          {renaming ? (
-            <InlineRenameInput
-              initialValue={value}
-              onSave={async v => {
-                setValue(v)
-                try {
-                  await commitRenameWithValue(v)
-                } finally {
-                  setRenaming(false)
-                }
-              }}
-              onCancel={() => {
-                setRenaming(false)
-                setValue(label)
-              }}
-              className=""
-              placeholder="Rename"
-            />
-          ) : (
-            <div>
-              <TruncatedTextWithTooltip text={label} className="text-sm font-medium" />
-              <div className="text-xs text-muted-foreground">
-                type: {user?.type ?? '-'} {user?.isadmin ? ' · admin' : ''}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className={`rounded ${isGroup ? 'p-1' : 'p-2 hover:bg-gray-50'}`}>
-      <div 
-        className={`flex items-center justify-between gap-3 ${isGroup ? 'p-2 hover:bg-gray-50 rounded' : ''}`}
-        style={isGroup ? { background: color } : undefined}
-      >
-        {renderContent()}
+    <div className="rounded p-2 hover:bg-gray-50">
+      <div className="flex items-center justify-between gap-3">
+        {isGroup ? (
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelect(id)}
+              onClick={e => e.stopPropagation()}
+              className="h-4 w-4"
+            />
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                onToggleCollapse?.(id)
+              }}
+              className="text-sm font-medium flex items-center gap-3 flex-1 min-w-0"
+              aria-label={collapsed ? 'Expand group' : 'Collapse group'}
+            >
+              <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                <span
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-2xl"
+                  style={{ backgroundColor: color }}
+                >
+                  {collapsed ? '▸' : '▾'}
+                </span>
+              </div>
+              {renaming ? (
+                <InlineRenameInput
+                  initialValue={value}
+                  onSave={async v => {
+                    setValue(v)
+                    try {
+                      await commitRenameWithValue(v)
+                    } finally {
+                      setRenaming(false)
+                    }
+                  }}
+                  onCancel={() => {
+                    setRenaming(false)
+                    setValue(label)
+                  }}
+                  className=""
+                  placeholder="Rename Group"
+                />
+              ) : (
+                <TruncatedTextWithTooltip text={label} className="text-sm font-medium text-left" />
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => {
+                onToggleSelect(id)
+              }}
+              onClick={e => {
+                e.stopPropagation()
+              }}
+              className="h-4 w-4"
+            />
+            <div
+              className="h-9 w-9 rounded-full flex items-center justify-center font-semibold text-white shrink-0"
+              style={{ background: avatarBg }}
+            >
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              {renaming ? (
+                <InlineRenameInput
+                  initialValue={value}
+                  onSave={async v => {
+                    setValue(v)
+                    try {
+                      await commitRenameWithValue(v)
+                    } finally {
+                      setRenaming(false)
+                    }
+                  }}
+                  onCancel={() => {
+                    setRenaming(false)
+                    setValue(label)
+                  }}
+                  className=""
+                  placeholder="Rename"
+                />
+              ) : (
+                <div>
+                  <TruncatedTextWithTooltip text={label} className="text-sm font-medium" />
+                  <div className="text-xs text-muted-foreground">
+                    type: {user?.type ?? '-'} {user?.isadmin ? ' · admin' : ''}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <DropdownMenu open={menuOpen} onOpenChange={(o: boolean) => setMenuOpen(o)}>
           <DropdownMenuTrigger asChild>

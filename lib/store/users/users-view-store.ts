@@ -4,11 +4,10 @@ import {
   type GroupViewItem,
   type ViewItem,
   type ViewState,
-  isDescendant,
+  killGroups,
   makeAliasViewId,
   makeGroupViewId,
   makeUserViewId,
-  pruneGroups,
   removeIdFromAll,
   removeIds
 } from './users-view-logic'
@@ -26,9 +25,7 @@ export type {
 export {
   buildColorMap,
   buildDisplayOrder,
-  buildStructuralOrder,
-  makeUserViewId,
-  pruneGroups
+  buildStructuralOrder, killGroups, makeUserViewId
 } from './users-view-logic'
 
 /* ------------------------- Actions ------------------------- */
@@ -37,7 +34,9 @@ export type ViewAction =
   | { type: 'REORDER'; payload: { newOrder: string[] } }
   | { type: 'CREATE_ALIAS'; payload: { userId: number; index?: number } }
   | { type: 'CREATE_GROUP'; payload: { memberIds: string[]; index?: number; name?: string } }
-  | { type: 'ADD_CHILD_TO_GROUP'; payload: { groupId: string; childId: string; index?: number } }
+  | { type: 'REMOVE_CHILDREN_FROM_GROUP'; payload: { childIds: string[] } }
+  | { type: 'ADD_CHILDREN_TO_GROUP'; payload: { groupId: string; childIds: string[]; index?: number } }
+  | { type: 'MERGE_GROUPS'; payload: { targetGroupId: string; sourceGroupIds: string[] } }
   | { type: 'DELETE_USER'; payload: { userId: number } }
   | { type: 'DELETE_ALIAS'; payload: { id: string } }
   | { type: 'DELETE_GROUP'; payload: { id: string } }
@@ -93,12 +92,10 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
     case 'CREATE_GROUP': {
       const { memberIds, index, name } = action.payload
 
-      for (const a of memberIds) {
-        for (const b of memberIds) {
-          if (a !== b && state.items[a]?.type === 'group' && isDescendant(state.items, a, b)) {
-            console.warn('Refuse CREATE_GROUP: would create cycle between', a, b)
-            return state
-          }
+      for (const m of memberIds) {
+        if (state.items[m]?.type === 'group') {
+          console.warn('Refuse CREATE_GROUP: cannot create group containing another group', m)
+          return state
         }
       }
 
@@ -107,6 +104,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       let itemsCopy = { ...state.items }
       let orderCopy = [...state.order]
 
+      // Remove members from their current groups and top-level order
       for (const m of memberIds) {
         orderCopy = orderCopy.filter(o => o !== m)
         for (const [pid, it] of Object.entries(itemsCopy)) {
@@ -119,10 +117,16 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         }
       }
 
+      // Kill groups BEFORE creating the new group (for proper numbering)
+      const killed = killGroups(itemsCopy, orderCopy)
+      itemsCopy = killed.items
+      orderCopy = killed.order
+
+      // NOW determine the group name (after groups have been killed)
       let groupName = name
       if (!groupName) {
         const usedNumbers = new Set<number>()
-        for (const it of Object.values(state.items)) {
+        for (const it of Object.values(itemsCopy)) {
           if (it.type === 'group' && it.name) {
             const match = it.name.match(/^Group (\d+)$/)
             if (match) {
@@ -156,29 +160,130 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       }
     }
 
-    case 'ADD_CHILD_TO_GROUP': {
-      const { groupId, childId, index } = action.payload
+    case 'REMOVE_CHILDREN_FROM_GROUP': {
+      const { childIds } = action.payload
+      
+      // Find the parent group (assumes all children are in the same group)
+      let parentGroupId: string | null = null
+      for (const [pid, it] of Object.entries(state.items)) {
+        if (it.type === 'group') {
+          const g = it as GroupViewItem
+          if (childIds.some(cid => g.children.includes(cid))) {
+            parentGroupId = pid
+            break
+          }
+        }
+      }
+      
+      // Remove children from all groups
+      let itemsCopy = state.items
+      for (const cid of childIds) {
+        for (const [pid, it] of Object.entries(itemsCopy)) {
+          if (it.type === 'group') {
+            const g = it as GroupViewItem
+            if (g.children.includes(cid)) {
+              itemsCopy = { ...itemsCopy, [pid]: { ...g, children: g.children.filter(c => c !== cid) } }
+            }
+          }
+        }
+      }
+      
+      // Remove from top-level order (in case they were there)
+      let orderCopy = state.order.filter(id => !childIds.includes(id))
+      
+      // Insert children right after their parent group
+      if (parentGroupId) {
+        const parentIndex = orderCopy.indexOf(parentGroupId)
+        if (parentIndex !== -1) {
+          orderCopy.splice(parentIndex + 1, 0, ...childIds)
+        } else {
+          // Parent not in top-level, add to end
+          orderCopy.push(...childIds)
+        }
+      } else {
+        // No parent found, add to end
+        orderCopy.push(...childIds)
+      }
+      
+      // Kill groups that became empty or single-child
+      const killed = killGroups(itemsCopy, orderCopy)
+      
+      return {
+        ...state,
+        items: killed.items,
+        order: killed.order,
+      }
+    }
+
+    case 'ADD_CHILDREN_TO_GROUP': {
+      const { groupId, childIds, index } = action.payload
       const group = state.items[groupId] as GroupViewItem | undefined
       if (!group || group.type !== 'group') return state
 
-      if (state.items[childId]?.type === 'group' && isDescendant(state.items, childId, groupId)) {
-        console.warn('Refuse ADD_CHILD_TO_GROUP: would create cycle', childId, groupId)
-        return state
+      // Validate no groups in childIds
+      for (const cid of childIds) {
+        if (state.items[cid]?.type === 'group') {
+          console.warn('Refuse ADD_CHILDREN_TO_GROUP: cannot add a group into another group', cid)
+          return state
+        }
       }
 
-      const removed = removeIdFromAll(state.items, state.order, childId)
-      const tgt = removed.items[groupId] as GroupViewItem | undefined
+      // Remove children from their current positions WITHOUT deleting them
+      let itemsCopy = state.items
+      let orderCopy = state.order
+      for (const cid of childIds) {
+        const removed = removeIdFromAll(itemsCopy, orderCopy, cid)
+        itemsCopy = removed.items
+        orderCopy = removed.order
+      }
+
+      const tgt = itemsCopy[groupId] as GroupViewItem | undefined
       if (!tgt || tgt.type !== 'group') return state
 
       const newChildren = [...tgt.children]
       const pos = index ?? newChildren.length
-      newChildren.splice(pos, 0, childId)
-      removed.items[groupId] = { ...tgt, children: newChildren }
+      newChildren.splice(pos, 0, ...childIds)
+      
+      itemsCopy = { ...itemsCopy, [groupId]: { ...tgt, children: newChildren } }
+
+      // Kill groups that might have become empty after removing children
+      const killed = killGroups(itemsCopy, orderCopy)
 
       return {
         ...state,
-        items: removed.items,
-        order: removed.order,
+        items: killed.items,
+        order: killed.order,
+      }
+    }
+
+    case 'MERGE_GROUPS': {
+      const { targetGroupId, sourceGroupIds } = action.payload
+      const targetGroup = state.items[targetGroupId] as GroupViewItem | undefined
+      if (!targetGroup || targetGroup.type !== 'group') return state
+
+      let itemsCopy = { ...state.items }
+      let orderCopy = [...state.order]
+      let newChildren = [...targetGroup.children]
+
+      for (const srcId of sourceGroupIds) {
+        const srcGroup = itemsCopy[srcId] as GroupViewItem | undefined
+        if (!srcGroup || srcGroup.type !== 'group') continue
+        if (srcId === targetGroupId) continue
+
+        newChildren.push(...srcGroup.children)
+        delete itemsCopy[srcId]
+        orderCopy = orderCopy.filter(id => id !== srcId)
+      }
+
+      itemsCopy[targetGroupId] = { ...targetGroup, children: newChildren }
+
+      // Kill any groups that might have become empty
+      const killed = killGroups(itemsCopy, orderCopy)
+
+      return {
+        ...state,
+        items: killed.items,
+        order: killed.order,
       }
     }
 
@@ -190,17 +295,17 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       )
       const idsToRemove = [userViewId, ...aliasIds]
       const removed = removeIds(state.items, state.order, idsToRemove)
-      const pruned = pruneGroups(removed.items, removed.order)
+      const killed = killGroups(removed.items, removed.order)
 
       const collapseMap: Record<string, boolean> = {}
       for (const k of Object.keys(state.collapseMap)) {
-        if (pruned.items[k]) collapseMap[k] = state.collapseMap[k]
+        if (killed.items[k]) collapseMap[k] = state.collapseMap[k]
       }
 
       return {
         ...state,
-        items: pruned.items,
-        order: pruned.order,
+        items: killed.items,
+        order: killed.order,
         collapseMap,
       }
     }
@@ -208,17 +313,17 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
     case 'DELETE_ALIAS': {
       const { id } = action.payload
       const removed = removeIds(state.items, state.order, [id])
-      const pruned = pruneGroups(removed.items, removed.order)
+      const killed = killGroups(removed.items, removed.order)
 
       const collapseMap: Record<string, boolean> = {}
       for (const k of Object.keys(state.collapseMap)) {
-        if (pruned.items[k]) collapseMap[k] = state.collapseMap[k]
+        if (killed.items[k]) collapseMap[k] = state.collapseMap[k]
       }
 
       return {
         ...state,
-        items: pruned.items,
-        order: pruned.order,
+        items: killed.items,
+        order: killed.order,
         collapseMap,
       }
     }
@@ -234,24 +339,6 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       // Delete the group
       delete itemsCopy[id]
 
-      // Replace group with its children in parent groups
-      for (const [pid, it] of Object.entries(itemsCopy)) {
-        if (it.type === 'group') {
-          const g = it as GroupViewItem
-          const idx = g.children.indexOf(id)
-          if (idx !== -1) {
-            itemsCopy[pid] = {
-              ...g,
-              children: [
-                ...g.children.slice(0, idx),
-                ...groupChildren,
-                ...g.children.slice(idx + 1),
-              ],
-            }
-          }
-        }
-      }
-
       // Replace group with its children in top-level order
       const orderCopy = [...state.order]
       const idx = orderCopy.indexOf(id)
@@ -259,17 +346,17 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         orderCopy.splice(idx, 1, ...groupChildren)
       }
 
-      const pruned = pruneGroups(itemsCopy, orderCopy)
+      const killed = killGroups(itemsCopy, orderCopy)
 
       const collapseMap: Record<string, boolean> = {}
       for (const k of Object.keys(state.collapseMap)) {
-        if (pruned.items[k]) collapseMap[k] = state.collapseMap[k]
+        if (killed.items[k]) collapseMap[k] = state.collapseMap[k]
       }
 
       return {
         ...state,
-        items: pruned.items,
-        order: pruned.order,
+        items: killed.items,
+        order: killed.order,
         collapseMap,
       }
     }
@@ -314,9 +401,17 @@ export const viewActions = {
     type: 'CREATE_GROUP' as const,
     payload: { memberIds, index, name },
   }),
-  addChildToGroup: (groupId: string, childId: string, index?: number) => ({
-    type: 'ADD_CHILD_TO_GROUP' as const,
-    payload: { groupId, childId, index },
+  removeChildrenFromGroup: (childIds: string[]) => ({
+    type: 'REMOVE_CHILDREN_FROM_GROUP' as const,
+    payload: { childIds },
+  }),
+  addChildrenToGroup: (groupId: string, childIds: string[], index?: number) => ({
+    type: 'ADD_CHILDREN_TO_GROUP' as const,
+    payload: { groupId, childIds, index },
+  }),
+  mergeGroups: (targetGroupId: string, sourceGroupIds: string[]) => ({
+    type: 'MERGE_GROUPS' as const,
+    payload: { targetGroupId, sourceGroupIds },
   }),
   deleteUser: (userId: number) => ({ type: 'DELETE_USER' as const, payload: { userId } }),
   deleteAlias: (id: string) => ({ type: 'DELETE_ALIAS' as const, payload: { id } }),

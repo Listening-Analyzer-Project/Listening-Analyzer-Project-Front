@@ -1,17 +1,7 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { userService } from '@/lib/api'
-import { useApi } from '@/lib/hooks'
-import { useUsersViewStore } from '@/lib/store/users/users-provider'
-import {
-  buildRestoredPayload,
-  loadPersistedPayload,
-  savePersistedPayload,
-} from '@/lib/store/users/users-view-persistence'
-import type { GroupViewItem, ViewState } from '@/lib/store/users/users-view-store'
-import { buildColorMap } from '@/lib/store/users/users-view-store'
-import type { FUser } from '@/types'
+import { useEffect, useRef, useState } from 'react'
+
 import {
   closestCorners,
   DndContext,
@@ -26,13 +16,24 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { useEffect, useRef, useState } from 'react'
+
+import { Button } from '@/components/ui/button'
+import { userService } from '@/lib/api'
+import { useApi } from '@/lib/hooks'
+import { useUsersViewStore } from '@/lib/store/users/users-provider'
+import {
+  buildRestoredPayload,
+  loadPersistedPayload,
+  savePersistedPayload,
+} from '@/lib/store/users/users-view-persistence'
+import type { GroupViewItem, ViewState } from '@/lib/store/users/users-view-store'
+import { buildColorMap } from '@/lib/store/users/users-view-store'
+import type { FUser } from '@/types'
+import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
-import UserDeletionDialog from './user-deletion-dialog'
+import SortableItem from './sortable-user-item'
 import UserDialog from './user-dialog'
 import UserItem from './user-item'
 
@@ -40,72 +41,12 @@ const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
 const LUMINANCE_PRESET = 'shortlist' as const
 
-function SortableItem({
-  id,
-  children,
-  depth = 0,
-  disabled = false,
-}: {
-  id: string
-  children: React.ReactNode
-  depth?: number
-  disabled?: boolean
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id,
-    disabled,
-  })
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <div className="flex items-start">
-        <div className="flex-1 min-w-0" style={{ paddingLeft: `${depth * 1.5}rem` }}>
-          {children}
-        </div>
-        <button
-          {...attributes}
-          {...listeners}
-          aria-label="Drag user"
-          className="p-1 ml-2 rounded hover:bg-gray-100 mt-2"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path
-              d="M10 6h4M10 12h4M10 18h4"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function findParentId(viewState: ViewState, targetId: string): string | null {
   for (const id of viewState.order) {
     const it = viewState.items[id]
-    if (!it) continue
-    if (it.type === 'group') {
-      const g = it as GroupViewItem
-      if (g.children.includes(targetId)) return id
-      const stack = [...g.children]
-      while (stack.length) {
-        const cid = stack.shift()!
-        const child = viewState.items[cid]
-        if (!child) continue
-        if (child.type === 'group') {
-          const cg = child as GroupViewItem
-          if (cg.children.includes(targetId)) return cid
-          stack.push(...cg.children)
-        }
-      }
-    }
+    if (!it || it.type !== 'group') continue
+    const g = it as GroupViewItem
+    if (g.children.includes(targetId)) return id
   }
   return null
 }
@@ -128,9 +69,12 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     toggleCollapse,
     toggleSelection,
     createGroup,
-    addChildToGroup,
+    addChildrenToGroup,
+    removeChildrenFromGroup,
+    mergeGroups,
     restoreViewState,
     setSelection,
+    syncSelectionWithView,
     createAlias,
   } = useUsersViewStore()
 
@@ -146,11 +90,45 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   
-  const canCreateGroup =
-    selectionState.selectedIds.length > 1 &&
-    selectionState.selectedIds.every(
-      (id, _, arr) => findParentId(viewState, id) === findParentId(viewState, arr[0])
-    )
+  // Analyze selection
+  const selectedIds = selectionState.selectedIds
+  const selectedItems = selectedIds.map(id => viewState.items[id]).filter(Boolean)
+  const selectedGroups = selectedItems.filter(it => it.type === 'group') as GroupViewItem[]
+  const selectedUsers = selectedItems.filter(it => it.type === 'user' || it.type === 'alias')
+
+  // Button is enabled when:
+  // - 2+ items selected (users/groups) OR
+  // - 1 child item selected (to remove from group)
+  // - BUT NOT when multiple groups + users are selected together (ambiguous action)
+  // - BUT NOT when 1 group + its own children are selected (already in that group)
+  let canCreateGroup = selectedIds.length >= 2 && !(selectedGroups.length > 1 && selectedUsers.length > 0)
+  
+  let isSingleChildRemoval = false
+  if (selectedIds.length === 1 && selectedUsers.length === 1) {
+    const userId = selectedUsers[0].id
+    const parentId = findParentId(viewState, userId)
+    if (parentId) {
+      isSingleChildRemoval = true
+      canCreateGroup = true
+    }
+  }
+  
+  if (selectedGroups.length === 1 && selectedUsers.length > 0 && !isSingleChildRemoval) {
+    const group = selectedGroups[0]
+    const allUsersAreChildren = selectedUsers.every(u => group.children.includes(u.id))
+    if (allUsersAreChildren) {
+      canCreateGroup = false
+    }
+  }
+
+  let actionLabel = 'Créer groupe'
+  if (isSingleChildRemoval) {
+    actionLabel = 'Retirer du groupe'
+  } else if (selectedGroups.length === 1 && selectedUsers.length > 0) {
+    actionLabel = 'Ajouter au groupe'
+  } else if (selectedGroups.length > 1) {
+    actionLabel = 'Fusionner groupes'
+  }
 
   useEffect(() => {
     if (!usersRaw) return
@@ -180,6 +158,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
       ?.filter((u): u is FUser & { id: number } => u.id !== undefined && u.id !== null)
       .map(u => [u.id, u]) ?? []
   )
+
   const colorMap = buildColorMap(
     viewState,
     usersById,
@@ -201,10 +180,8 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     
     // If dragging a root item or group (not a child), collapse all groups
     if (parentId === null) {
-      // Save current collapse state
       setPreCollapseMap({ ...viewState.collapseMap })
       
-      // Collapse all groups
       const allGroupIds = viewState.order.filter(id => {
         const item = viewState.items[id]
         return item?.type === 'group'
@@ -224,18 +201,14 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     
     // Restore collapse state if we had saved it
     if (preCollapseMap) {
-      // Restore the original collapse state for each group
       Object.keys(preCollapseMap).forEach(groupId => {
         const wasCollapsed = preCollapseMap[groupId]
         const isCurrentlyCollapsed = !!viewState.collapseMap[groupId]
         
-        // Only toggle if state has changed
         if (wasCollapsed !== isCurrentlyCollapsed) {
           toggleCollapse(groupId)
         }
       })
-      
-      // Also check for groups that weren't in the original map
       viewState.order.forEach(id => {
         const item = viewState.items[id]
         if (item?.type === 'group' && !(id in preCollapseMap)) {
@@ -259,25 +232,21 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     const overParent = findParentId(viewState, overId)
 
     // STRICT RESTRICTION: Only allow drag if parents are identical.
-    // This prevents dragging in/out of groups, and prevents auto-group creation.
     if (activeParent !== overParent) {
       return
     }
 
     // If parents are same, it's a reorder
     if (activeParent === null) {
-      // Root reorder
       const oldIndex = viewState.order.indexOf(activeId)
       const newIndex = viewState.order.indexOf(overId)
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         reorder(arrayMove(viewState.order, oldIndex, newIndex))
       }
     } else {
-      // Group reorder
       const parent = viewState.items[activeParent] as GroupViewItem
       const insertIndex = parent.children.indexOf(overId)
-      // addChildToGroup handles moving the child to the new index within the same group
-      addChildToGroup(activeParent, activeId, insertIndex)
+      addChildrenToGroup(activeParent, [activeId], insertIndex)
     }
   }
 
@@ -297,15 +266,35 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
 
   const handleDelete = async (id: string, type: 'user' | 'alias' | 'group') => {
     try {
+      // Collect all IDs to remove from selection
+      const idsToRemove = new Set<string>([id])
+      
       if (type === 'user') {
         const userId = parseInt(id.split(':')[1])
+        // Also remove all aliases of this user
+        Object.keys(viewState.items).forEach(itemId => {
+          const item = viewState.items[itemId]
+          if (item.type === 'alias' && item.userId === userId) {
+            idsToRemove.add(itemId)
+          }
+        })
         deleteUser(userId)
         await userService.remove(userId)
       } else if (type === 'alias') {
         deleteAlias(id)
       } else if (type === 'group') {
+        // Also remove all children of this group
+        const group = viewState.items[id]
+        if (group && group.type === 'group') {
+          group.children.forEach(childId => idsToRemove.add(childId))
+        }
         deleteGroup(id)
       }
+      
+      // Clean up selection to remove deleted items
+      const newSelection = selectionState.selectedIds.filter(selId => !idsToRemove.has(selId))
+      setSelection(newSelection)
+      
       await refetch()
     } catch (err) {
       console.error('delete error', err)
@@ -349,24 +338,67 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
     }
   }
 
-  const handleCreateGroupClick = () => {
-    const selectedIds = selectionState.selectedIds
-    if (selectedIds.length < 2) return
-
-    const firstId = selectedIds[0]
-    const parentId = findParentId(viewState, firstId)
-
-    let index = 0
-    if (parentId) {
-      const parent = viewState.items[parentId] as GroupViewItem
-      index = parent.children.indexOf(firstId)
-    } else {
-      index = viewState.order.indexOf(firstId)
+  const handleSmartGroupAction = () => {
+    // Case 1: Single child - remove from group
+    if (selectedIds.length === 1 && selectedUsers.length === 1) {
+      const userId = selectedUsers[0].id
+      const parentId = findParentId(viewState, userId)
+      if (parentId) {
+        removeChildrenFromGroup([userId])
+        setSelection([])
+        return
+      }
     }
 
-    if (index === -1) index = 0
+    if (selectedGroups.length === 0) {
+      // Case 2: Only users -> Create new group
+      if (selectedUsers.length < 2) return
 
-    createGroup(selectedIds, index)
+      const firstId = selectedIds[0]
+      
+      let index = viewState.order.indexOf(firstId)
+      
+      if (index === -1) {
+        const parentId = findParentId(viewState, firstId)
+        if (parentId) {
+          const parentIndex = viewState.order.indexOf(parentId)
+          index = parentIndex !== -1 ? parentIndex + 1 : 0
+        } else {
+          index = 0
+        }
+      }
+
+      createGroup(selectedIds, index)
+    } else if (selectedGroups.length === 1) {
+      // Case 3: 1 Group + Users -> Add users to group
+      const targetGroup = selectedGroups[0]
+      const usersToAdd = selectedUsers.map(u => u.id)
+      
+      if (usersToAdd.length > 0) {
+        addChildrenToGroup(targetGroup.id, usersToAdd)
+      }
+    } else {
+      // Case 4: Multiple Groups -> Merge
+      let targetGroup = selectedGroups[0]
+      let minIndex = viewState.order.indexOf(targetGroup.id)
+      
+      for (let i = 1; i < selectedGroups.length; i++) {
+        const idx = viewState.order.indexOf(selectedGroups[i].id)
+        if (idx !== -1 && idx < minIndex) {
+          minIndex = idx
+          targetGroup = selectedGroups[i]
+        }
+      }
+      
+      const sourceGroupIds = selectedGroups
+        .filter(g => g.id !== targetGroup.id)
+        .map(g => g.id)
+      
+      if (sourceGroupIds.length > 0) {
+        mergeGroups(targetGroup.id, sourceGroupIds)
+      }
+    }
+    
     setSelection([])
   }
 
@@ -529,9 +561,9 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
           <Button
             className="flex-1"
             disabled={!canCreateGroup}
-            onClick={handleCreateGroupClick}
+            onClick={handleSmartGroupAction}
           >
-            Créer groupe
+            {actionLabel}
           </Button>
         </div>
       </div>
@@ -543,7 +575,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         }`}
       />
 
-      <UserDeletionDialog
+      <DeletionDialog
         open={deleteDialogOpen}
         onOpenChange={v => {
           setDeleteDialogOpen(v)
@@ -553,6 +585,7 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
           }
         }}
         onConfirm={handleConfirmDelete}
+        title = "Supprimer l'utilisateur ?"
       />
 
       <UserDialog

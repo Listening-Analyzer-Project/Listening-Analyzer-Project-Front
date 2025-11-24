@@ -39,7 +39,9 @@ type UserViewContextValue = {
   reorder: (newOrder: string[]) => void
   createAlias: (userId: number, index?: number) => void
   createGroup: (memberIds: string[], index?: number, name?: string) => void
-  addChildToGroup: (groupId: string, childId: string, index?: number) => void
+  addChildrenToGroup: (groupId: string, childIds: string[], index?: number) => void
+  removeChildrenFromGroup: (childIds: string[]) => void
+  mergeGroups: (targetGroupId: string, sourceGroupIds: string[]) => void
   deleteUser: (userId: number) => void
   deleteAlias: (id: string) => void
   deleteGroup: (id: string) => void
@@ -92,9 +94,23 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     [viewDispatch]
   )
 
-  const addChildToGroup = useCallback(
-    (groupId: string, childId: string, index?: number) => {
-      viewDispatch(viewActions.addChildToGroup(groupId, childId, index))
+  const addChildrenToGroup = useCallback(
+    (groupId: string, childIds: string[], index?: number) => {
+      viewDispatch(viewActions.addChildrenToGroup(groupId, childIds, index))
+    },
+    [viewDispatch]
+  )
+
+  const mergeGroups = useCallback(
+    (targetGroupId: string, sourceGroupIds: string[]) => {
+      viewDispatch(viewActions.mergeGroups(targetGroupId, sourceGroupIds))
+    },
+    [viewDispatch]
+  )
+
+  const removeChildrenFromGroup = useCallback(
+    (childIds: string[]) => {
+      viewDispatch(viewActions.removeChildrenFromGroup(childIds))
     },
     [viewDispatch]
   )
@@ -223,7 +239,9 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
       reorder,
       createAlias,
       createGroup,
-      addChildToGroup,
+      addChildrenToGroup,
+      removeChildrenFromGroup,
+      mergeGroups,
       deleteUser,
       deleteAlias,
       deleteGroup,
@@ -243,7 +261,9 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     reorder,
     createAlias,
     createGroup,
-    addChildToGroup,
+    addChildrenToGroup,
+    removeChildrenFromGroup,
+    mergeGroups,
     deleteUser,
     deleteAlias,
     deleteGroup,

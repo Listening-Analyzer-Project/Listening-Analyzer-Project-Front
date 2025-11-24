@@ -1,7 +1,7 @@
 import type { FUser } from '@/types'
 import type { SelectionState } from './users-selection-store'
 import { syncSelectionWithView } from './users-selection-store'
-import { makeUserViewId, pruneGroups } from './users-view-logic'
+import { killGroups, makeUserViewId } from './users-view-logic'
 import type { ViewState } from './users-view-store'
 
 const STORAGE_VERSION = 1
@@ -78,7 +78,7 @@ export function reconcileViewStateWithUsers(stored: ViewState | null, users: FUs
     if (it.type === 'group') it.children = it.children.filter((c: string) => !!itemsCopy[c])
   }
 
-  const pruned = pruneGroups(itemsCopy, orderCopy)
+  const pruned = killGroups(itemsCopy, orderCopy)
 
   const itemsFinal = { ...pruned.items }
   const orderFinal = [...pruned.order]

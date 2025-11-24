@@ -12,11 +12,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 
-export default function UserDeletionDialog({
+export default function DeletionDialog({
   open,
   onOpenChange,
   onConfirm,
-  title = 'Supprimer cet utilisateur ?',
+  title = 'Supprimer ?',
   description = 'Cette action est irréversible. Voulez-vous continuer ?',
 }: {
   open: boolean
