@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
-export type UserCreateForm = {
+//TODO mettre dans un fichier types pour les forms
+type UserCreateForm = {
   name: string
   type: number
   isadmin: boolean
@@ -54,6 +55,7 @@ export default function UserCreateDialog({
       await onCreate(data)
       onOpenChange(false)
     } catch (err) {
+      //TODO gérer erreurs
       console.error('UserCreateDialog create error', err)
       alert('Erreur lors de la création (voir console)')
     }

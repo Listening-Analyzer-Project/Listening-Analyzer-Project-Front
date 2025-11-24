@@ -1,10 +1,12 @@
 import { useState, useRef } from "react"
+import { UploadCloud, X } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/cn"
-import { UploadCloud, X } from "lucide-react"
-import { importService } from "@/lib/api"
 import { Progress } from "@/components/ui/progress"
+
+import { cn } from "@/lib/cn"
+import { importService } from "@/lib/api"
 import { FUser, ImportResult } from "@/types"
 
 function UploadArea({ user }: { user: FUser }) {

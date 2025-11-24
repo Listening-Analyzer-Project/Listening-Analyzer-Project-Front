@@ -104,6 +104,7 @@ async function* processJsonFile(
     const obj = JSON.parse(content)
     rows = Array.isArray(obj) ? obj : [obj] // si c'est un objet unique
   } catch (err) {
+    //TODO gérer erreurs
     throw new Error(`Invalid JSON in ${file.name}: ${err}`)
   }
 
