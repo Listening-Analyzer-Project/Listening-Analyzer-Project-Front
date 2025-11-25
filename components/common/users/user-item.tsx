@@ -4,10 +4,10 @@ import { MoreHorizontal } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { userService } from '@/lib/api'
 import type { ViewItem } from '@/lib/store'
@@ -242,9 +242,10 @@ export default function UserItem({
               ) : (
                 <div>
                   <TruncatedTextWithTooltip text={label} className="text-sm font-medium" />
-                  <div className="text-xs text-muted-foreground">
-                    type: {user?.type ?? '-'} {user?.isadmin ? ' · admin' : ''}
-                  </div>
+                  <TruncatedTextWithTooltip 
+                    text={`type: ${user?.type ?? '-'}${user?.isadmin ? ' · admin' : ''}`}
+                    className="text-xs text-muted-foreground"
+                  />
                 </div>
               )}
             </div>

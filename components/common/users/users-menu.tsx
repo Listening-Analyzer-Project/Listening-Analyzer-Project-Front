@@ -147,7 +147,7 @@ export default function UsersMenu() {
 
   let actionLabel = 'Créer groupe'
   if (isSingleChildRemoval) {
-    actionLabel = 'Retirer du groupe'
+    actionLabel = 'Sortir du groupe'
   } else if (selectedGroups.length === 1 && selectedUsers.length > 0) {
     actionLabel = 'Ajouter au groupe'
   } else if (selectedGroups.length > 1) {
