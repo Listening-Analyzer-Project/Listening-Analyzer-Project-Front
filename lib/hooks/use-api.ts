@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
+// To use for fetching data from an API
 export function useApi<T>(factory: (signal?: AbortSignal) => Promise<T>, deps: any[] = []) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(false)

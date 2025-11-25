@@ -52,7 +52,6 @@ type UserViewContextValue = {
   toggleSelection: (id: string) => void
   setSelection: (ids: string[]) => void
   clearSelection: () => void
-  syncSelectionWithView: (useDisplayOrder?: boolean) => void
 
   // persistence helpers
   restoreViewState: (vs: ViewState) => void
@@ -169,13 +168,6 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     selectionDispatch(selectionActions.clear())
   }, [selectionDispatch])
 
-  const syncSelectionWithView = useCallback(
-    (useDisplayOrder?: boolean) => {
-      selectionDispatch(selectionActions.syncWithView(viewState, !!useDisplayOrder))
-    },
-    [selectionDispatch, viewState]
-  )
-
   // Persistence: restore (dispatches RESTORE_VIEWSTATE)
   const restoreViewState = useCallback(
     (vs: ViewState) => {
@@ -250,7 +242,6 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
       toggleSelection,
       setSelection,
       clearSelection,
-      syncSelectionWithView,
       restoreViewState,
       clearPersistedState,
     }
@@ -272,7 +263,6 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     toggleSelection,
     setSelection,
     clearSelection,
-    syncSelectionWithView,
     restoreViewState,
     clearPersistedState,
   ])

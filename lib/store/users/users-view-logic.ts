@@ -1,7 +1,6 @@
 import type { LuminancePreset } from '@/lib/utils'
 import { getCyclicColor } from '@/lib/utils'
-import type { FUser } from '@/types'
-
+// TODO : Refactor ce fichié ainsi que les autres fichiers du store potentiellement pour dissocier les logiques d'enregistrement pure et de persistance de ce qui peux etre plus affilié à un service
 /* ------------------------- Types ------------------------- */
 export type ViewItemType = 'user' | 'alias' | 'group'
 
@@ -99,7 +98,6 @@ export function killGroups(items: Record<string, ViewItem>, order: string[]) {
 /* ----------------------- Color mapping ----------------------- */
 export function buildColorMap(
   viewState: ViewState,
-  usersById: Map<number, FUser>,
   baseColor: string = '#16A34A',
   count: number = 8,
   preset: LuminancePreset = 'shortlist'

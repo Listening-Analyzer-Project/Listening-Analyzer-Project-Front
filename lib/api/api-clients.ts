@@ -1,11 +1,11 @@
 type Method = 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-
-export interface ApiClientOptions {
+// TODO : trier commentaires
+interface ApiClientOptions {
   timeoutMs?: number // request timeout
   maxRetries?: number // number of retries on network/server errors
 }
 
-export class ApiError extends Error {
+class ApiError extends Error {
   status?: number
   data?: any
   constructor(message: string, status?: number, data?: any) {
@@ -121,6 +121,7 @@ export class ApiClient {
         const data = contentType.includes('application/json') && text ? JSON.parse(text) : text
 
         if (!res.ok) {
+          // TODO : gérer les erreurs
           const err = new ApiError(data?.message ?? `HTTP ${res.status}`, res.status, data)
           if (attempt < retries && this.shouldRetryStatus(res.status)) {
             attempt++
@@ -138,7 +139,7 @@ export class ApiClient {
         // cleanup event listener on external signal if present
         if (opts?.signal) {
           try {
-            opts.signal.removeEventListener('abort', () => {})
+            opts.signal.removeEventListener('abort', () => { })
           } catch (e) {
             /* ignore */
           }
@@ -147,6 +148,7 @@ export class ApiClient {
 
         return data as T
       } catch (err: any) {
+        // TODO : gérer les erreurs
         lastError = err
         // retry on network error or aborted? only retry on network (TypeError) or certain statuses handled above
         const isNetworkError = err instanceof TypeError || (err instanceof ApiError && !err.status)

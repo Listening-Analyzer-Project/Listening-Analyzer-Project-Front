@@ -47,6 +47,8 @@ export default function UserItem({
   onCloseMenu?: () => void
 }) {
   // navigation
+  // TODO: Revoir les logiques de gestions des props à cette endroit nottament pour les users
+  //TODO : revoirs commentaires
   const router = useRouter()
 
   const isUser = item.type === 'user'

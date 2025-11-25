@@ -99,7 +99,6 @@ export default function UsersMenu() {
     mergeGroups,
     restoreViewState,
     setSelection,
-    syncSelectionWithView,
     createAlias,
   } = useUsersViewStore()
 
@@ -128,6 +127,7 @@ export default function UsersMenu() {
   let canCreateGroup = selectedIds.length >= 2 && !(selectedGroups.length > 1 && selectedUsers.length > 0)
   
   let isSingleChildRemoval = false
+  //TODO : Déplasser toute les logiques conditionnelles dans des UseEffect
   if (selectedIds.length === 1 && selectedUsers.length === 1) {
     const userId = selectedUsers[0].id
     const parentId = findParentId(viewState, userId)
@@ -185,7 +185,6 @@ export default function UsersMenu() {
 
   const colorMap = buildColorMap(
     viewState,
-    usersById,
     BASE_COLOR_HEX,
     EQU_DIST_COUNT,
     LUMINANCE_PRESET
@@ -274,14 +273,13 @@ export default function UsersMenu() {
     }
   }
 
-  const handleSave = async (payload: Partial<FUser> & { id?: number }) => {
+  const handleCreateUser = async (payload: Partial<FUser>) => {
     try {
-      const savedUser = payload.id
-        ? await userService.update(payload.id, payload)
-        : await userService.create(payload)
+      await userService.create(payload)
       await refetch()
       setDialogOpen(false)
     } catch (err) {
+      //TODO : Gérer les erreurs
       console.error('save user error', err)
     }
   }
@@ -319,6 +317,7 @@ export default function UsersMenu() {
       
       await refetch()
     } catch (err) {
+      //TODO : Gérer les erreurs
       console.error('delete error', err)
     }
   }
@@ -356,6 +355,7 @@ export default function UsersMenu() {
         createAlias(userId)
       }
     } catch (err) {
+      //TODO : Gérer les erreurs
       console.error('create alias error', err)
     }
   }
@@ -612,11 +612,11 @@ export default function UsersMenu() {
           setDialogOpen(v)
         }}
         onCreate={async payload => {
-          const toSave = {
+          const user = {
             ...payload,
             isadmin: payload.isadmin ? 1 : 0,
           }
-          await handleSave(toSave)
+          await handleCreateUser(user)
         }}
       />
     </>
