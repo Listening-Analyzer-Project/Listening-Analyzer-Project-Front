@@ -1,10 +1,8 @@
-import fs from 'fs'
-import readline from 'readline'
+import * as XLSX from 'xlsx'
 import { CanonicalListen } from '../../../../types/imports-types'
 import { validateCanonicalListen } from '../parsers/canonical-validator'
 import { parseDeezerListen } from '../parsers/deezer-parser'
 import { parseSpotifyListen } from '../parsers/spotify-parser'
-import { streamDeezerExcelRows } from '../services/deezer-service'
 import { detectFileType } from '../services/file-detection-service'
 
 export type StreamOptions = {
@@ -12,196 +10,220 @@ export type StreamOptions = {
   skipInvalidLines?: boolean
   logEvery?: number | null
   minMsPlayed?: number
+  onProgress?: (progress: number) => void
 }
 
 type RequiredOpts = Required<
   Pick<StreamOptions, 'batchSize' | 'skipInvalidLines' | 'logEvery' | 'minMsPlayed'>
->
+> & { onProgress?: (progress: number) => void }
 
 type Stats = { totalLines: number; accepted: number; rejected: number }
 
-// Main unified streamer function
 export async function* parseAndBatch(
-  filePaths: string[],
+  files: File[],
   opts: StreamOptions = {}
 ): AsyncGenerator<CanonicalListen[], void, void> {
-  const { batchSize = 1000, skipInvalidLines = true, logEvery = 10000, minMsPlayed = 0 } = opts
+  const { batchSize = 1000, skipInvalidLines = true, logEvery = 10000, minMsPlayed = 0, onProgress } = opts
 
   const reqOpts: RequiredOpts = {
     batchSize,
     skipInvalidLines,
     logEvery,
     minMsPlayed,
+    onProgress
   }
   const stats: Stats = { totalLines: 0, accepted: 0, rejected: 0 }
 
-  for (const filePath of filePaths) {
-    try {
-      await fs.promises.access(filePath, fs.constants.R_OK)
-    } catch {
-      console.warn(`[unified-streamer] File not found or not readable: ${filePath} — skipping`)
-      continue
-    }
+  const totalBytes = files.reduce((acc, f) => acc + f.size, 0)
+  let processedBytes = 0
 
+  const reportProgress = (bytes: number) => {
+    if (onProgress && totalBytes > 0) {
+      const percent = Math.min(100, Math.round((bytes / totalBytes) * 100))
+      onProgress(percent)
+    }
+  }
+
+  for (const file of files) {
     let fileType: 'spotify-json' | 'deezer-excel' | 'canonical-json'
     try {
-      fileType = await detectFileType(filePath)
+      fileType = await detectFileType(file)
     } catch (error) {
       console.warn(
-        `[unified-streamer] Cannot detect file type for ${filePath}: ${
-          error instanceof Error ? error.message : String(error)
+        `[unified-streamer] Cannot detect file type for ${file.name}: ${error instanceof Error ? error.message : String(error)
         } — skipping`
       )
+      // Even if skipped, we count it as processed for progress bar
+      processedBytes += file.size
+      reportProgress(processedBytes)
       continue
     }
 
-    console.info(`[unified-streamer] Processing ${fileType}: ${filePath}`)
-
     try {
+      const fileProgressCallback = (bytesProcessedInFile: number) => {
+        reportProgress(processedBytes + bytesProcessedInFile)
+      }
+
       switch (fileType) {
         case 'spotify-json':
-          yield* processJsonFile(filePath, reqOpts, stats, parseSpotifyListen)
+          yield* processJsonFile(file, reqOpts, stats, parseSpotifyListen, fileProgressCallback)
           break
         case 'canonical-json':
-          yield* processJsonFile(filePath, reqOpts, stats, validateCanonicalListen)
+          yield* processJsonFile(file, reqOpts, stats, validateCanonicalListen, fileProgressCallback)
           break
         case 'deezer-excel':
-          yield* processDeezerFile(filePath, reqOpts, stats)
+          yield* processDeezerFile(file, reqOpts, stats, fileProgressCallback)
           break
         default:
-          console.warn(`[unified-streamer] Unknown file type for ${filePath} — skipping`)
+          console.warn(`[unified-streamer] Unknown file type for ${file.name} — skipping`)
       }
     } catch (err) {
-      console.error(`[unified-streamer] Error while reading ${filePath}:`, err)
+      console.error(`[unified-streamer] Error while reading ${file.name}:`, err)
       if (!skipInvalidLines) throw err
     }
+
+    processedBytes += file.size
+    reportProgress(processedBytes)
   }
 
   console.info(
-    `[unified-streamer] Done - Files: ${filePaths.length}, Total Lines: ${stats.totalLines}, Accepted: ${stats.accepted}, Rejected: ${stats.rejected}`
+    `[unified-streamer] Done - Files: ${files.length}, Total Lines: ${stats.totalLines}, Accepted: ${stats.accepted}, Rejected: ${stats.rejected}`
   )
 }
 
-// Read JSON file line by line, parse each line, filter, batch and yield
 async function* processJsonFile(
-  filePath: string,
+  file: File,
   opts: RequiredOpts,
   stats: Stats,
-  parser: (raw: any) => CanonicalListen | null
+  parser: (raw: any) => CanonicalListen | null,
+  onFileProgress: (bytes: number) => void
 ): AsyncGenerator<CanonicalListen[], void, void> {
-  const stream = fs.createReadStream(filePath, { encoding: 'utf-8' })
-  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity })
+  const content = await file.text()
+  let rows: any[]
+  try {
+    const obj = JSON.parse(content)
+    rows = Array.isArray(obj) ? obj : [obj] // si c'est un objet unique
+  } catch (err) {
+    //TODO gérer erreurs
+    throw new Error(`Invalid JSON in ${file.name}: ${err}`)
+  }
 
   let batch: CanonicalListen[] = []
+  const totalItems = rows.length
+  const fileSize = file.size
 
-  try {
-    for await (const line of rl) {
-      stats.totalLines++
-      if (!line || !line.trim()) continue
+  for (let i = 0; i < rows.length; i++) {
+    const raw = rows[i]
+    stats.totalLines++
 
-      let raw: any
-      try {
-        raw = JSON.parse(line)
-      } catch (err) {
-        stats.rejected++
-        if (!opts.skipInvalidLines) {
-          rl.close()
-          stream.destroy()
-          throw new Error(`Invalid JSON on line ${stats.totalLines} of ${filePath}: ${String(err)}`)
-        }
-        if (opts.logEvery && stats.totalLines % opts.logEvery === 0) {
-          console.warn(
-            `[unified-streamer] Invalid JSON count=${stats.rejected} (line ${stats.totalLines})`
-          )
-        }
-        continue
-      }
-
-      if (!raw || typeof raw !== 'object') {
-        stats.rejected++
-        continue
-      }
-
-      const canonical = parser(raw)
-      if (!canonical) {
-        stats.rejected++
-        continue
-      }
-
-      if (typeof canonical.ms_played !== 'number' || canonical.ms_played < opts.minMsPlayed) {
-        stats.rejected++
-        continue
-      }
-
-      batch.push(canonical)
-      stats.accepted++
-
-      if (batch.length >= opts.batchSize) {
-        yield batch
-        batch = []
-      }
-
-      if (opts.logEvery && stats.totalLines % opts.logEvery === 0) {
-        console.log(
-          `[unified-streamer] Processed lines=${stats.totalLines} accepted=${stats.accepted} rejected=${stats.rejected}`
-        )
-      }
+    // Report progress roughly
+    if (i % 100 === 0) {
+      onFileProgress((i / totalItems) * fileSize)
     }
 
-    if (batch.length > 0) yield batch
-  } finally {
-    try {
-      rl.close()
-    } catch {}
-    try {
-      stream.destroy()
-    } catch {}
+    if (!raw || typeof raw !== 'object') {
+      stats.rejected++
+      continue
+    }
+
+    const canonical = parser(raw)
+    if (!canonical) {
+      stats.rejected++
+      continue
+    }
+
+    if (typeof canonical.ms_played !== 'number' || canonical.ms_played < opts.minMsPlayed) {
+      stats.rejected++
+      continue
+    }
+
+    batch.push(canonical)
+    stats.accepted++
+
+    if (batch.length >= opts.batchSize) {
+      yield batch
+      batch = []
+    }
   }
+
+  if (batch.length > 0) yield batch
 }
 
-// Process Deezer Excel file, parse, filter, batch and yield
 async function* processDeezerFile(
-  filePath: string,
+  file: File,
   opts: RequiredOpts,
-  stats: Stats
+  stats: Stats,
+  onFileProgress: (bytes: number) => void
 ): AsyncGenerator<CanonicalListen[], void, void> {
-  // streamDeezerExcelRows yields DeezerListen[] batches
-  for await (const deezerBatch of streamDeezerExcelRows(filePath, opts.batchSize)) {
-    // Count input lines (approximatif : une row = 1 ligne de données)
-    stats.totalLines += deezerBatch.length
+  const arrayBuffer = await file.arrayBuffer()
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' })
 
-    const converted: CanonicalListen[] = []
-    for (const raw of deezerBatch) {
-      const canonical = parseDeezerListen(raw)
-      if (!canonical) {
-        stats.rejected++
-        continue
-      }
-      if (typeof canonical.ms_played !== 'number' || canonical.ms_played < opts.minMsPlayed) {
-        stats.rejected++
-        continue
-      }
-      converted.push(canonical)
+  // Required columns to identify Deezer listening history
+  const requiredColumns = ['Song Title', 'Artist', 'Listening Time', 'Date']
+
+  const sheetInfo = findSheetByColumns(workbook, requiredColumns)
+
+  if (!sheetInfo) {
+    console.warn(`[unified-streamer] No sheet with Deezer listening history found in ${file.name}`)
+    throw new Error(`No sheet with Deezer listening history found in ${file.name}`) // TODO : géré erreurs  
+  }
+
+  const { worksheet, sheetName } = sheetInfo
+  console.log(`[unified-streamer] Processing Deezer Excel sheet "${sheetName}"`)
+
+  const rawRows: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: null })
+
+  stats.totalLines += rawRows.length
+
+  let batch: CanonicalListen[] = []
+  const totalItems = rawRows.length
+  const fileSize = file.size
+
+  for (let i = 0; i < rawRows.length; i++) {
+    const raw = rawRows[i]
+
+    // Report progress roughly
+    if (i % 100 === 0) {
+      onFileProgress((i / totalItems) * fileSize)
     }
 
-    stats.accepted += converted.length
-
-    if (converted.length > 0) {
-      // Note: streamDeezerExcelRows already yields in "batch" chunks, but we still ensure we don't exceed opts.batchSize
-      if (converted.length <= opts.batchSize) {
-        yield converted
-      } else {
-        // split if necessary
-        for (let i = 0; i < converted.length; i += opts.batchSize) {
-          yield converted.slice(i, i + opts.batchSize)
-        }
-      }
+    const canonical = parseDeezerListen(raw)
+    if (!canonical) {
+      stats.rejected++
+      continue
+    }
+    if (typeof canonical.ms_played !== 'number' || canonical.ms_played < opts.minMsPlayed) {
+      stats.rejected++
+      continue
     }
 
-    if (opts.logEvery && stats.totalLines % opts.logEvery === 0) {
-      console.log(
-        `[unified-streamer] Processed lines=${stats.totalLines} accepted=${stats.accepted} rejected=${stats.rejected}`
-      )
+    batch.push(canonical)
+    stats.accepted++
+
+    if (batch.length >= opts.batchSize) {
+      yield batch
+      batch = []
     }
   }
+
+  if (batch.length > 0) yield batch
+}
+
+function findSheetByColumns(workbook: XLSX.WorkBook, requiredColumns: string[]) {
+  for (const sheetName of workbook.SheetNames) {
+    const worksheet = workbook.Sheets[sheetName]
+    // Get headers (first row)
+    const headers = (XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][])[0]
+
+    if (!headers || !Array.isArray(headers)) continue
+
+    const hasAllColumns = requiredColumns.every(col =>
+      headers.some(h => h && h.toString().trim().toLowerCase() === col.toLowerCase())
+    )
+
+    if (hasAllColumns) {
+      return { worksheet, sheetName }
+    }
+  }
+  return null
 }

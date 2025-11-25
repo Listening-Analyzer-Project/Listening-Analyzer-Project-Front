@@ -79,26 +79,17 @@ export interface SpotifyListen {
   incognito_mode?: boolean
 }
 
-export interface DeezerListen {
-  title: string
-  artist: string
-  listening_time: number | null
-  date: string | null
-  isrc?: string | null
-  album?: string | null
-  ip_address?: string | null
-  platform_name?: string | null
-  platform_model?: string | null
-}
-
-export interface ColumnMapping {
-  title: number
-  artist: number
-  listening_time: number
-  date: number
-  isrc?: number
-  album?: number
-  ip_address?: number
-  platform_name?: number
-  platform_model?: number
+export type ImportResult = {
+  totalListens: number
+  existingTrackGroups: number
+  newTrackGroups: number
+  insertedGenres: number
+  insertedSubGenres: number
+  insertedAlbums: number
+  insertedArtists: number
+  insertedTags: number
+  insertedTracks: number
+  insertedTrackArtists: number
+  insertedTrackTags: number
+  insertedListens: number
 }

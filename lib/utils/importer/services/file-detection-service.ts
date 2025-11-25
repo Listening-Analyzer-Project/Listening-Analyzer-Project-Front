@@ -1,29 +1,21 @@
-import Excel from 'exceljs'
-import fs from 'fs'
-import readline from 'readline'
-
+import * as XLSX from 'xlsx'
 import { CanonicalListen, SpotifyListen } from '../../../../types/imports-types'
 import { findSheetByColumns } from './deezer-service'
 
 type FileType = 'spotify-json' | 'deezer-excel' | 'canonical-json'
 
 // Main function to detect file type
-export async function detectFileType(filePath: string): Promise<FileType> {
-  const ext = (filePath.toLowerCase().split('.').pop() ?? '').trim()
+export async function detectFileType(file: File): Promise<FileType> {
+  const ext = (file.name.toLowerCase().split('.').pop() ?? '').trim()
 
-  // First try Excel detection for .xlsx/.xls files
+  // Try Excel detection for .xlsx/.xls
   if (ext === 'xlsx' || ext === 'xls') {
     try {
-      // WorkbookReader is a streaming reader (low memory footprint)
-      const workbook: any = new Excel.stream.xlsx.WorkbookReader(filePath, {
-        worksheets: 'emit',
-        sharedStrings: 'cache',
-        styles: 'ignore',
-        hyperlinks: 'ignore',
-      })
+      const arrayBuffer = await file.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
 
       const requiredColumns = ['Song Title', 'Artist', 'Listening Time', 'Date']
-      const sheetInfo = await findSheetByColumns(workbook, requiredColumns)
+      const sheetInfo = findSheetByColumns(workbook, requiredColumns)
       if (sheetInfo) return 'deezer-excel'
     } catch (error) {
       console.warn(
@@ -31,61 +23,38 @@ export async function detectFileType(filePath: string): Promise<FileType> {
           error instanceof Error ? error.message : String(error)
         }`
       )
-      // Continue to next checks (do not throw here — file may still be JSON)
+      // Continue to JSON detection
     }
   }
 
-  // If JSON file (or unknown extension), read the first non-empty line robustly
+  // Detect JSON files
   if (ext === 'json' || ext === '') {
-    // Use a streaming approach to avoid reading large files into memory.
-    let stream: fs.ReadStream | null = null
-    let rl: readline.Interface | null = null
+    const text = await file.text()
+    const trimmed = text.trim()
+    if (!trimmed) throw new Error(`Empty JSON file: ${file.name}`)
+
+    let obj: any
     try {
-      stream = fs.createReadStream(filePath, { encoding: 'utf8' })
-      rl = readline.createInterface({ input: stream, crlfDelay: Infinity })
-
-      let firstNonEmptyLine: string | null = null
-      for await (const line of rl) {
-        if (line && line.trim()) {
-          firstNonEmptyLine = line
-          break
-        }
-      }
-
-      // Close resources early
-      rl.close()
-      stream.destroy()
-
-      if (!firstNonEmptyLine) {
-        throw new Error(`Empty JSON file: ${filePath}`)
-      }
-
-      let obj: any
-      try {
-        obj = JSON.parse(firstNonEmptyLine)
-      } catch (err) {
-        throw new Error(`Invalid JSON in first non-empty line of ${filePath}: ${String(err)}`)
-      }
-
-      if (isSpotifyListen(obj)) return 'spotify-json'
-      if (isCanonicalListen(obj)) return 'canonical-json'
-
-      throw new Error(`Unknown JSON format in ${filePath}`)
-    } finally {
-      try {
-        rl?.close()
-      } catch {}
-      try {
-        stream?.destroy()
-      } catch {}
+      obj = JSON.parse(trimmed) // Parse tout le fichier
+    } catch (err) {
+      throw new Error(`Invalid JSON in ${file.name}: ${err}`)
     }
+
+    // Si c'est un tableau, on prend le premier élément pour détecter le type
+    const sample = Array.isArray(obj) ? obj[0] : obj
+
+    if (!sample) throw new Error(`Empty JSON array in ${file.name}`)
+
+    if (isSpotifyListen(sample)) return 'spotify-json'
+    if (isCanonicalListen(sample)) return 'canonical-json'
+
+    throw new Error(`Unknown JSON format in ${file.name}`)
   }
 
-  // If we didn't match any known format, throw
-  throw new Error(`Cannot detect file type for: ${filePath}`)
+  throw new Error(`Cannot detect file type for: ${file.name}`)
 }
 
-// Type guard for SpotifyListen format.
+// Type guard for SpotifyListen format
 export function isSpotifyListen(obj: unknown): obj is SpotifyListen {
   if (!obj || typeof obj !== 'object') return false
   const o = obj as any
@@ -98,7 +67,7 @@ export function isSpotifyListen(obj: unknown): obj is SpotifyListen {
   )
 }
 
-// Type guard for CanonicalListen format.
+// Type guard for CanonicalListen format
 export function isCanonicalListen(obj: unknown): obj is CanonicalListen {
   if (!obj || typeof obj !== 'object') return false
   const o = obj as any
