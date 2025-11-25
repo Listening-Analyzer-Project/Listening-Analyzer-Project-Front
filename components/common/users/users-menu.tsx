@@ -3,17 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-import { userService } from '@/lib/api'
-import { useApi } from '@/lib/hooks'
-import { buildColorMap } from '@/lib/store'
-import { useUsersViewStore } from '@/lib/store/users/users-provider'
-import type { FUser } from '@/types'
-
 import { USER_UPDATED_EVENT } from '@/lib/events'
-
-// types
-import type { GroupViewItem, ViewState } from '@/lib/store'
-import { buildRestoredPayload, loadPersistedPayload, savePersistedPayload } from '@/lib/store'
 
 // dnd-kit
 import {
@@ -48,9 +38,9 @@ import type { FUser } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
 
-import UserDeletionDialog from './user-deletion-dialog'
 import UserCreateDialog from './user-create-dialog'
 import UserItem from './user-item'
+import SortableItem from './sortable-user-item'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8

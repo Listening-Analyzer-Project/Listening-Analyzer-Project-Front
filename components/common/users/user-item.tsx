@@ -273,14 +273,15 @@ export default function UserItem({
                 Rename
               </DropdownMenuItem>
             )}
-            {isUser && user && onEditUserClick && (
+            {isUser && user && (
               <DropdownMenuItem
                 onSelect={() => {
                   setMenuOpen(false)
-                  onEditUserClick(user)
+                  onCloseMenu?.()
+                  router.push(`/user/${user.id}`)
                 }}
               >
-                Edit
+                Settings
               </DropdownMenuItem>
             )}
             {isUser && (
