@@ -1,7 +1,11 @@
+//TODO : use chad/cn Button
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
 
+import { USER_UPDATED_EVENT } from '@/lib/events'
+
+// dnd-kit
 import {
   closestCorners,
   DndContext,
@@ -33,9 +37,10 @@ import { buildColorMap } from '@/lib/store/users/users-view-store'
 import type { FUser } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
-import SortableItem from './sortable-user-item'
-import UserDialog from './user-dialog'
+
+import UserCreateDialog from './user-create-dialog'
 import UserItem from './user-item'
+import SortableItem from './sortable-user-item'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
@@ -51,12 +56,32 @@ function findParentId(viewState: ViewState, targetId: string): string | null {
   return null
 }
 
-export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void }) {
+function indexInParent(viewState: ViewState, parentId: string | null, id: string) {
+  if (parentId == null) return viewState.order.indexOf(id)
+  const parent = viewState.items[parentId] as GroupViewItem | undefined
+  if (!parent || parent.type !== 'group') return -1
+  return parent.children.indexOf(id)
+}
+
+export default function UsersMenu() {
   const {
     data: usersRaw,
     loading,
     refetch,
   } = useApi<FUser[]>((signal?: AbortSignal) => userService.fetchAll({ signal }), [])
+
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      refetch()
+    }
+
+    window.addEventListener(USER_UPDATED_EVENT, handleUserUpdate)
+
+    return () => {
+      window.removeEventListener(USER_UPDATED_EVENT, handleUserUpdate)
+    }
+  }, [refetch])
+
   const {
     viewState,
     selectionState,
@@ -80,7 +105,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<Partial<FUser> | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [toDeleteId, setToDeleteId] = useState<string | null>(null)
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
@@ -257,8 +281,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         : await userService.create(payload)
       await refetch()
       setDialogOpen(false)
-      setEditingUser(null)
-      if (savedUser.id && onSelect) onSelect(savedUser)
     } catch (err) {
       console.error('save user error', err)
     }
@@ -417,14 +439,11 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
           usersById={usersById}
           selected={isSelected}
           onToggleSelect={toggleSelection}
-          onEditUserClick={user => {
-            setEditingUser(user)
-            setDialogOpen(true)
-          }}
           onDelete={handleDeleteClick}
           onAfterUserRename={refetch}
           onCreateAlias={handleCreateAlias}
           color={colorMap.get(id) ?? colorMap.get(String(item.userId))}
+          onCloseMenu={() => setMenuOpen(false)}
         />
       )
     } else if (item.type === 'group') {
@@ -551,7 +570,6 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         <div className="flex-shrink-0 border-t bg-white p-4 flex gap-2">
           <Button
             onClick={() => {
-              setEditingUser(null)
               setDialogOpen(true)
             }}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
@@ -588,15 +606,13 @@ export default function UsersMenu({ onSelect }: { onSelect?: (u: FUser) => void 
         title = "Supprimer l'utilisateur ?"
       />
 
-      <UserDialog
+      <UserCreateDialog
         open={dialogOpen}
         onOpenChange={v => {
           setDialogOpen(v)
-          if (!v) setEditingUser(null)
         }}
-        defaultValues={editingUser ? { ...editingUser, isadmin: !!editingUser.isadmin } : undefined}
-        onSave={async payload => {
-          const toSave: Partial<FUser> = {
+        onCreate={async payload => {
+          const toSave = {
             ...payload,
             isadmin: payload.isadmin ? 1 : 0,
           }

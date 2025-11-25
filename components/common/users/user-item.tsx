@@ -14,6 +14,7 @@ import type { ViewItem } from '@/lib/store'
 import type { FUser } from '@/types'
 import { TruncatedTextWithTooltip } from '../truncated-text-with-tooltip'
 import InlineRenameInput from './inline-rename-input'
+import { useRouter } from 'next/navigation'
 
 export default function UserItem({
   id,
@@ -21,7 +22,6 @@ export default function UserItem({
   usersById,
   selected,
   onToggleSelect,
-  onEditUserClick,
   onDelete,
   onAfterUserRename,
   onCreateAlias,
@@ -29,6 +29,7 @@ export default function UserItem({
   onToggleCollapse,
   collapsed,
   color,
+  onCloseMenu,
 }: {
   id: string
   item: ViewItem
@@ -43,7 +44,11 @@ export default function UserItem({
   onToggleCollapse?: (id: string) => void
   collapsed?: boolean
   color?: string
+  onCloseMenu?: () => void
 }) {
+  // navigation
+  const router = useRouter()
+
   const isUser = item.type === 'user'
   const isAlias = item.type === 'alias'
   const isGroup = item.type === 'group'
@@ -245,7 +250,7 @@ export default function UserItem({
             </div>
           </div>
         )}
-
+        
         <DropdownMenu open={menuOpen} onOpenChange={(o: boolean) => setMenuOpen(o)}>
           <DropdownMenuTrigger asChild>
             <button
@@ -268,14 +273,15 @@ export default function UserItem({
                 Rename
               </DropdownMenuItem>
             )}
-            {isUser && user && onEditUserClick && (
+            {isUser && user && (
               <DropdownMenuItem
                 onSelect={() => {
                   setMenuOpen(false)
-                  onEditUserClick(user)
+                  onCloseMenu?.()
+                  router.push(`/user/${user.id}`)
                 }}
               >
-                Edit
+                Settings
               </DropdownMenuItem>
             )}
             {isUser && (

@@ -13,27 +13,25 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
-export type UserForm = {
-  id?: number
-  name?: string
-  type?: number
-  isadmin?: boolean
-  syncro_status?: number
+//TODO mettre dans un fichier types pour les forms
+type UserCreateForm = {
+  name: string
+  type: number
+  isadmin: boolean
+  syncro_status: number
 }
 
-export default function UserDialog({
+export default function UserCreateDialog({
   open,
   onOpenChange,
-  defaultValues,
-  onSave,
+  onCreate,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
-  defaultValues?: Partial<UserForm>
-  onSave: (payload: UserForm) => Promise<void> | void
+  onCreate: (data: UserCreateForm) => Promise<void> | void
 }) {
-  const form = useForm<UserForm>({
-    defaultValues: defaultValues ?? {
+  const form = useForm<UserCreateForm>({
+    defaultValues: {
       name: '',
       type: 0,
       isadmin: false,
@@ -41,18 +39,25 @@ export default function UserDialog({
     },
   })
 
-  // Reset form values when defaultValues or open change
   useEffect(() => {
-    form.reset(defaultValues ?? { name: '', type: 0, isadmin: false, syncro_status: 0 })
-  }, [defaultValues, open])
+    if (open) {
+      form.reset({
+        name: '',
+        type: 0,
+        isadmin: false,
+        syncro_status: 0,
+      })
+    }
+  }, [open])
 
-  const handleSubmit = async (data: UserForm) => {
+  const handleSubmit = async (data: UserCreateForm) => {
     try {
-      await onSave(data)
+      await onCreate(data)
       onOpenChange(false)
     } catch (err) {
-      console.error('UserDialog save error', err)
-      alert('Erreur lors de la sauvegarde (voir console)')
+      //TODO gérer erreurs
+      console.error('UserCreateDialog create error', err)
+      alert('Erreur lors de la création (voir console)')
     }
   }
 
@@ -60,15 +65,13 @@ export default function UserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>
-            {defaultValues?.id ? 'Modifier utilisateur' : 'Créer utilisateur'}
-          </DialogTitle>
+          <DialogTitle>Créer utilisateur</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-2">
           <div>
             <label className="text-sm font-medium">Name</label>
-            <Input {...form.register('name')} placeholder="Prénom Nom" autoFocus />
+            <Input {...form.register('name')} autoFocus placeholder="Prénom Nom" />
           </div>
 
           <div>
@@ -76,7 +79,7 @@ export default function UserDialog({
             <Input
               type="number"
               {...form.register('type', {
-                setValueAs: v => (v === '' ? undefined : Number(v)),
+                setValueAs: v => (v === '' ? 0 : Number(v)),
               })}
             />
           </div>
@@ -91,7 +94,7 @@ export default function UserDialog({
             <Input
               type="number"
               {...form.register('syncro_status', {
-                setValueAs: v => (v === '' ? undefined : Number(v)),
+                setValueAs: v => (v === '' ? 0 : Number(v)),
               })}
             />
           </div>
@@ -100,7 +103,7 @@ export default function UserDialog({
             <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Save</Button>
+            <Button type="submit">Create</Button>
           </DialogFooter>
         </form>
       </DialogContent>
