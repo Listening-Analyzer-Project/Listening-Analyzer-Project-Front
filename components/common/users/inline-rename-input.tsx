@@ -27,13 +27,11 @@ export default function InlineRenameInput({
   useEffect(() => {
     const el = inputRef.current
     if (el) {
-      // Solution simple avec délai + fallback
       const attemptFocus = () => {
         if (document.contains(el)) {
           el.focus()
           el.select()
 
-          // Vérification et retry si nécessaire
           if (document.activeElement !== el) {
             setTimeout(() => {
               if (document.contains(el)) {
@@ -44,11 +42,10 @@ export default function InlineRenameInput({
           }
         }
       }
-
-      // Premier essai après délai court
+      // Try to focus the input after a short delay due to bad interaction with dropdown menu
       const timer1 = setTimeout(attemptFocus, 150)
 
-      // Fallback après délai plus long
+      // Fallback after a longer delay
       const timer2 = setTimeout(() => {
         if (document.contains(el) && document.activeElement !== el) {
           el.focus()
@@ -90,7 +87,6 @@ export default function InlineRenameInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      // cancel any pending blur-commit
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current)
         blurTimeoutRef.current = null
@@ -107,10 +103,7 @@ export default function InlineRenameInput({
   }
 
   const handleBlur = () => {
-    // schedule commit slightly in the future to allow focus transitions to settle
-    // and to allow the input to regain focus if needed.
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
-    // 100ms is conservative but safe; you can reduce to 30ms if you prefer.
     blurTimeoutRef.current = window.setTimeout(() => {
       blurTimeoutRef.current = null
       commit()

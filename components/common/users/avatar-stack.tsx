@@ -34,51 +34,57 @@ export default function AvatarStack({
     return getOrderedSelection(selectedIds, viewState)
   }, [selectedIds, viewState])
 
-  const seen = new Set<number>()
-  const userIds: number[] = []
+  const seen = new Set<string>()
+  const itemsToShow: { name: string; color?: string; id: string }[] = []
 
-  const expand = (id: string) => {
+  const processItem = (id: string) => {
+    if (seen.has(id)) return
+    seen.add(id)
+    
     const it = viewState.items[id]
     if (!it) return
+
     if (it.type === 'user' || it.type === 'alias') {
-      if (!seen.has(it.userId)) {
-        seen.add(it.userId)
-        userIds.push(it.userId)
-      }
+      const user = usersById.get(it.userId)
+      itemsToShow.push({
+        name: user?.name ?? 'User',
+        color: colorMap?.get(id) ?? colorMap?.get(String(it.userId)),
+        id: id
+      })
     } else if (it.type === 'group') {
-      for (const c of it.children) expand(c)
+      itemsToShow.push({
+        name: it.name ?? 'Group',
+        color: colorMap?.get(id),
+        id: id
+      })
     }
   }
 
-  for (const id of orderedSelectedIds) expand(id)
+  for (const id of orderedSelectedIds) processItem(id)
 
-  if (userIds.length === 0) {
+  if (itemsToShow.length === 0) {
+    // Fallback logic if nothing selected (show first item)
     const firstTop = viewState.order[0]
-    if (firstTop) {
-      const it = viewState.items[firstTop]
-      if (it?.type === 'user' || it?.type === 'alias') userIds.push(it.userId)
-      else if (it?.type === 'group') {
-        const firstChild = it.children[0]
-        const nested = viewState.items[firstChild]
-        if (nested && (nested.type === 'user' || nested.type === 'alias'))
-          userIds.push(nested.userId)
-      }
-    }
+    if (firstTop) processItem(firstTop)
   }
 
-  const displayCount = Math.min(userIds.length, max)
-  const overflow = userIds.length > max
+  const displayCount = Math.min(itemsToShow.length, max)
+  const overflow = itemsToShow.length > max
 
   const avatarItems = []
   for (let i = 0; i < displayCount; i++) {
-    const uid = userIds[i]
-    const user = usersById.get(uid)
-    const name = user?.name ?? 'U'
-    const initialsText = initials(name)
+    const item = itemsToShow[i]
+    const initialsText = initials(item.name)
     const bg =
-      colorMap?.get(String(uid)) ??
+      item.color ??
       (() => {
-        const hue = (uid * 37) % 360
+        // Fallback color generation if map missing
+        // simple hash from string id
+        let hash = 0
+        for (let j = 0; j < item.id.length; j++) {
+          hash = item.id.charCodeAt(j) + ((hash << 5) - hash)
+        }
+        const hue = Math.abs(hash % 360)
         return `hsl(${hue} 60% 40%)`
       })()
     avatarItems.push({ initialsText, bg })
