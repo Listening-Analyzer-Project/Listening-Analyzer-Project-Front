@@ -78,7 +78,7 @@ export default function DataPage() {
             result = await analyticsService.getAlbums(currentParams as TablesBaseParams)
             break
         }
-        console.log(result)
+
         setData(result.data)
         setTotalItems(result.total_count)
 
@@ -169,22 +169,7 @@ export default function DataPage() {
         }
       />
 
-      <div className="mb-4">
-        <TableNavigation
-          currentPage={currentPage}
-          totalPages={totalPages}
-          from={fromIndex}
-          to={toIndex}
-          totalItems={totalItems}
-          loading={loading}
-          onFirst={() => setCurrentPage(1)}
-          onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-          onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-          onLast={() => setCurrentPage(totalPages)}
-        />
-      </div>
-
-      <div className="overflow-x-auto mt-4 border rounded-md">
+      <div className="overflow-x-auto mt-4 mb-20 border rounded-md">
         {error ? (
           <div className="p-4 text-center text-red-500">Erreur: {error}</div>
         ) : (
@@ -199,20 +184,18 @@ export default function DataPage() {
         )}
       </div>
 
-      <div className="mt-4">
-        <TableNavigation
-          currentPage={currentPage}
-          totalPages={totalPages}
-          from={fromIndex}
-          to={toIndex}
-          totalItems={totalItems}
-          loading={loading}
-          onFirst={() => setCurrentPage(1)}
-          onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-          onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-          onLast={() => setCurrentPage(totalPages)}
-        />
-      </div>
+      <TableNavigation
+        currentPage={currentPage}
+        totalPages={totalPages}
+        from={fromIndex}
+        to={toIndex}
+        totalItems={totalItems}
+        loading={loading}
+        onFirst={() => setCurrentPage(1)}
+        onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+        onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+        onLast={() => setCurrentPage(totalPages)}
+      />
     </div>
   )
 }
