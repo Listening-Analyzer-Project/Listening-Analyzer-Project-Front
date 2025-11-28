@@ -4,20 +4,19 @@ import { MoreHorizontal } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { userService } from '@/lib/api'
 import type { ViewItem } from '@/lib/store'
 import type { FUser } from '@/types'
+import { useRouter } from 'next/navigation'
 import { TruncatedTextWithTooltip } from '../truncated-text-with-tooltip'
 import InlineRenameInput from './inline-rename-input'
-import { useRouter } from 'next/navigation'
 
 export default function UserItem({
-  id,
   item,
   usersById,
   selected,
@@ -31,7 +30,6 @@ export default function UserItem({
   color,
   onCloseMenu,
 }: {
-  id: string
   item: ViewItem
   usersById: Map<number, FUser>
   selected: boolean
@@ -46,31 +44,27 @@ export default function UserItem({
   color?: string
   onCloseMenu?: () => void
 }) {
-  // navigation
-  // TODO: Revoir les logiques de gestions des props à cette endroit nottament pour les users
-  //TODO : revoirs commentaires
+  const id = item.id
   const router = useRouter()
 
-  const isUser = item.type === 'user'
-  const isAlias = item.type === 'alias'
-  const isGroup = item.type === 'group'
+  const isGroup = 'children' in item
+  const isAlias = 'userId' in item && item.isAlias
+  const isUser = 'userId' in item && !item.isAlias
 
-  const user = isUser || isAlias ? usersById.get(item.userId) : undefined
+  const user = 'userId' in item ? usersById.get(item.userId) : undefined
   
   let baseName = 'User'
   if (isGroup) {
-    baseName = (item as any).name ?? 'Group'
+    baseName = item.name ?? 'Group'
   } else {
     baseName = user?.name ?? 'User'
   }
 
   const label = isAlias ? `${baseName} ALIAS` : baseName
 
-  // rename state
   const [renaming, setRenaming] = useState(false)
   const [value, setValue] = useState(label)
 
-  // controlled dropdown open state + pending rename flag
   const [menuOpen, setMenuOpen] = useState(false)
   const pendingRenameRef = useRef(false)
 
@@ -106,11 +100,11 @@ export default function UserItem({
 
     if (isUser) {
       try {
-        let existingUser = usersById.get(item.userId)
+        let existingUser = usersById.get((item as any).userId)
 
         if (!existingUser) {
           try {
-            existingUser = await userService.fetchById(item.userId)
+            existingUser = await userService.fetchById((item as any).userId)
           } catch (fetchErr) {
             console.warn('Could not fetch full user, proceeding with minimal payload', fetchErr)
           }
@@ -125,7 +119,7 @@ export default function UserItem({
           payload = { name: trimmed }
         }
 
-        await userService.update(item.userId, payload)
+        await userService.update((item as any).userId, payload)
 
         if (onAfterUserRename) await onAfterUserRename()
       } catch (err: any) {
@@ -138,7 +132,6 @@ export default function UserItem({
     }
   }
 
-  // StopPropagation for the trigger button only
   const stopPropagation = (e: React.MouseEvent) => {
     e.stopPropagation()
   }
@@ -291,7 +284,7 @@ export default function UserItem({
               <DropdownMenuItem
                 onSelect={() => {
                   setMenuOpen(false)
-                  onCreateAlias?.(item.userId)
+                  onCreateAlias?.((item as any).userId)
                 }}
               >
                 Create alias

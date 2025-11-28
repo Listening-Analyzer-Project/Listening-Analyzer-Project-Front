@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 
 import type { ViewState } from '@/lib/store'
-import { getOrderedSelection } from '@/lib/store'
+import { getOrderedSelection, isGroup, isItem } from '@/lib/store'
 import type { FUser } from '@/types'
 
 function initials(name = '') {
@@ -44,14 +44,14 @@ export default function AvatarStack({
     const it = viewState.items[id]
     if (!it) return
 
-    if (it.type === 'user' || it.type === 'alias') {
+    if (isItem(it)) {
       const user = usersById.get(it.userId)
       itemsToShow.push({
         name: user?.name ?? 'User',
         color: colorMap?.get(id) ?? colorMap?.get(String(it.userId)),
         id: id
       })
-    } else if (it.type === 'group') {
+    } else if (isGroup(it)) {
       itemsToShow.push({
         name: it.name ?? 'Group',
         color: colorMap?.get(id),

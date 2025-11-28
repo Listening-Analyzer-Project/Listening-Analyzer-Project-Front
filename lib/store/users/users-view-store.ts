@@ -1,32 +1,32 @@
 import type { FUser } from '@/types'
 import {
-  type AliasViewItem,
-  type GroupViewItem,
   type ViewItem,
   type ViewState,
+  isGroup,
+  isItem,
   killGroups,
   makeAliasViewId,
   makeGroupViewId,
   makeUserViewId,
   removeIdFromAll,
   removeIds
-} from './users-view-logic'
+} from './users-view-logics'
 
 /* ------------------------- Re-exports ------------------------- */
 export type {
-  AliasViewItem,
-  GroupViewItem,
-  UserViewItem,
   ViewItem,
-  ViewItemType,
   ViewState
-} from './users-view-logic'
+} from './users-view-logics'
 
 export {
   buildColorMap,
   buildDisplayOrder,
-  buildStructuralOrder, killGroups, makeUserViewId
-} from './users-view-logic'
+  buildStructuralOrder,
+  isGroup,
+  isItem,
+  killGroups,
+  makeUserViewId
+} from './users-view-logics'
 
 /* ------------------------- Actions ------------------------- */
 export type ViewAction =
@@ -61,7 +61,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         if (u.id === undefined || u.id === null) continue
         const userId: number = u.id
         const id = makeUserViewId(userId)
-        items[id] = { id, type: 'user', userId }
+        items[id] = { id, userId }
         order.push(id)
       }
       return { ...state, items, order }
@@ -75,7 +75,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       const { userId, index } = action.payload
       const local = state.nextId
       const id = makeAliasViewId(userId, local)
-      const alias: AliasViewItem = { id, type: 'alias', userId }
+      const alias: ViewItem = { id, userId, isAlias: true }
 
       let order = [...state.order]
       const pos = index ?? order.length
@@ -93,7 +93,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       const { memberIds, index, name } = action.payload
 
       for (const m of memberIds) {
-        if (state.items[m]?.type === 'group') {
+        if (isGroup(state.items[m])) {
           console.warn('Refuse CREATE_GROUP: cannot create group containing another group', m)
           return state
         }
@@ -108,10 +108,9 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       for (const m of memberIds) {
         orderCopy = orderCopy.filter(o => o !== m)
         for (const [pid, it] of Object.entries(itemsCopy)) {
-          if (it.type === 'group') {
-            const g = it as GroupViewItem
-            if (g.children.includes(m)) {
-              itemsCopy[pid] = { ...g, children: g.children.filter(c => c !== m) }
+          if (isGroup(it)) {
+            if (it.children.includes(m)) {
+              itemsCopy[pid] = { ...it, children: it.children.filter(c => c !== m) }
             }
           }
         }
@@ -127,7 +126,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       if (!groupName) {
         const usedNumbers = new Set<number>()
         for (const it of Object.values(itemsCopy)) {
-          if (it.type === 'group' && it.name) {
+          if (isGroup(it) && it.name) {
             const match = it.name.match(/^Group (\d+)$/)
             if (match) {
               usedNumbers.add(parseInt(match[1], 10))
@@ -141,9 +140,8 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         groupName = `Group ${nextNum}`
       }
 
-      const group: GroupViewItem = {
+      const group: ViewItem = {
         id: gid,
-        type: 'group',
         children: [...memberIds],
         name: groupName,
       }
@@ -166,9 +164,8 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       // Find the parent group (assumes all children are in the same group)
       let parentGroupId: string | null = null
       for (const [pid, it] of Object.entries(state.items)) {
-        if (it.type === 'group') {
-          const g = it as GroupViewItem
-          if (childIds.some(cid => g.children.includes(cid))) {
+        if (isGroup(it)) {
+          if (childIds.some(cid => it.children.includes(cid))) {
             parentGroupId = pid
             break
           }
@@ -179,10 +176,9 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       let itemsCopy = state.items
       for (const cid of childIds) {
         for (const [pid, it] of Object.entries(itemsCopy)) {
-          if (it.type === 'group') {
-            const g = it as GroupViewItem
-            if (g.children.includes(cid)) {
-              itemsCopy = { ...itemsCopy, [pid]: { ...g, children: g.children.filter(c => c !== cid) } }
+          if (isGroup(it)) {
+            if (it.children.includes(cid)) {
+              itemsCopy = { ...itemsCopy, [pid]: { ...it, children: it.children.filter(c => c !== cid) } }
             }
           }
         }
@@ -217,12 +213,12 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
 
     case 'ADD_CHILDREN_TO_GROUP': {
       const { groupId, childIds, index } = action.payload
-      const group = state.items[groupId] as GroupViewItem | undefined
-      if (!group || group.type !== 'group') return state
+      const group = state.items[groupId]
+      if (!isGroup(group)) return state
 
       // Validate no groups in childIds
       for (const cid of childIds) {
-        if (state.items[cid]?.type === 'group') {
+        if (isGroup(state.items[cid])) {
           console.warn('Refuse ADD_CHILDREN_TO_GROUP: cannot add a group into another group', cid)
           return state
         }
@@ -237,8 +233,8 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         orderCopy = removed.order
       }
 
-      const tgt = itemsCopy[groupId] as GroupViewItem | undefined
-      if (!tgt || tgt.type !== 'group') return state
+      const tgt = itemsCopy[groupId]
+      if (!isGroup(tgt)) return state
 
       const newChildren = [...tgt.children]
       const pos = index ?? newChildren.length
@@ -258,16 +254,16 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
 
     case 'MERGE_GROUPS': {
       const { targetGroupId, sourceGroupIds } = action.payload
-      const targetGroup = state.items[targetGroupId] as GroupViewItem | undefined
-      if (!targetGroup || targetGroup.type !== 'group') return state
+      const targetGroup = state.items[targetGroupId]
+      if (!isGroup(targetGroup)) return state
 
       let itemsCopy = { ...state.items }
       let orderCopy = [...state.order]
       let newChildren = [...targetGroup.children]
 
       for (const srcId of sourceGroupIds) {
-        const srcGroup = itemsCopy[srcId] as GroupViewItem | undefined
-        if (!srcGroup || srcGroup.type !== 'group') continue
+        const srcGroup = itemsCopy[srcId]
+        if (!isGroup(srcGroup)) continue
         if (srcId === targetGroupId) continue
 
         newChildren.push(...srcGroup.children)
@@ -290,9 +286,10 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
     case 'DELETE_USER': {
       const { userId } = action.payload
       const userViewId = makeUserViewId(userId)
-      const aliasIds = Object.keys(state.items).filter(
-        k => state.items[k].type === 'alias' && (state.items[k] as AliasViewItem).userId === userId
-      )
+      const aliasIds = Object.keys(state.items).filter(k => {
+        const it = state.items[k]
+        return isItem(it) && it.isAlias && it.userId === userId
+      })
       const idsToRemove = [userViewId, ...aliasIds]
       const removed = removeIds(state.items, state.order, idsToRemove)
       const killed = killGroups(removed.items, removed.order)
@@ -307,6 +304,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         items: killed.items,
         order: killed.order,
         collapseMap,
+        nextId: state.nextId,
       }
     }
 
@@ -325,13 +323,14 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         items: killed.items,
         order: killed.order,
         collapseMap,
+        nextId: state.nextId,
       }
     }
 
     case 'DELETE_GROUP': {
       const { id } = action.payload
-      const group = state.items[id] as GroupViewItem | undefined
-      if (!group || group.type !== 'group') return state
+      const group = state.items[id]
+      if (!isGroup(group)) return state
 
       let itemsCopy = { ...state.items }
       const groupChildren = [...group.children] // Save children before deletion
@@ -358,14 +357,15 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
         items: killed.items,
         order: killed.order,
         collapseMap,
+        nextId: state.nextId,
       }
     }
 
     case 'RENAME_GROUP': {
       const { id, name } = action.payload
       const it = state.items[id]
-      if (!it || it.type !== 'group') return state
-      const copy = { ...state.items, [id]: { ...(it as GroupViewItem), name } }
+      if (!isGroup(it)) return state
+      const copy = { ...state.items, [id]: { ...it, name } }
       return { ...state, items: copy }
     }
 

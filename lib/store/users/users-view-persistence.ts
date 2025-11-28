@@ -1,7 +1,7 @@
 import type { FUser } from '@/types'
 import type { SelectionState } from './users-selection-store'
 import { syncSelectionWithView } from './users-selection-store'
-import { killGroups, makeUserViewId } from './users-view-logic'
+import { isGroup, isItem, killGroups, makeUserViewId } from './users-view-logics'
 import type { ViewState } from './users-view-store'
 
 const STORAGE_VERSION = 1
@@ -42,7 +42,8 @@ export function clearPersistedPayload(): void {
 }
 
 /**
- * Reconcile stored viewState with authoritative users list (same logic as before)
+ * Reconcile stored viewState with authoritative users list.
+ * Simplified to assume stored data matches current schema (or close enough).
  * Returns a clean ViewState.
  */
 export function reconcileViewStateWithUsers(stored: ViewState | null, users: FUser[]): ViewState {
@@ -54,28 +55,38 @@ export function reconcileViewStateWithUsers(stored: ViewState | null, users: FUs
     for (const u of users) {
       if (u.id == null) continue
       const id = makeUserViewId(u.id)
-      items[id] = { id, type: 'user', userId: u.id }
+      items[id] = { id, userId: u.id }
       order.push(id)
     }
     return { items, order, nextId, collapseMap: {} }
   }
 
   const itemsCopy: Record<string, any> = {}
+  
+
   for (const [id, it] of Object.entries(stored.items)) {
-    if (it.type === 'user') {
-      if (userViewIds.has(id)) itemsCopy[id] = it
-    } else if (it.type === 'alias') {
-      const userViewId = makeUserViewId(it.userId)
-      if (userViewIds.has(userViewId)) itemsCopy[id] = it
-    } else if (it.type === 'group') {
+    if (isGroup(it)) {
       itemsCopy[id] = { ...it, children: [...it.children] }
+    } else if (isItem(it)) {
+      if (it.isAlias) {
+         const userViewId = makeUserViewId(it.userId)
+         if (userViewIds.has(userViewId)) {
+           itemsCopy[id] = { ...it }
+         }
+      } else {
+         if (userViewIds.has(id)) {
+           itemsCopy[id] = { ...it }
+         }
+      }
     }
   }
 
   let orderCopy = (stored.order || []).filter(o => !!itemsCopy[o])
 
   for (const [id, it] of Object.entries(itemsCopy)) {
-    if (it.type === 'group') it.children = it.children.filter((c: string) => !!itemsCopy[c])
+    if (isGroup(it)) {
+      it.children = it.children.filter((c: string) => !!itemsCopy[c])
+    }
   }
 
   const pruned = killGroups(itemsCopy, orderCopy)
@@ -87,7 +98,7 @@ export function reconcileViewStateWithUsers(stored: ViewState | null, users: FUs
     if (u.id == null) continue
     const uid = makeUserViewId(u.id)
     if (!itemsFinal[uid]) {
-      itemsFinal[uid] = { id: uid, type: 'user', userId: u.id }
+      itemsFinal[uid] = { id: uid, userId: u.id }
       orderFinal.push(uid)
     }
   }

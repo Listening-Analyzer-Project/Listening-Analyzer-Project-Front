@@ -32,15 +32,14 @@ import {
   loadPersistedPayload,
   savePersistedPayload,
 } from '@/lib/store/users/users-view-persistence'
-import type { GroupViewItem, ViewState } from '@/lib/store/users/users-view-store'
-import { buildColorMap } from '@/lib/store/users/users-view-store'
+import { buildColorMap, isGroup, isItem, type ViewState } from '@/lib/store/users/users-view-store'
 import type { FUser } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
 
+import SortableItem from './sortable-user-item'
 import UserCreateDialog from './user-create-dialog'
 import UserItem from './user-item'
-import SortableItem from './sortable-user-item'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
@@ -49,17 +48,16 @@ const LUMINANCE_PRESET = 'shortlist' as const
 function findParentId(viewState: ViewState, targetId: string): string | null {
   for (const id of viewState.order) {
     const it = viewState.items[id]
-    if (!it || it.type !== 'group') continue
-    const g = it as GroupViewItem
-    if (g.children.includes(targetId)) return id
+    if (!isGroup(it)) continue
+    if (it.children.includes(targetId)) return id
   }
   return null
 }
 
 function indexInParent(viewState: ViewState, parentId: string | null, id: string) {
   if (parentId == null) return viewState.order.indexOf(id)
-  const parent = viewState.items[parentId] as GroupViewItem | undefined
-  if (!parent || parent.type !== 'group') return -1
+  const parent = viewState.items[parentId]
+  if (!isGroup(parent)) return -1
   return parent.children.indexOf(id)
 }
 
@@ -116,8 +114,8 @@ export default function UsersMenu() {
   // Analyze selection
   const selectedIds = selectionState.selectedIds
   const selectedItems = selectedIds.map(id => viewState.items[id]).filter(Boolean)
-  const selectedGroups = selectedItems.filter(it => it.type === 'group') as GroupViewItem[]
-  const selectedUsers = selectedItems.filter(it => it.type === 'user' || it.type === 'alias')
+  const selectedGroups = selectedItems.filter(isGroup)
+  const selectedUsers = selectedItems.filter(isItem)
 
   // Button is enabled when:
   // - 2+ items selected (users/groups) OR
@@ -129,8 +127,8 @@ export default function UsersMenu() {
   let isSingleChildRemoval = false
   //TODO : Déplasser toute les logiques conditionnelles dans des UseEffect
   if (selectedIds.length === 1 && selectedUsers.length === 1) {
-    const userId = selectedUsers[0].id
-    const parentId = findParentId(viewState, userId)
+    const userId = selectedUsers[0].userId
+    const parentId = findParentId(viewState, selectedUsers[0].id)
     if (parentId) {
       isSingleChildRemoval = true
       canCreateGroup = true
@@ -139,8 +137,8 @@ export default function UsersMenu() {
   
   if (selectedGroups.length === 1 && selectedUsers.length > 0 && !isSingleChildRemoval) {
     const group = selectedGroups[0]
-    const allUsersAreChildren = selectedUsers.every(u => group.children.includes(u.id))
-    if (allUsersAreChildren) {
+    const anyUserIsChild = selectedUsers.some(u => group.children.includes(u.id))
+    if (anyUserIsChild) {
       canCreateGroup = false
     }
   }
@@ -207,7 +205,7 @@ export default function UsersMenu() {
       
       const allGroupIds = viewState.order.filter(id => {
         const item = viewState.items[id]
-        return item?.type === 'group'
+        return isGroup(item)
       })
       
       allGroupIds.forEach(groupId => {
@@ -234,7 +232,7 @@ export default function UsersMenu() {
       })
       viewState.order.forEach(id => {
         const item = viewState.items[id]
-        if (item?.type === 'group' && !(id in preCollapseMap)) {
+        if (isGroup(item) && !(id in preCollapseMap)) {
           const isCurrentlyCollapsed = !!viewState.collapseMap[id]
           if (isCurrentlyCollapsed) {
             toggleCollapse(id)
@@ -267,9 +265,11 @@ export default function UsersMenu() {
         reorder(arrayMove(viewState.order, oldIndex, newIndex))
       }
     } else {
-      const parent = viewState.items[activeParent] as GroupViewItem
-      const insertIndex = parent.children.indexOf(overId)
-      addChildrenToGroup(activeParent, [activeId], insertIndex)
+      const parent = viewState.items[activeParent]
+      if (isGroup(parent)) {
+        const insertIndex = parent.children.indexOf(overId)
+        addChildrenToGroup(activeParent, [activeId], insertIndex)
+      }
     }
   }
 
@@ -294,7 +294,7 @@ export default function UsersMenu() {
         // Also remove all aliases of this user
         Object.keys(viewState.items).forEach(itemId => {
           const item = viewState.items[itemId]
-          if (item.type === 'alias' && item.userId === userId) {
+          if (isItem(item) && item.isAlias && item.userId === userId) {
             idsToRemove.add(itemId)
           }
         })
@@ -305,7 +305,7 @@ export default function UsersMenu() {
       } else if (type === 'group') {
         // Also remove all children of this group
         const group = viewState.items[id]
-        if (group && group.type === 'group') {
+        if (isGroup(group)) {
           group.children.forEach(childId => idsToRemove.add(childId))
         }
         deleteGroup(id)
@@ -430,10 +430,9 @@ export default function UsersMenu() {
     const isSelected = selectionState.selectedIds.includes(id)
     const isCollapsed = !!viewState.collapseMap[id]
 
-    if (item.type === 'user' || item.type === 'alias') {
+    if (isItem(item)) {
       return (
         <UserItem
-          id={id}
           key={id}
           item={item}
           usersById={usersById}
@@ -446,11 +445,10 @@ export default function UsersMenu() {
           onCloseMenu={() => setMenuOpen(false)}
         />
       )
-    } else if (item.type === 'group') {
+    } else if (isGroup(item)) {
       return (
         <div key={id} className="space-y-1">
           <UserItem
-            id={id}
             item={item}
             usersById={usersById}
             selected={isSelected}
@@ -463,11 +461,11 @@ export default function UsersMenu() {
           />
           {!isCollapsed && (
             <SortableContext
-              items={(item as GroupViewItem).children}
+              items={item.children}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-1">
-                {(item as GroupViewItem).children.map(childId => (
+                {item.children.map(childId => (
                   <SortableItem
                     id={childId}
                     key={childId}
