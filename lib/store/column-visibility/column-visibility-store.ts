@@ -5,10 +5,13 @@ const STORAGE_KEY = 'data-table-visible-columns'
 
 /**
  * Get the default visible columns configuration
+ * Only includes columns where defaultVisible is not explicitly false
  */
 const getDefaultVisibleColumns = (): Record<string, string[]> => {
     return Object.keys(COLUMNS_BY_VIEW).reduce((acc, viewType) => {
-        acc[viewType] = COLUMNS_BY_VIEW[viewType].map((col) => col.key)
+        acc[viewType] = COLUMNS_BY_VIEW[viewType]
+            .filter((col) => col.defaultVisible !== false)
+            .map((col) => col.key)
         return acc
     }, {} as Record<string, string[]>)
 }

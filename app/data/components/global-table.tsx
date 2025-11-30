@@ -19,14 +19,11 @@ import {
 } from '@/components/ui/tooltip'
 import { Card } from '@/components/ui/card'
 
-import { FAlbumAnalytics, FArtistAnalytics, FListenAnalytics, FTrackAnalytics, ColumnOption } from '@/types'
+import { ColumnOption, ViewType, SortDirection, RenderType } from '@/types'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { cn } from '@/lib/cn'
-import { COLUMNS_BY_VIEW } from '@/lib/constants'
-
-type ViewType = 'listens' | 'tracks' | 'artists' | 'albums'
-type SortDirection = 'asc' | 'desc'
+import { COLUMN_CELL_STYLES, COLUMN_FIELD_MAPPINGS, COLUMN_RENDER_TYPES, COLUMNS_BY_VIEW } from '@/lib/constants'
 
 interface GlobalTableProps {
   data: any[]
@@ -108,134 +105,76 @@ export default function GlobalTable({
     </TableRow>
   )
 
+  // Renderers: fonctions de rendu pour chaque type
+  const cellRenderers: Record<RenderType, (value: any) => React.ReactNode> = {
+    timestamp: (value) => format(new Date(value), 'dd/MM/yyyy HH:mm', { locale: fr }),
+    
+    date: (value) => value ? format(new Date(value), 'dd/MM/yyyy') : '-',
+    
+    title: (value) => value,
+    
+    text: (value) => value,
+    
+    rank: (value) => `#${value}`,
+    
+    duration: (value) => `${Math.floor(value / 1000)}s`,
+    
+    badge: (value) => (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
+        {value}
+      </span>
+    ),
+    
+    boolean: (value) => (
+      <span className={cn(
+        "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+        value 
+          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+      )}>
+        {value ? 'Oui' : 'Non'}
+      </span>
+    ),
+    
+    number: (value) => value,
+    
+    validListens: (value) => value,
+    
+    invalidListens: (value) => value
+  }
+
+  // Fonction pour obtenir l'ID unique d'une ligne selon le type
+  const getRowKey = (item: any): string => {
+    const keyFields: Record<ViewType, string> = {
+      listens: 'listen_id',
+      tracks: 'track_id',
+      artists: 'artist_id',
+      albums: 'album_id'
+    }
+    return item[keyFields[type]] || String(Math.random())
+  }
+
   const renderRow = (item: any, index: number) => {
-    switch (type) {
-      case 'listens':
-        const listen = item as FListenAnalytics
-        return (
-          <TableRow key={listen.listen_id} className="hover:bg-muted/50 transition-colors">
-            {columns.map((col) => {
-              switch (col.key) {
-                case 'ts':
-                  return (
-                    <TableCell key={col.key} className="font-medium text-muted-foreground">
-                      {format(new Date(listen.listen_timestamp), 'dd/MM/yyyy HH:mm', { locale: fr })}
-                    </TableCell>
-                  )
-                case 'title':
-                  return <TableCell key={col.key} className="font-semibold text-foreground">{listen.track_title}</TableCell>
-                case 'artist':
-                  return <TableCell key={col.key}>{listen.primary_artist_name}</TableCell>
-                case 'album':
-                  return <TableCell key={col.key} className="text-muted-foreground">{listen.album_title}</TableCell>
-                case 'msPlayed':
-                  return <TableCell key={col.key} className="text-right tabular-nums">{Math.floor(listen.ms_played / 1000)}s</TableCell>
-                case 'reasonEnd':
-                  return <TableCell key={col.key}>{listen.reason_end}</TableCell>
-                case 'isValid':
-                  return (
-                    <TableCell key={col.key}>
-                      <span className={cn(
-                        "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                        listen.is_valid ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      )}>
-                        {listen.is_valid ? 'Oui' : 'Non'}
-                      </span>
-                    </TableCell>
-                  )
-                default:
-                  return null
-              }
-            })}
-          </TableRow>
-        )
-      case 'tracks':
-        const track = item as FTrackAnalytics
-        return (
-          <TableRow key={track.track_id} className="hover:bg-muted/50 transition-colors">
-            {columns.map((col) => {
-              switch (col.key) {
-                case 'rank_num':
-                  return <TableCell key={col.key} className="font-bold text-muted-foreground w-16 text-center">#{track.rank_num}</TableCell>
-                case 'track_title':
-                  return <TableCell key={col.key} className="font-semibold text-foreground">{track.track_title}</TableCell>
-                case 'album_title':
-                  return <TableCell key={col.key} className="text-muted-foreground">{track.album_title}</TableCell>
-                case 'all_artists':
-                  return <TableCell key={col.key}>{track.all_artists}</TableCell>
-                case 'genre_name':
-                  return (
-                    <TableCell key={col.key}>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
-                        {track.genre_name}
-                      </span>
-                    </TableCell>
-                  )
-                case 'valid_listens':
-                  return <TableCell key={col.key} className="text-right font-medium text-green-600 dark:text-green-400 tabular-nums">{track.valid_listens}</TableCell>
-                case 'invalid_listens':
-                  return <TableCell key={col.key} className="text-right text-muted-foreground tabular-nums">{track.invalid_listens}</TableCell>
-                default:
-                  return null
-              }
-            })}
-          </TableRow>
-        )
-      case 'artists':
-        const artist = item as FArtistAnalytics
-        return (
-          <TableRow key={artist.artist_id} className="hover:bg-muted/50 transition-colors">
-            {columns.map((col) => {
-              switch (col.key) {
-                case 'rank_num':
-                  return <TableCell key={col.key} className="font-bold text-muted-foreground w-16 text-center">#{artist.rank_num}</TableCell>
-                case 'artist_name':
-                  return <TableCell key={col.key} className="font-semibold text-foreground">{artist.artist_name}</TableCell>
-                case 'country_name':
-                  return <TableCell key={col.key}>{artist.country_name}</TableCell>
-                case 'genre_name':
-                  return (
-                    <TableCell key={col.key}>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
-                        {artist.genre_name}
-                      </span>
-                    </TableCell>
-                  )
-                case 'valid_listens':
-                  return <TableCell key={col.key} className="text-right font-medium text-green-600 dark:text-green-400 tabular-nums">{artist.valid_listens}</TableCell>
-                case 'invalid_listens':
-                  return <TableCell key={col.key} className="text-right text-muted-foreground tabular-nums">{artist.invalid_listens}</TableCell>
-                default:
-                  return null
-              }
-            })}
-          </TableRow>
-        )
-      case 'albums':
-        const album = item as FAlbumAnalytics
-        return (
-          <TableRow key={album.album_id} className="hover:bg-muted/50 transition-colors">
-            {columns.map((col) => {
-              switch (col.key) {
-                case 'rank_num':
-                  return <TableCell key={col.key} className="font-bold text-muted-foreground w-16 text-center">#{album.rank_num}</TableCell>
-                case 'album_title':
-                  return <TableCell key={col.key} className="font-semibold text-foreground">{album.album_title}</TableCell>
-                case 'release_date':
-                  return <TableCell key={col.key} className="text-muted-foreground">{album.release_date ? format(new Date(album.release_date), 'dd/MM/yyyy') : '-'}</TableCell>
-                case 'all_artists':
-                  return <TableCell key={col.key}>{album.all_artists}</TableCell>
-                case 'valid_listens':
-                  return <TableCell key={col.key} className="text-right font-medium text-green-600 dark:text-green-400 tabular-nums">{album.valid_listens}</TableCell>
-                case 'invalid_listens':
-                  return <TableCell key={col.key} className="text-right text-muted-foreground tabular-nums">{album.invalid_listens}</TableCell>
-      default:
-                  return null
-              }
-            })}
+    return (
+      <TableRow key={getRowKey(item)} className="hover:bg-muted/50 transition-colors">
+        {columns.map((col) => {
+          // Récupérer le nom du champ dans les données
+          const fieldName = COLUMN_FIELD_MAPPINGS[type][col.key] || col.key
+          const value = item[fieldName]
+          
+          // Récupérer le type de rendu et le renderer
+          const renderType = COLUMN_RENDER_TYPES[col.key] || 'text'
+          const renderer = cellRenderers[renderType]
+          const cellStyle = COLUMN_CELL_STYLES[renderType]
+          
+          return (
+            <TableCell key={col.key} className={cellStyle}>
+              {renderer(value)}
+            </TableCell>
+          )
+        })}
       </TableRow>
     )
-  }
   }
 
   if (loading) {
