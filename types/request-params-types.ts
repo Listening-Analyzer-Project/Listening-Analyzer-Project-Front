@@ -6,6 +6,7 @@ export interface TablesBaseParams {
     order_dir?: 'asc' | 'desc'
     limit?: number
     offset?: number
+    user_ids?: string
 }
 
 export interface ListensParams extends TablesBaseParams {

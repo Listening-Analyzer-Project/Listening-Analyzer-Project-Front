@@ -177,29 +177,6 @@ export default function GlobalTable({
     )
   }
 
-  if (loading) {
-    return (
-      <Card className="border shadow-sm overflow-hidden">
-        <div className="p-12 flex flex-col items-center justify-center text-muted-foreground animate-pulse">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
-          <p>Chargement des données...</p>
-        </div>
-      </Card>
-    )
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <Card className="border shadow-sm overflow-hidden">
-        <div className="p-12 text-center text-muted-foreground">
-          <HelpCircle className="h-12 w-12 mx-auto mb-4 opacity-20" />
-          <p className="text-lg font-medium">Aucune donnée disponible</p>
-          <p className="text-sm mt-1">Essayez de modifier vos filtres ou d'importer des données.</p>
-        </div>
-      </Card>
-    )
-  }
-
   return (
     <Card className="border shadow-sm overflow-hidden bg-card">
       <div className="overflow-x-auto">
@@ -208,7 +185,28 @@ export default function GlobalTable({
             {renderHeader()}
           </TableHeader>
           <TableBody>
-            {data.map((item, index) => renderRow(item, index))}
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground animate-pulse py-8">
+                    <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
+                    <p>Chargement des données...</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (!data || data.length === 0) ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground py-8">
+                    <HelpCircle className="h-12 w-12 mb-4 opacity-20" />
+                    <p className="text-lg font-medium">Aucune donnée disponible</p>
+                    <p className="text-sm mt-1">Essayez de modifier vos filtres ou d'importer des données.</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              data.map((item, index) => renderRow(item, index))
+            )}
           </TableBody>
         </Table>
       </div>

@@ -13,7 +13,7 @@ import GlobalTable from './components/global-table'
 import type { ListensParams, TablesBaseParams } from '@/types'
 import { analyticsService } from '@/lib/api'
 import { COLUMNS_BY_VIEW } from '@/lib/constants'
-import { useColumnVisibility } from '@/lib/store'
+import { useColumnVisibility, useUsersViewStore } from '@/lib/store'
 
 export default function DataPage() {
   const [viewType, setViewType] = useState<'listens' | 'tracks' | 'artists' | 'albums'>('listens')
@@ -27,6 +27,9 @@ export default function DataPage() {
 
   // Manage column visibility with localStorage persistence
   const { visibleColumns, updateVisibleColumns } = useColumnVisibility()
+  
+  // Get selected users from store
+  const { selectionState, viewState } = useUsersViewStore()
 
   const handleVisibleColumnsChange = (columns: string[]) => {
     updateVisibleColumns(viewType, columns)
@@ -47,10 +50,31 @@ export default function DataPage() {
     setCurrentPage(1)
   }
 
+  // Helper to resolve all user IDs from selection (handling groups)
+  const resolveUserIds = (ids: string[]): string[] => {
+    const uniqueUserIds = new Set<string>()
+    
+    const visit = (id: string) => {
+      const item = viewState.items[id]
+      if (!item) return
+      
+      if (item.type === 'user' || item.type === 'alias') {
+        uniqueUserIds.add(String(item.userId))
+      } else if (item.type === 'group') {
+        item.children.forEach(visit)
+      }
+    }
+    
+    ids.forEach(visit)
+    return Array.from(uniqueUserIds)
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       setError(null)
+
+      const resolvedUserIds = resolveUserIds(selectionState.selectedIds)
 
       // Calculate params directly here
       const currentParams: any = {
@@ -59,6 +83,7 @@ export default function DataPage() {
         search: searchQuery,
         order_by: sortColumn,
         order_dir: sortDirection,
+        user_ids: resolvedUserIds.length > 0 ? resolvedUserIds.join(',') : ''
       }
       
       if (viewType === 'listens') {
@@ -96,7 +121,7 @@ export default function DataPage() {
     }
 
     fetchData()
-  }, [viewType, currentPage, rowsPerPage, searchQuery, showInvalidRows, sortColumn, sortDirection])
+  }, [viewType, currentPage, rowsPerPage, searchQuery, showInvalidRows, sortColumn, sortDirection, selectionState.selectedIds])
 
 
   // Reset page when view type changes
