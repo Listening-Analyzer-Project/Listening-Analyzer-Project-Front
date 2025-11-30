@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -9,7 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import React from 'react'
+import ColumnSelector from './column-selector'
+
+import { ColumnOption } from '@/types'
 
 interface TableToolbarProps {
   searchQuery: string
@@ -19,10 +23,10 @@ interface TableToolbarProps {
   rowsPerPage: number
   onRowsPerPageChange: (n: number) => void
   loading?: boolean
-  /**
-   * Optional slot: parent can pass any React node to be rendered under the toolbar controls
-   */
   optionalSlot?: React.ReactNode
+  availableColumns?: ColumnOption[]
+  visibleColumns?: string[]
+  onVisibleColumnsChange?: (columns: string[]) => void
 }
 
 export function TableToolbar({
@@ -34,7 +38,12 @@ export function TableToolbar({
   onRowsPerPageChange,
   loading = false,
   optionalSlot: optionalSlot = null,
+  availableColumns,
+  visibleColumns,
+  onVisibleColumnsChange,
 }: TableToolbarProps) {
+  const showColumnSelector = availableColumns && visibleColumns && onVisibleColumnsChange
+
   return (
     <div className="flex flex-col gap-4 mb-6 p-2 bg-white rounded-lg shadow-sm border">
       <div className="flex flex-col gap-4">
@@ -89,7 +98,16 @@ export function TableToolbar({
             </SelectContent>
           </Select>
         </div>
-        <div>{optionalSlot}</div>
+        <div className="flex items-center justify-between">
+          {showColumnSelector && (
+              <ColumnSelector
+                availableColumns={availableColumns}
+                visibleColumns={visibleColumns}
+                onVisibleColumnsChange={onVisibleColumnsChange}
+              />
+            )}
+          {optionalSlot}
+        </div>
       </div>
     </div>
   )

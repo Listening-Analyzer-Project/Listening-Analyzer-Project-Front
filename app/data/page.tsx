@@ -8,10 +8,12 @@ import TableNavigation from '@/components/common/tables/table-navigation'
 import TableToolbar from '@/components/common/tables/table-toolbar'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import GlobalTable from './components/global-table'
 
 import type { ListensParams, TablesBaseParams } from '@/types'
 import { analyticsService } from '@/lib/api'
-import GlobalTable from './components/global-table'
+import { COLUMNS_BY_VIEW } from '@/lib/constants'
+import { useColumnVisibility } from '@/lib/store'
 
 export default function DataPage() {
   const [viewType, setViewType] = useState<'listens' | 'tracks' | 'artists' | 'albums'>('listens')
@@ -23,8 +25,12 @@ export default function DataPage() {
   const [sortColumn, setSortColumn] = useState<string>('ts')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
-  // Update params when filters change
-  // Removed separate params effect to avoid double fetch and race conditions
+  // Manage column visibility with localStorage persistence
+  const { visibleColumns, updateVisibleColumns } = useColumnVisibility()
+
+  const handleVisibleColumnsChange = (columns: string[]) => {
+    updateVisibleColumns(viewType, columns)
+  }
 
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -167,6 +173,9 @@ export default function DataPage() {
             )}
           </div>
         }
+        availableColumns={COLUMNS_BY_VIEW[viewType]}
+        visibleColumns={visibleColumns[viewType]}
+        onVisibleColumnsChange={handleVisibleColumnsChange}
       />
 
       <div className="overflow-x-auto mt-4 mb-20 border rounded-md">
@@ -180,6 +189,7 @@ export default function DataPage() {
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
+            visibleColumns={visibleColumns[viewType]}
           />
         )}
       </div>

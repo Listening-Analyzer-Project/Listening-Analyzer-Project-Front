@@ -14,4 +14,9 @@ export interface ListensParams extends TablesBaseParams {
     track_id?: string
 }
 
-
+export interface ColumnOption {
+    key: string
+    label: string
+    description?: string
+    sortable?: boolean
+}
