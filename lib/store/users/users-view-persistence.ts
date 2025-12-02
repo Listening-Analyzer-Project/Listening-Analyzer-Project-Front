@@ -1,17 +1,9 @@
-import type { FUser } from '@/types'
-import type { SelectionState } from './users-selection-store'
+import { isGroup, isItem, killGroups, makeUserViewId } from '@/lib/utils/core-service'
+import type { FUser, PersistedPayload, ViewState } from '@/types'
 import { syncSelectionWithView } from './users-selection-store'
-import { isGroup, isItem, killGroups, makeUserViewId } from './users-view-logics'
-import type { ViewState } from './users-view-store'
 
 const STORAGE_VERSION = 1
 const STORE_KEY = `users.viewState.v${STORAGE_VERSION}`
-
-export type PersistedPayload = {
-  viewState: ViewState
-  selectionState: SelectionState
-  meta?: { savedAt?: string }
-}
 
 export function loadPersistedPayload(): PersistedPayload | null {
   try {

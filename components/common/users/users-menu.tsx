@@ -6,20 +6,20 @@ import { USER_UPDATED_EVENT } from '@/lib/events'
 
 // dnd-kit
 import {
-  closestCorners,
-  DndContext,
-  DragEndEvent,
-  DragStartEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors
+    closestCorners,
+    DndContext,
+    DragEndEvent,
+    DragStartEvent,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors
 } from '@dnd-kit/core'
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 
 import { Button } from '@/components/ui/button'
@@ -27,13 +27,13 @@ import { userService } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
-  buildRestoredPayload,
-  loadPersistedPayload,
-  savePersistedPayload,
+    buildRestoredPayload,
+    loadPersistedPayload,
+    savePersistedPayload,
 } from '@/lib/store/users/users-view-persistence'
-import { buildColorMap, isGroup, isItem, type ViewState } from '@/lib/store/users/users-view-store'
 import { showErrorToast } from '@/lib/utils'
-import type { FUser } from '@/types'
+import { buildColorMap, isGroup, isItem } from '@/lib/utils/core-service'
+import type { FUser, ViewState } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
 

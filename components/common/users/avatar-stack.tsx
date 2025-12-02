@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react'
 
-import type { ViewState } from '@/lib/store'
-import { getOrderedSelection, isGroup, isItem } from '@/lib/store'
-import type { FUser } from '@/types'
+import { getOrderedSelection } from '@/lib/store'
+import { isGroup, isItem } from '@/lib/utils/core-service'
+import type { FUser, ViewState } from '@/types'
 
 function initials(name = '') {
   return name

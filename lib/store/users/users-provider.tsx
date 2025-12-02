@@ -18,16 +18,14 @@ import {
   selectionReducer,
   viewActions,
   viewReducer,
-  type SelectionState,
-  type ViewState,
 } from '@/lib/store'
-import type { FUser } from '@/types'
+import type { FUser, SelectionState, ViewState } from '@/types'
 
 // Persistence helpers (localStorage payload containing viewState + selectionState)
+import type { PersistedPayload } from '@/types'
 import {
   clearPersistedPayload,
   savePersistedPayload,
-  type PersistedPayload,
 } from './users-view-persistence'
 
 type UserViewContextValue = {

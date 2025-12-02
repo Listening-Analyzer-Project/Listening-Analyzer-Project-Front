@@ -1,7 +1,4 @@
-import type { FUser } from '@/types'
 import {
-  type ViewItem,
-  type ViewState,
   isGroup,
   isItem,
   killGroups,
@@ -10,23 +7,8 @@ import {
   makeUserViewId,
   removeIdFromAll,
   removeIds
-} from './users-view-logics'
-
-/* ------------------------- Re-exports ------------------------- */
-export type {
-  ViewItem,
-  ViewState
-} from './users-view-logics'
-
-export {
-  buildColorMap,
-  buildDisplayOrder,
-  buildStructuralOrder,
-  isGroup,
-  isItem,
-  killGroups,
-  makeUserViewId
-} from './users-view-logics'
+} from '@/lib/utils/core-service';
+import type { FUser, ViewItem, ViewState } from '@/types';
 
 /* ------------------------- Actions ------------------------- */
 export type ViewAction =
