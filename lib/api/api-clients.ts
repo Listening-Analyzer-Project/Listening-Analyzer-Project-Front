@@ -1,3 +1,5 @@
+import { showErrorToast } from '@/lib/utils'
+
 type Method = 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 interface ApiClientOptions {
@@ -121,8 +123,8 @@ export class ApiClient {
         const data = contentType.includes('application/json') && text ? JSON.parse(text) : text
 
         if (!res.ok) {
-          // TODO : gérer les erreurs
           const err = new ApiError(data?.message ?? `HTTP ${res.status}`, res.status, data)
+          showErrorToast(err, 'API request failed')
           if (attempt < retries && this.shouldRetryStatus(res.status)) {
             attempt++
             await this.delay(2 ** attempt * 100)
@@ -145,7 +147,7 @@ export class ApiClient {
 
         return data as T
       } catch (err: any) {
-        // TODO : gérer les erreurs
+        showErrorToast(err, 'API request failed')
         lastError = err
         // retry on network error or aborted? only retry on network (TypeError) or certain statuses handled above
         const isNetworkError = err instanceof TypeError || (err instanceof ApiError && !err.status)

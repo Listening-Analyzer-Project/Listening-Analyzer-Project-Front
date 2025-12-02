@@ -40,7 +40,7 @@ function UploadArea({ user }: { user: FUser }) {
   const onDragLeave = () => setIsDragging(false)
 
   const onUploadFiles = async () => {
-    if (!user) return // TODO: géré erreurs
+    if (!user) return
     setIsUploading(1)
     setProgress(0)
     try {

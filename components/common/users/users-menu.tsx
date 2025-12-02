@@ -32,6 +32,7 @@ import {
   savePersistedPayload,
 } from '@/lib/store/users/users-view-persistence'
 import { buildColorMap, isGroup, isItem, type ViewState } from '@/lib/store/users/users-view-store'
+import { showErrorToast } from '@/lib/utils'
 import type { FUser } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
@@ -174,9 +175,11 @@ export default function UsersMenu() {
         savePersistedPayload(restored)
       } catch (e) {
         console.warn('savePersistedPayload failed', e)
+        showErrorToast(e, 'Failed to save persisted users view')
       }
     } catch (err) {
-      console.error('error restoring persisted users view', err)
+      console.error('Error restoring persisted users view', err)
+      showErrorToast(err, 'Failed to restore persisted users view')
       initFromUsers(usersRaw)
     }
     return () => {
@@ -288,8 +291,8 @@ export default function UsersMenu() {
       await refetch()
       setDialogOpen(false)
     } catch (err) {
-      //TODO : Gérer les erreurs
       console.error('save user error', err)
+      showErrorToast(err, 'User creation failed')
     }
   }
 
@@ -326,8 +329,8 @@ export default function UsersMenu() {
       
       await refetch()
     } catch (err) {
-      //TODO : Gérer les erreurs
-      console.error('delete error', err)
+      console.error('Delete error', err)
+      showErrorToast(err, 'User deletion failed')
     }
   }
 
@@ -364,8 +367,8 @@ export default function UsersMenu() {
         createAlias(userId)
       }
     } catch (err) {
-      //TODO : Gérer les erreurs
       console.error('create alias error', err)
+      showErrorToast(err, 'Alias creation failed')
     }
   }
 

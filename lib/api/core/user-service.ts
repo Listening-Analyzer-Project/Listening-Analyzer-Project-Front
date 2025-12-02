@@ -5,7 +5,7 @@ export const userService = {
   fetchAll: (opts?: { signal?: AbortSignal }) =>
     apiClient.get<FUser[]>('/api/users', { cache: true, signal: opts?.signal }),
 
-  // TODO : Je pense pas qu'il marche
+  // TODO : Je pense pas qu'il marche (pour alban : j'ai essayé de le modifier, ça a cassé l'import)
   fetchById: (id: string | number, opts?: { signal?: AbortSignal }) =>
     apiClient.get<FUser>('/api/users/byId', { query: { id }, signal: opts?.signal }),
 

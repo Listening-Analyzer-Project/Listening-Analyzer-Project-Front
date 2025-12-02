@@ -1,8 +1,9 @@
-import { parseAndBatch } from '@/lib/utils/importer/streamers/unified-streamer'
-import apiClient from '../api-clients'
 import { userService } from '@/lib/api'
-import { FUser } from '@/types'
 import { USER_UPDATED_EVENT } from '@/lib/events'
+import { showErrorToast } from '@/lib/utils'
+import { parseAndBatch } from '@/lib/utils/importer/streamers/unified-streamer'
+import { FUser } from '@/types'
+import apiClient from '../api-clients'
 
 export type ParsedFileResult = {
   filename: string
@@ -18,7 +19,8 @@ export const importService = {
   uploadAndParse: async (files: File[], user: FUser, onProgress?: (percent: number) => void) => {
     if (files.length === 0) return null
 
-    if (user.syncro_status === 1) return null //TODO: géré erreurs (en cours d'import donc pas possible d'upload)
+    if (user.syncro_status === 1) return null
+    showErrorToast("User's data is already being imported", 'Import failed')
 
     const payload = {
       name: user.name,
@@ -71,7 +73,7 @@ export const importService = {
 
       } catch (err) {
         console.error('Erreur lors de l’envoi du batch:', err)
-        // TODO: géré erreurs
+        showErrorToast(err, 'API request failed')
       }
     }
 

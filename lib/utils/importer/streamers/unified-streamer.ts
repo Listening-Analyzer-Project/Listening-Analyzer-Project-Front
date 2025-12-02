@@ -1,4 +1,6 @@
 import * as XLSX from 'xlsx'
+
+import { showErrorToast } from '@/lib/utils'
 import { CanonicalListen } from '../../../../types/imports-types'
 import { validateCanonicalListen } from '../parsers/canonical-validator'
 import { parseDeezerListen } from '../parsers/deezer-parser'
@@ -53,6 +55,7 @@ export async function* parseAndBatch(
         `[unified-streamer] Cannot detect file type for ${file.name}: ${error instanceof Error ? error.message : String(error)
         } — skipping`
       )
+      showErrorToast(error, `Cannot detect file type for ${file.name}`)
       // Even if skipped, we count it as processed for progress bar
       processedBytes += file.size
       reportProgress(processedBytes)
@@ -79,6 +82,7 @@ export async function* parseAndBatch(
       }
     } catch (err) {
       console.error(`[unified-streamer] Error while reading ${file.name}:`, err)
+      showErrorToast(err, `Error while reading ${file.name}`)
       if (!skipInvalidLines) throw err
     }
 
@@ -104,8 +108,8 @@ async function* processJsonFile(
     const obj = JSON.parse(content)
     rows = Array.isArray(obj) ? obj : [obj] // si c'est un objet unique
   } catch (err) {
-    //TODO gérer erreurs
-    throw new Error(`Invalid JSON in ${file.name}: ${err}`)
+    showErrorToast(err, `Invalid JSON in ${file.name}`)
+    return
   }
 
   let batch: CanonicalListen[] = []
@@ -165,7 +169,8 @@ async function* processDeezerFile(
 
   if (!sheetInfo) {
     console.warn(`[unified-streamer] No sheet with Deezer listening history found in ${file.name}`)
-    throw new Error(`No sheet with Deezer listening history found in ${file.name}`) // TODO : géré erreurs  
+    showErrorToast(`No sheet with Deezer listening history found in ${file.name}`, "Format Deezer invalide")
+    return
   }
 
   const { worksheet, sheetName } = sheetInfo
