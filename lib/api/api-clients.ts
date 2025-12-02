@@ -1,8 +1,8 @@
 type Method = 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-// TODO : trier commentaires
+
 interface ApiClientOptions {
-  timeoutMs?: number // request timeout
-  maxRetries?: number // number of retries on network/server errors
+  timeoutMs?: number
+  maxRetries?: number
 }
 
 class ApiError extends Error {
@@ -22,7 +22,7 @@ export class ApiClient {
   private timeoutMs: number
   private maxRetries: number
   private defaultHeaders: Record<string, string>
-  private cache = new Map<string, any>() // simple GET cache
+  private cache = new Map<string, any>()
 
   constructor(opts: ApiClientOptions = {}) {
     this.timeoutMs = opts.timeoutMs ?? 15_000
@@ -56,10 +56,10 @@ export class ApiClient {
       query?: Record<string, string | number | boolean>
       body?: any
       headers?: Record<string, string>
-      cache?: boolean // GET-only
+      cache?: boolean
       timeoutMs?: number
-      signal?: AbortSignal // allow caller to cancel
-      retries?: number // override client default
+      signal?: AbortSignal
+      retries?: number
     }
   ): Promise<T> {
     const url = this.buildFullUrl(path, opts?.query)
@@ -131,17 +131,14 @@ export class ApiClient {
           throw err
         }
 
-        // cache GET
         if (method === 'GET' && opts?.cache) {
           this.cache.set(url, data)
         }
 
-        // cleanup event listener on external signal if present
         if (opts?.signal) {
           try {
             opts.signal.removeEventListener('abort', () => { })
           } catch (e) {
-            /* ignore */
           }
         }
         if (timeoutId) clearTimeout(timeoutId)

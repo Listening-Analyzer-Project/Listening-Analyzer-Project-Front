@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
-//TODO mettre dans un fichier types pour les forms
+//TODO mettre dans un fichier types pour les forms (gérer plus tard, alban a fait quelque chose là dessus)
 type UserCreateForm = {
   name: string
   type: number

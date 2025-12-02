@@ -1,12 +1,13 @@
-import { useState, useRef } from "react"
 import { UploadCloud, X } from "lucide-react"
+import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 
-import { cn } from "@/lib/cn"
 import { importService } from "@/lib/api"
+import { cn } from "@/lib/cn"
+import { showErrorToast } from "@/lib/utils"
 import { FUser, ImportResult } from "@/types"
 
 function UploadArea({ user }: { user: FUser }) {
@@ -48,7 +49,7 @@ function UploadArea({ user }: { user: FUser }) {
       }))
       resetFiles()
     } catch (error) {
-      console.error("Upload failed", error)
+      showErrorToast(error, "Upload failed")
     } finally {
       setIsUploading(2)
       setProgress(0)

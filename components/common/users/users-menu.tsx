@@ -1,7 +1,6 @@
-//TODO : use chad/cn Button
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { USER_UPDATED_EVENT } from '@/lib/events'
 
@@ -122,35 +121,45 @@ export default function UsersMenu() {
   // - 1 child item selected (to remove from group)
   // - BUT NOT when multiple groups + users are selected together (ambiguous action)
   // - BUT NOT when 1 group + its own children are selected (already in that group)
-  let canCreateGroup = selectedIds.length >= 2 && !(selectedGroups.length > 1 && selectedUsers.length > 0)
-  
-  let isSingleChildRemoval = false
-  //TODO : Déplasser toute les logiques conditionnelles dans des UseEffect
-  if (selectedIds.length === 1 && selectedUsers.length === 1) {
-    const userId = selectedUsers[0].userId
-    const parentId = findParentId(viewState, selectedUsers[0].id)
-    if (parentId) {
-      isSingleChildRemoval = true
-      canCreateGroup = true
+  // Compute whether this is a single child removal case
+  const isSingleChildRemoval = useMemo(() => {
+    if (selectedIds.length === 1 && selectedUsers.length === 1) {
+      const parentId = findParentId(viewState, selectedUsers[0].id)
+      return !!parentId
     }
-  }
-  
-  if (selectedGroups.length === 1 && selectedUsers.length > 0 && !isSingleChildRemoval) {
-    const group = selectedGroups[0]
-    const anyUserIsChild = selectedUsers.some(u => group.children.includes(u.id))
-    if (anyUserIsChild) {
-      canCreateGroup = false
-    }
-  }
+    return false
+  }, [selectedIds.length, selectedUsers, viewState])
 
-  let actionLabel = 'Créer groupe'
-  if (isSingleChildRemoval) {
-    actionLabel = 'Sortir du groupe'
-  } else if (selectedGroups.length === 1 && selectedUsers.length > 0) {
-    actionLabel = 'Ajouter au groupe'
-  } else if (selectedGroups.length > 1) {
-    actionLabel = 'Fusionner groupes'
-  }
+  // Compute whether the group action button should be enabled
+  const canCreateGroup = useMemo(() => {
+    let can = selectedIds.length >= 2 && !(selectedGroups.length > 1 && selectedUsers.length > 0)
+    
+    if (isSingleChildRemoval) {
+      can = true
+    }
+    
+    if (selectedGroups.length === 1 && selectedUsers.length > 0 && !isSingleChildRemoval) {
+      const group = selectedGroups[0]
+      const anyUserIsChild = selectedUsers.some(u => group.children.includes(u.id))
+      if (anyUserIsChild) {
+        can = false
+      }
+    }
+    
+    return can
+  }, [selectedIds.length, selectedGroups, selectedUsers, isSingleChildRemoval])
+
+  // Compute the action button label based on current selection
+  const actionLabel = useMemo(() => {
+    if (isSingleChildRemoval) {
+      return 'Sortir du groupe'
+    } else if (selectedGroups.length === 1 && selectedUsers.length > 0) {
+      return 'Ajouter au groupe'
+    } else if (selectedGroups.length > 1) {
+      return 'Fusionner groupes'
+    }
+    return 'Créer groupe'
+  }, [isSingleChildRemoval, selectedGroups.length, selectedUsers.length])
 
   useEffect(() => {
     if (!usersRaw) return

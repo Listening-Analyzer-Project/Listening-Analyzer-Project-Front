@@ -1,24 +1,24 @@
 'use client'
 
+import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useRouter, useParams } from 'next/navigation'
 
+import { Button } from '@/components/ui/button'
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   CardFooter,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { userService } from '@/lib/api'
+import { USER_UPDATED_EVENT } from '@/lib/events'
 import type { FUser } from '@/types'
 import UploadArea from './components/upload-area'
-import { USER_UPDATED_EVENT } from '@/lib/events'
 
 export default function UserSettingsPage() {
   const router = useRouter()
