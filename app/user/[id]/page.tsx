@@ -157,7 +157,7 @@ export default function UserSettingsPage() {
                  {!isEditing && (
                     <div className="py-2">
                         <Label className="font-medium text-sm">Détails avancés (édition désactivée)</Label>
-                        <div className="pl-4 pt-2 border-l space-y-3">       
+                        <div className="font-medium text-sm pl-4 pt-2 border-l space-y-3">       
                             <div>Type: {userType()}</div>
                             <div>Statut de synchronisation: {userSyncStatus()}</div>
                         </div>

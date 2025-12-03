@@ -65,7 +65,16 @@ export default function AvatarStack({
   if (itemsToShow.length === 0) {
     // Fallback logic if nothing selected (show first item)
     const firstTop = viewState.order[0]
-    if (firstTop) processItem(firstTop)
+    if (firstTop) {
+      processItem(firstTop)
+    } else {
+      // If viewState is empty (not yet initialized), show a placeholder
+      itemsToShow.push({
+        name: 'U',
+        color: '#9CA3AF',
+        id: 'placeholder'
+      })
+    }
   }
 
   const displayCount = Math.min(itemsToShow.length, max)

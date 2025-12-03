@@ -28,8 +28,7 @@ import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
   buildRestoredPayload,
-  loadPersistedPayload,
-  savePersistedPayload,
+  loadPersistedPayload
 } from '@/lib/store/users/users-view-persistence'
 import { showErrorToast } from '@/lib/utils'
 import { buildColorMap, isGroup, isItem } from '@/lib/utils/core-service'
@@ -60,6 +59,19 @@ export default function UsersMenu() {
     loading,
     refetch,
   } = useApi<FUser[]>(() => userService.fetchAll(), [])
+
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Failsafe: If mounted, no data, and not loading -> Force fetch
+  useEffect(() => {
+    if (mounted && !usersRaw && !loading) {
+      refetch()
+    }
+  }, [mounted, usersRaw, loading, refetch])
 
   useEffect(() => {
     const handleUserUpdate = () => {
@@ -100,6 +112,7 @@ export default function UsersMenu() {
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [preCollapseMap, setPreCollapseMap] = useState<Record<string, boolean> | null>(null)
+  const [viewInitialized, setViewInitialized] = useState(false)
 
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -155,28 +168,37 @@ export default function UsersMenu() {
     return 'Créer groupe'
   }, [isSingleChildRemoval, selectedGroups.length, selectedUsers.length])
 
-  useEffect(() => {
-    if (!usersRaw) return
-    let mounted = true
-    try {
-      const loaded = loadPersistedPayload()
-      const restored = buildRestoredPayload(loaded, usersRaw)
-      if (!mounted) return
-      restoreViewState(restored.viewState)
-      setSelection(restored.selectionState.selectedIds)
+ useEffect(() => {
+    // Safety check: don't run if no users or already initialized
+    if (!usersRaw || viewInitialized) return
+    
+    const doRestore = () => {
       try {
-        savePersistedPayload(restored)
-      } catch (e) {
-        showErrorToast(e, 'Failed to save persisted users view')
+        let loaded
+        
+        try {
+            loaded = loadPersistedPayload()
+        } catch (e) {
+            console.warn('[UsersMenu] LocalStorage corrupted, resetting view.', e)
+            throw e 
+        }
+
+        const restored = buildRestoredPayload(loaded, usersRaw)
+        restoreViewState(restored.viewState)
+        setSelection(restored.selectionState.selectedIds)
+        setViewInitialized(true)
+        
+      } catch (err) {
+        console.error('[UsersMenu] Restoration failed, initializing from scratch', err)
+        
+        // Fallback: Initialize standard view if storage is broken
+        initFromUsers(usersRaw)
+        setViewInitialized(true)
       }
-    } catch (err) {
-      showErrorToast(err, 'Failed to restore persisted users view')
-      initFromUsers(usersRaw)
     }
-    return () => {
-      mounted = false
-    }
-  }, [usersRaw, restoreViewState, setSelection, initFromUsers])
+    
+    doRestore()
+  }, [usersRaw, restoreViewState, setSelection, initFromUsers, viewInitialized])
 
   const usersById = new Map(
     usersRaw
@@ -430,6 +452,8 @@ export default function UsersMenu() {
     const isSelected = selectionState.selectedIds.includes(id)
     const isCollapsed = !!viewState.collapseMap[id]
 
+    if (!mounted) return null
+    
     if (isItem(item)) {
       return (
         <UserItem
@@ -525,42 +549,51 @@ export default function UsersMenu() {
             style={{ maxHeight: 'calc(100vh - 140px)', height: '100%' }}
           >
             <div className="px-4 pt-4 pb-4">
-              {loading ? (
-                <div>Chargement...</div>
-              ) : viewState.order.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Aucun utilisateur trouvé.</div>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCorners}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                  modifiers={[({ transform }) => ({ ...transform, x: 0 })]}
-                  autoScroll={{
-                    enabled: true,
-                    threshold: { x: 0.15, y: 0.15 },
-                    layoutShiftCompensation: false,
-                    acceleration: 2,
-                    interval: 10,
-                  }}
-                >
-                  <SortableContext items={viewState.order} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-1">
-                      {viewState.order.map(id => (
-                        <SortableItem
-                          id={id}
-                          key={id}
-                          disabled={
-                            activeId !== null && findParentId(viewState, activeId) !== null
-                          }
-                        >
-                          {renderItemContent(id)}
-                        </SortableItem>
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              )}
+              {(() => {
+                const showLoading = !usersRaw || loading || !viewInitialized
+                const orderLength = viewState.order.length
+                
+                if (showLoading) {
+                  return <div>Chargement...</div>
+                }
+                
+                if (orderLength === 0) {
+                  return <div className="text-sm text-muted-foreground">Aucun utilisateur trouvé.</div>
+                }
+                
+                return (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCorners}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[({ transform }) => ({ ...transform, x: 0 })]}
+                    autoScroll={{
+                      enabled: true,
+                      threshold: { x: 0.15, y: 0.15 },
+                      layoutShiftCompensation: false,
+                      acceleration: 2,
+                      interval: 10,
+                    }}
+                  >
+                    <SortableContext items={viewState.order} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-1">
+                        {viewState.order.map(id => (
+                          <SortableItem
+                            id={id}
+                            key={id}
+                            disabled={
+                              activeId !== null && findParentId(viewState, activeId) !== null
+                            }
+                          >
+                            {renderItemContent(id)}
+                          </SortableItem>
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )
+              })()}
             </div>
           </div>
         </div>

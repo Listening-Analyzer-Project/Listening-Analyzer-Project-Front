@@ -257,16 +257,6 @@ export default function UserItem({
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-            {(isUser || isGroup) && (
-              <DropdownMenuItem
-                onSelect={() => {
-                  pendingRenameRef.current = true
-                  setMenuOpen(false)
-                }}
-              >
-                Rename
-              </DropdownMenuItem>
-            )}
             {isUser && user && (
               <DropdownMenuItem
                 onSelect={() => {
@@ -275,7 +265,17 @@ export default function UserItem({
                   router.push(`/user/${user.id}`)
                 }}
               >
-                Settings
+                Set data
+              </DropdownMenuItem>
+            )}
+            {(isUser || isGroup) && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  pendingRenameRef.current = true
+                  setMenuOpen(false)
+                }}
+              >
+                Rename
               </DropdownMenuItem>
             )}
             {isUser && (
