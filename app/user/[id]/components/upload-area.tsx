@@ -41,6 +41,9 @@ function UploadArea({ user }: { user: FUser }) {
 
   const onUploadFiles = async () => {
     if (!user) return
+    if (user.syncro_status !== 0) {
+      // TODO: show dialog agreee to overwrite loaded data
+    }
     setIsUploading(1)
     setProgress(0)
     try {

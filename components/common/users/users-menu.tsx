@@ -6,20 +6,20 @@ import { USER_UPDATED_EVENT } from '@/lib/events'
 
 // dnd-kit
 import {
-    closestCorners,
-    DndContext,
-    DragEndEvent,
-    DragStartEvent,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors
+  closestCorners,
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
 } from '@dnd-kit/core'
 import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 
 import { Button } from '@/components/ui/button'
@@ -27,9 +27,9 @@ import { userService } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
-    buildRestoredPayload,
-    loadPersistedPayload,
-    savePersistedPayload,
+  buildRestoredPayload,
+  loadPersistedPayload,
+  savePersistedPayload,
 } from '@/lib/store/users/users-view-persistence'
 import { showErrorToast } from '@/lib/utils'
 import { buildColorMap, isGroup, isItem } from '@/lib/utils/core-service'
@@ -54,19 +54,12 @@ function findParentId(viewState: ViewState, targetId: string): string | null {
   return null
 }
 
-function indexInParent(viewState: ViewState, parentId: string | null, id: string) {
-  if (parentId == null) return viewState.order.indexOf(id)
-  const parent = viewState.items[parentId]
-  if (!isGroup(parent)) return -1
-  return parent.children.indexOf(id)
-}
-
 export default function UsersMenu() {
   const {
     data: usersRaw,
     loading,
     refetch,
-  } = useApi<FUser[]>((signal?: AbortSignal) => userService.fetchAll({ signal }), [])
+  } = useApi<FUser[]>(() => userService.fetchAll(), [])
 
   useEffect(() => {
     const handleUserUpdate = () => {
@@ -174,11 +167,9 @@ export default function UsersMenu() {
       try {
         savePersistedPayload(restored)
       } catch (e) {
-        console.warn('savePersistedPayload failed', e)
         showErrorToast(e, 'Failed to save persisted users view')
       }
     } catch (err) {
-      console.error('Error restoring persisted users view', err)
       showErrorToast(err, 'Failed to restore persisted users view')
       initFromUsers(usersRaw)
     }
@@ -291,7 +282,6 @@ export default function UsersMenu() {
       await refetch()
       setDialogOpen(false)
     } catch (err) {
-      console.error('save user error', err)
       showErrorToast(err, 'User creation failed')
     }
   }
@@ -329,7 +319,6 @@ export default function UsersMenu() {
       
       await refetch()
     } catch (err) {
-      console.error('Delete error', err)
       showErrorToast(err, 'User deletion failed')
     }
   }
@@ -367,7 +356,6 @@ export default function UsersMenu() {
         createAlias(userId)
       }
     } catch (err) {
-      console.error('create alias error', err)
       showErrorToast(err, 'Alias creation failed')
     }
   }

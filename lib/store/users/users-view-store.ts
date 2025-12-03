@@ -1,3 +1,4 @@
+import { showErrorToast } from '@/lib/utils';
 import {
   isGroup,
   isItem,
@@ -76,7 +77,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
 
       for (const m of memberIds) {
         if (isGroup(state.items[m])) {
-          console.warn('Refuse CREATE_GROUP: cannot create group containing another group', m)
+          showErrorToast('Refuse CREATE_GROUP: cannot create group containing another group', m)
           return state
         }
       }
@@ -201,7 +202,7 @@ export function viewReducer(state: ViewState, action: ViewAction): ViewState {
       // Validate no groups in childIds
       for (const cid of childIds) {
         if (isGroup(state.items[cid])) {
-          console.warn('Refuse ADD_CHILDREN_TO_GROUP: cannot add a group into another group', cid)
+          showErrorToast('Refuse ADD_CHILDREN_TO_GROUP: cannot add a group into another group', cid)
           return state
         }
       }

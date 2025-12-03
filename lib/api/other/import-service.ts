@@ -19,8 +19,14 @@ export const importService = {
   uploadAndParse: async (files: File[], user: FUser, onProgress?: (percent: number) => void) => {
     if (files.length === 0) return null
 
-    if (user.syncro_status === 1) return null
-    showErrorToast("User's data is already being imported", 'Import failed')
+    if (user.syncro_status === 1) {
+      showErrorToast("User's data is already being imported", 'Import failed')
+      return null
+    }
+
+    if (user.syncro_status !== 0) {
+      await userService.remove(user.id?.toString() || '', false)
+    }
 
     const payload = {
       name: user.name,
@@ -46,10 +52,6 @@ export const importService = {
       insertedListens: 0,
     }
 
-    if (user.syncro_status !== 0) {
-      await userService.remove(user.id?.toString() || '', false)
-    }
-
     await importService.dropIndexes()
 
     for await (const batch of parseAndBatch(files, { batchSize: 10000, onProgress })) {
@@ -72,7 +74,6 @@ export const importService = {
         cumulativeResult.insertedListens += r.insertedListens
 
       } catch (err) {
-        console.error('Erreur lors de l’envoi du batch:', err)
         showErrorToast(err, 'API request failed')
       }
     }

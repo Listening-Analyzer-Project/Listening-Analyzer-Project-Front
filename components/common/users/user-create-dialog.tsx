@@ -56,7 +56,6 @@ export default function UserCreateDialog({
       await onCreate(data)
       onOpenChange(false)
     } catch (err) {
-      console.error('UserCreateDialog create error', err)
       showErrorToast(err, 'User creation failed')
     }
   }

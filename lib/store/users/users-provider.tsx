@@ -22,6 +22,7 @@ import {
 import type { FUser, SelectionState, ViewState } from '@/types'
 
 // Persistence helpers (localStorage payload containing viewState + selectionState)
+import { showErrorToast } from '@/lib/utils'
 import type { PersistedPayload } from '@/types'
 import {
   clearPersistedPayload,
@@ -179,7 +180,7 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
     try {
       clearPersistedPayload()
     } catch (e) {
-      console.error('clearPersistedPayload failed', e)
+      showErrorToast(e, 'Failed to clear persisted users view')
     }
   }, [])
 
@@ -203,7 +204,7 @@ export function UserViewProvider({ children }: { children: ReactNode }) {
         }
         savePersistedPayload(payload)
       } catch (e) {
-        console.error('savePersistedPayload failed', e)
+        showErrorToast(e, 'Failed to save persisted users view')
       } finally {
         if (saveTimerRef.current) {
           window.clearTimeout(saveTimerRef.current)

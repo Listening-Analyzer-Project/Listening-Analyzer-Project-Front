@@ -1,3 +1,4 @@
+import { showErrorToast } from '@/lib/utils'
 import { isGroup, isItem, killGroups, makeUserViewId } from '@/lib/utils/core-service'
 import type { FUser, PersistedPayload, ViewState } from '@/types'
 import { syncSelectionWithView } from './users-selection-store'
@@ -12,7 +13,7 @@ export function loadPersistedPayload(): PersistedPayload | null {
     if (!raw) return null
     return JSON.parse(raw) as PersistedPayload
   } catch (e) {
-    console.warn('loadPersistedPayload error', e)
+    showErrorToast(e, 'Failed to load persisted users view')
     return null
   }
 }
@@ -22,7 +23,7 @@ export function savePersistedPayload(payload: PersistedPayload): void {
     if (typeof localStorage === 'undefined') return
     localStorage.setItem(STORE_KEY, JSON.stringify(payload))
   } catch (e) {
-    console.error('savePersistedPayload error', e)
+    showErrorToast(e, 'Failed to save persisted users view')
   }
 }
 

@@ -10,8 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { userService } from '@/lib/api'
-import type { ViewItem } from '@/lib/store'
-import type { FUser } from '@/types'
+import { showErrorToast } from '@/lib/utils'
+import type { FUser, ViewItem } from '@/types'
 import { useRouter } from 'next/navigation'
 import { TruncatedTextWithTooltip } from '../truncated-text-with-tooltip'
 import InlineRenameInput from './inline-rename-input'
@@ -106,7 +106,7 @@ export default function UserItem({
           try {
             existingUser = await userService.fetchById((item as any).userId)
           } catch (fetchErr) {
-            console.warn('Could not fetch full user, proceeding with minimal payload', fetchErr)
+            showErrorToast(fetchErr, 'Could not fetch full user, proceeding with minimal payload')
           }
         }
 
@@ -123,9 +123,7 @@ export default function UserItem({
 
         if (onAfterUserRename) await onAfterUserRename()
       } catch (err: any) {
-        console.error('rename user error', err)
-        const msg = err?.message ?? 'Erreur lors du renommage'
-        alert(`Impossible de renommer l'utilisateur : ${msg}`)
+        showErrorToast(err, 'Impossible to rename user')
       }
     } else {
       // alias and group case: nothing to update server-side here by default

@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx'
 export interface SheetDetectionResult {
   worksheet: XLSX.WorkSheet
   headers: string[]
+  sheetName: string
 }
 
 /**
@@ -14,8 +15,21 @@ export function findSheetByColumns(
 ): SheetDetectionResult | null {
   for (const sheetName of workbook.SheetNames) {
     const worksheet = workbook.Sheets[sheetName]
+    
+    // Get the range of the sheet
+    const ref = worksheet['!ref']
+    if (!ref) continue
+
+    const range = XLSX.utils.decode_range(ref)
+    // Only read the first row
+    const headerRange = { ...range, e: { ...range.e, r: range.s.r } }
+    
     // Convert the first row to array of values
-    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, range: 0 })
+    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { 
+      header: 1, 
+      range: headerRange 
+    })
+    
     if (!rows || rows.length === 0) continue
 
     const firstRow = rows[0]
@@ -33,6 +47,7 @@ export function findSheetByColumns(
       return {
         worksheet,
         headers,
+        sheetName,
       }
     }
   }
