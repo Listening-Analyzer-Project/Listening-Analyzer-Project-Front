@@ -1,4 +1,4 @@
-import { ListensParams, TablesBaseParams } from '@/types/request-params-types'
+import { ListensParams, SuggestionsParams, TablesBaseParams } from '@/types/request-params-types'
 import apiClient from '../api-clients'
 import { FAlbumAnalytics, FArtistAnalytics, FListenAnalytics, FTrackAnalytics } from '@/types/specific-analytics-types'
 
@@ -19,6 +19,10 @@ export const analyticsService = {
 
     getAlbums: (params: TablesBaseParams) => {
         return apiClient.get<FAlbumAnalytics[]>('/api/analytics/albums', { query: params as any })
+    },
+
+    getSearchSuggestions: (params: SuggestionsParams) => {
+        return apiClient.get<{ suggestions: string[] }>('/api/global-suggestion', { query: params as any })
     },
 }
 

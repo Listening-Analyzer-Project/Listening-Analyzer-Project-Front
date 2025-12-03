@@ -30,7 +30,7 @@ export function TableNavigation({
   className = '',
 }: TableNavigationProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 backdrop-blur-md bg-background/80 border-t shadow-lg z-50">
+    <div className="fixed bottom-0 left-0 right-0 backdrop-blur-md bg-background/80 border-t shadow-lg z-40">
       <div className={`container mx-auto py-2 ${className}`}>
         <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">

@@ -17,6 +17,12 @@ export interface ListensParams extends TablesBaseParams {
     track_id?: string
 }
 
+export interface SuggestionsParams {
+    search?: string
+    view_type?: ViewType
+    limit?: number
+}
+
 export interface ColumnOption {
     key: string
     label: string
