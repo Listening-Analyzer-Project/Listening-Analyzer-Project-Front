@@ -21,7 +21,14 @@ function UploadArea({ user }: { user: FUser }) {
 
   const handleFiles = (incoming: FileList | null) => {
     if (!incoming) return
-    setFiles(prev => [...prev, ...Array.from(incoming)])
+    if (isUploading === 2) {
+      setIsUploading(0)
+      setCumulativeResult(null)
+      setProgress(0)
+      setFiles(Array.from(incoming)) 
+    } else {
+      setFiles(prev => [...prev, ...Array.from(incoming)])
+    }
   }
 
   const resetFiles = () => setFiles([])
@@ -83,7 +90,10 @@ function UploadArea({ user }: { user: FUser }) {
           multiple
           ref={fileInputRef}
           className="hidden"
-          onChange={e => handleFiles(e.target.files)}
+          onChange={e => {
+            handleFiles(e.target.files)
+            e.target.value = ''
+          }}
         />
       </div>
 
@@ -109,7 +119,7 @@ function UploadArea({ user }: { user: FUser }) {
         </div>
       )}
 
-      {files.length > 0 && !isUploading && (
+      {files.length > 0 && isUploading !== 1 && (
         <div className="space-y-2">
           <Label className="font-medium">Fichiers sélectionnés :</Label>
 
