@@ -188,9 +188,7 @@ export default function DataPage() {
         </Card>
 
         <TableToolbar
-          effectiveSearchQuery={effectiveSearchQuery}
           onSearch={handleSearch} 
-          onClearSearch={() => setEffectiveSearchQuery('')} 
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={n => {
             setRowsPerPage(n)
