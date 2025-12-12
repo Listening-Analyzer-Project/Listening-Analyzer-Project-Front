@@ -1,25 +1,12 @@
-/**
- * Users Service Helpers
- * 
- * Core utility functions for working with users view data:
- * - ID generation
- * - Type guards
- * - View manipulation utilities
- */
-
 import type { ViewItem } from '@/types'
 
-/* ========================= ID HELPERS ========================= */
-
 /**
- * Generate a view ID for a user
  * @param userId - The numeric user ID from the database
  * @returns A string ID in the format "u:{userId}"
  */
 export const makeUserViewId = (userId: number): string => `u:${userId}`
 
 /**
- * Generate a view ID for a user alias
  * @param userId - The numeric user ID that this alias references
  * @param localId - A local counter to make the alias ID unique
  * @returns A string ID in the format "a:{userId}:{localId}"
@@ -28,38 +15,24 @@ export const makeAliasViewId = (userId: number, localId: number): string =>
   `a:${userId}:${localId}`
 
 /**
- * Generate a view ID for a group
  * @param localId - A local counter to make the group ID unique
  * @returns A string ID in the format "g:{localId}"
  */
 export const makeGroupViewId = (localId: number): string => `g:${localId}`
 
-/* ========================= TYPE GUARDS ========================= */
-
-/**
- * Type guard to check if a ViewItem is a group
- * Groups have a 'children' property with an array of member IDs
- */
 export const isGroup = (
   item: ViewItem | undefined
 ): item is { id: string; children: string[]; name?: string } => {
   return !!item && 'children' in item
 }
 
-/**
- * Type guard to check if a ViewItem is a user or alias
- * User items have a 'userId' property
- */
 export const isItem = (
   item: ViewItem | undefined
 ): item is { id: string; userId: number; isAlias?: boolean } => {
   return !!item && 'userId' in item
 }
 
-/* ========================= VIEW UTILITIES ========================= */
-
 /**
- * Find the parent group of a given item
  * @param items - The items map from view state
  * @param targetId - The ID of the item to find the parent for
  * @returns The parent group ID, or null if the item is at root level
@@ -77,8 +50,6 @@ export function findParent(
 }
 
 /**
- * Remove an ID from all groups and the top-level order
- * Returns new items and order (immutable)
  * @param items - The items map from view state
  * @param order - The top-level order array
  * @param idToRemove - The ID to remove from all containers
@@ -104,8 +75,6 @@ export function removeIdFromAll(
 }
 
 /**
- * Remove multiple IDs from the view structure
- * Also deletes the items themselves from the items map
  * @param items - The items map from view state
  * @param order - The top-level order array
  * @param ids - Array of IDs to remove
@@ -131,11 +100,6 @@ export function removeIds(
 }
 
 /**
- * Kill groups with <=1 child
- * - If group has 0 children -> delete group
- * - If group has 1 child -> remove group and "extract" its only child
- * This operation is applied repeatedly until no group has <=1 child
- * 
  * @param items - The items map from view state
  * @param order - The top-level order array
  * @returns New items map and order array with empty/single-child groups removed

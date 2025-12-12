@@ -78,12 +78,6 @@ export const reducer = (state: State, action: Action): State => {
         ...state,
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       }
-      console.log('[reducer ADD_TOAST]', {
-        before: state.toasts.length,
-        after: newState.toasts.length,
-        limit: TOAST_LIMIT,
-        newToastId: action.toast.id
-      })
       return newState
 
     case 'UPDATE_TOAST':

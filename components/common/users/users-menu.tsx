@@ -6,20 +6,20 @@ import { USER_UPDATED_EVENT } from '@/lib/events'
 
 // dnd-kit
 import {
-    closestCorners,
-    DndContext,
-    DragEndEvent,
-    DragStartEvent,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors
+  closestCorners,
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
 } from '@dnd-kit/core'
 import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 
 import { Button } from '@/components/ui/button'
@@ -27,9 +27,9 @@ import { userService } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
-    buildRestoredPayload,
-    loadPersistedPayload,
-    reconcileViewStateWithUsers
+  buildRestoredPayload,
+  loadPersistedPayload,
+  reconcileViewStateWithUsers
 } from '@/lib/store/users/users-view-persistence'
 import { showErrorToast } from '@/lib/utils'
 import { buildColorMap, isGroup, isItem } from '@/lib/utils/core-service'
@@ -124,12 +124,6 @@ export default function UsersMenu() {
   const selectedGroups = selectedItems.filter(isGroup)
   const selectedUsers = selectedItems.filter(isItem)
 
-  // Button is enabled when:
-  // - 2+ items selected (users/groups) OR
-  // - 1 child item selected (to remove from group)
-  // - BUT NOT when multiple groups + users are selected together (ambiguous action)
-  // - BUT NOT when 1 group + its own children are selected (already in that group)
-  // Compute whether this is a single child removal case
   const isSingleChildRemoval = useMemo(() => {
     if (selectedIds.length === 1 && selectedUsers.length === 1) {
       const parentId = findParentId(viewState, selectedUsers[0].id)
@@ -213,12 +207,6 @@ export default function UsersMenu() {
     
     const currentViewState = viewStateRef.current
     const reconciled = reconcileViewStateWithUsers(currentViewState, usersRaw)
-
-    // Only restore if the order or items count changed to avoid unnecessary updates
-    // Simple check: compare order length or JSON stringify to be safe?
-    // reconcileViewStateWithUsers returns new object references, so equality check fails.
-    // Let's rely on the fact that this effect ONLY runs when usersRaw changes (ref change).
-    // usersRaw changes when refetch() completes.
     
     restoreViewState(reconciled)
   }, [usersRaw, viewInitialized, restoreViewState])

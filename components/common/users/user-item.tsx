@@ -100,11 +100,11 @@ export default function UserItem({
 
     if (isUser) {
       try {
-        let existingUser = usersById.get((item as any).userId)
+        let existingUser = usersById.get(item.userId)
 
         if (!existingUser) {
           try {
-            existingUser = await userService.fetchById((item as any).userId)
+            existingUser = await userService.fetchById(item.userId)
           } catch (fetchErr) {
             showErrorToast(fetchErr, 'Could not fetch full user, proceeding with minimal payload')
           }
@@ -119,7 +119,7 @@ export default function UserItem({
           payload = { name: trimmed }
         }
 
-        await userService.update((item as any).userId, payload)
+        await userService.update(item.userId, payload)
 
         if (onAfterUserRename) await onAfterUserRename()
       } catch (err: any) {
@@ -282,7 +282,7 @@ export default function UserItem({
               <DropdownMenuItem
                 onSelect={() => {
                   setMenuOpen(false)
-                  onCreateAlias?.((item as any).userId)
+                  onCreateAlias?.(item.userId)
                 }}
               >
                 Create alias

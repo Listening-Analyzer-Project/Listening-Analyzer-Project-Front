@@ -1,25 +1,9 @@
-/**
- * Users Service Computed Values
- * 
- * Functions that compute derived data from view state:
- * - Color mappings for visual consistency
- * - Ordering for selection and display
- */
-
 import type { LuminancePreset } from '@/lib/utils'
 import { getCyclicColor } from '@/lib/utils'
 import type { ViewState } from '@/types'
 import { isGroup, isItem, makeUserViewId } from './users-helpers'
 
-/* ========================= COLOR SERVICE ========================= */
-
 /**
- * Build a color map for all items in the view
- * 
- * - Groups get unique colors
- * - Users and their aliases share the same color (based on userId)
- * - Colors are assigned cyclically to ensure variety
- * 
  * @param viewState - The current view state
  * @param baseColor - Base color to generate variants from (default: '#16A34A')
  * @param count - Number of color variants to generate (default: 8)
@@ -68,17 +52,7 @@ export function buildColorMap(
   return colorMap
 }
 
-/* ========================= ORDER SERVICE ========================= */
-
 /**
- * Build structural order of all items in the view
- * 
- * Returns a flat array of all item IDs in hierarchical order,
- * regardless of collapse state. Useful for:
- * - Selection ordering
- * - Drag-and-drop operations
- * - Data integrity checks
- * 
  * @param viewState - The current view state
  * @returns Array of all item IDs in structural order
  */
@@ -105,14 +79,6 @@ export function buildStructuralOrder(viewState: ViewState): string[] {
 }
 
 /**
- * Build display order of visible items in the view
- * 
- * Returns a flat array of item IDs that should be visible,
- * respecting the collapse state of groups. Useful for:
- * - Rendering the UI
- * - Computing visible selections
- * - Scroll calculations
- * 
  * @param viewState - The current view state
  * @returns Array of visible item IDs in display order
  */

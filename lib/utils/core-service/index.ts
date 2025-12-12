@@ -1,3 +1,3 @@
-// Users Service - utilities for working with users, aliases, and groups
-export * from './users-service';
+export * from './users-service/users-computed';
+export * from './users-service/users-helpers';
 
