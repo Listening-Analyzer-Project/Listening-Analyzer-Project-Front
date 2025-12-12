@@ -1,8 +1,10 @@
+import { showErrorToast } from '@/lib/utils'
+
 type Method = 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-// TODO : trier commentaires
+
 interface ApiClientOptions {
-  timeoutMs?: number // request timeout
-  maxRetries?: number // number of retries on network/server errors
+  timeoutMs?: number
+  maxRetries?: number
 }
 
 class ApiError extends Error {
@@ -22,7 +24,7 @@ export class ApiClient {
   private timeoutMs: number
   private maxRetries: number
   private defaultHeaders: Record<string, string>
-  private cache = new Map<string, any>() // simple GET cache
+  private cache = new Map<string, any>()
 
   constructor(opts: ApiClientOptions = {}) {
     this.timeoutMs = opts.timeoutMs ?? 15_000
@@ -56,10 +58,10 @@ export class ApiClient {
       query?: Record<string, string | number | boolean>
       body?: any
       headers?: Record<string, string>
-      cache?: boolean // GET-only
+      cache?: boolean
       timeoutMs?: number
-      signal?: AbortSignal // allow caller to cancel
-      retries?: number // override client default
+      signal?: AbortSignal
+      retries?: number
     }
   ): Promise<T> {
     const url = this.buildFullUrl(path, opts?.query)
@@ -121,8 +123,8 @@ export class ApiClient {
         const data = contentType.includes('application/json') && text ? JSON.parse(text) : text
 
         if (!res.ok) {
-          // TODO : gérer les erreurs
           const err = new ApiError(data?.message ?? `HTTP ${res.status}`, res.status, data)
+          showErrorToast(err, 'API request failed')
           if (attempt < retries && this.shouldRetryStatus(res.status)) {
             attempt++
             await this.delay(2 ** attempt * 100)
@@ -131,24 +133,21 @@ export class ApiClient {
           throw err
         }
 
-        // cache GET
         if (method === 'GET' && opts?.cache) {
           this.cache.set(url, data)
         }
 
-        // cleanup event listener on external signal if present
         if (opts?.signal) {
           try {
             opts.signal.removeEventListener('abort', () => { })
           } catch (e) {
-            /* ignore */
           }
         }
         if (timeoutId) clearTimeout(timeoutId)
 
         return data as T
       } catch (err: any) {
-        // TODO : gérer les erreurs
+        showErrorToast(err, 'API request failed')
         lastError = err
         // retry on network error or aborted? only retry on network (TypeError) or certain statuses handled above
         const isNetworkError = err instanceof TypeError || (err instanceof ApiError && !err.status)

@@ -3,7 +3,8 @@ import { CanonicalListen } from '@/types/imports-types'
 import { validateCanonicalListen } from '../parsers/canonical-validator'
 import { parseDeezerListen } from '../parsers/deezer-parser'
 import { parseSpotifyListen } from '../parsers/spotify-parser'
-import { detectFileType } from '../../core-service'
+import { detectFileType, findSheetByColumns } from '../../core-service'
+import { showErrorToast } from '@/lib/utils'
 
 export type StreamOptions = {
   batchSize?: number
@@ -49,10 +50,7 @@ export async function* parseAndBatch(
     try {
       fileType = await detectFileType(file)
     } catch (error) {
-      console.warn(
-        `[unified-streamer] Cannot detect file type for ${file.name}: ${error instanceof Error ? error.message : String(error)
-        } — skipping`
-      )
+      showErrorToast(error, `Cannot detect file type for ${file.name}`)
       // Even if skipped, we count it as processed for progress bar
       processedBytes += file.size
       reportProgress(processedBytes)
@@ -75,10 +73,11 @@ export async function* parseAndBatch(
           yield* processDeezerFile(file, reqOpts, stats, fileProgressCallback)
           break
         default:
-          console.warn(`[unified-streamer] Unknown file type for ${file.name} — skipping`)
+          showErrorToast(`Unknown file type for ${file.name}`, 'Unknown file type')
+          break
       }
     } catch (err) {
-      console.error(`[unified-streamer] Error while reading ${file.name}:`, err)
+      showErrorToast(err, `Error while reading ${file.name}`)
       if (!skipInvalidLines) throw err
     }
 
@@ -104,8 +103,8 @@ async function* processJsonFile(
     const obj = JSON.parse(content)
     rows = Array.isArray(obj) ? obj : [obj] // si c'est un objet unique
   } catch (err) {
-    //TODO gérer erreurs
-    throw new Error(`Invalid JSON in ${file.name}: ${err}`)
+    showErrorToast(err, `Invalid JSON in ${file.name}`)
+    return
   }
 
   let batch: CanonicalListen[] = []
@@ -161,11 +160,12 @@ async function* processDeezerFile(
   // Required columns to identify Deezer listening history
   const requiredColumns = ['Song Title', 'Artist', 'Listening Time', 'Date']
 
-  const sheetInfo = findSheetByColumns(workbook, requiredColumns)
+  const sheetInfo = await findSheetByColumns(workbook, requiredColumns)
+  console.log(sheetInfo)
 
   if (!sheetInfo) {
-    console.warn(`[unified-streamer] No sheet with Deezer listening history found in ${file.name}`)
-    throw new Error(`No sheet with Deezer listening history found in ${file.name}`) // TODO : géré erreurs  
+    showErrorToast(`No sheet with Deezer listening history found in ${file.name}`, "Format Deezer invalide")
+    return
   }
 
   const { worksheet, sheetName } = sheetInfo
@@ -207,23 +207,4 @@ async function* processDeezerFile(
   }
 
   if (batch.length > 0) yield batch
-}
-
-function findSheetByColumns(workbook: XLSX.WorkBook, requiredColumns: string[]) {
-  for (const sheetName of workbook.SheetNames) {
-    const worksheet = workbook.Sheets[sheetName]
-    // Get headers (first row)
-    const headers = (XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][])[0]
-
-    if (!headers || !Array.isArray(headers)) continue
-
-    const hasAllColumns = requiredColumns.every(col =>
-      headers.some(h => h && h.toString().trim().toLowerCase() === col.toLowerCase())
-    )
-
-    if (hasAllColumns) {
-      return { worksheet, sheetName }
-    }
-  }
-  return null
 }

@@ -5,7 +5,7 @@ import * as React from 'react'
 
 import type { ToastActionElement, ToastProps } from '@/components/ui/toast'
 
-const TOAST_LIMIT = 1
+const TOAST_LIMIT = 5
 const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {
@@ -74,10 +74,11 @@ const addToRemoveQueue = (toastId: string) => {
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case 'ADD_TOAST':
-      return {
+      const newState = {
         ...state,
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       }
+      return newState
 
     case 'UPDATE_TOAST':
       return {
@@ -188,4 +189,5 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+export { toast, useToast }
+

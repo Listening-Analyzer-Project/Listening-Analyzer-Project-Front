@@ -56,9 +56,9 @@ export default function DataPage() {
         const item = viewState.items[id]
         if (!item) return
         
-        if (item.type === 'user' || item.type === 'alias') {
+        if ('userId' in item) {
           uniqueUserIds.add(String(item.userId))
-        } else if (item.type === 'group') {
+        } else if ('children' in item) {
           item.children.forEach(visit)
         }
       }

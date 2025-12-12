@@ -4,20 +4,19 @@ import { MoreHorizontal } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { userService } from '@/lib/api'
-import type { ViewItem } from '@/lib/store'
-import type { FUser } from '@/types'
+import { showErrorToast } from '@/lib/utils'
+import type { FUser, ViewItem } from '@/types'
+import { useRouter } from 'next/navigation'
 import { TruncatedTextWithTooltip } from '../truncated-text-with-tooltip'
 import InlineRenameInput from './inline-rename-input'
-import { useRouter } from 'next/navigation'
 
 export default function UserItem({
-  id,
   item,
   usersById,
   selected,
@@ -31,7 +30,6 @@ export default function UserItem({
   color,
   onCloseMenu,
 }: {
-  id: string
   item: ViewItem
   usersById: Map<number, FUser>
   selected: boolean
@@ -46,31 +44,27 @@ export default function UserItem({
   color?: string
   onCloseMenu?: () => void
 }) {
-  // navigation
-  // TODO: Revoir les logiques de gestions des props à cette endroit nottament pour les users
-  //TODO : revoirs commentaires
+  const id = item.id
   const router = useRouter()
 
-  const isUser = item.type === 'user'
-  const isAlias = item.type === 'alias'
-  const isGroup = item.type === 'group'
+  const isGroup = 'children' in item
+  const isAlias = 'userId' in item && item.isAlias
+  const isUser = 'userId' in item && !item.isAlias
 
-  const user = isUser || isAlias ? usersById.get(item.userId) : undefined
+  const user = 'userId' in item ? usersById.get(item.userId) : undefined
   
   let baseName = 'User'
   if (isGroup) {
-    baseName = (item as any).name ?? 'Group'
+    baseName = item.name ?? 'Group'
   } else {
     baseName = user?.name ?? 'User'
   }
 
   const label = isAlias ? `${baseName} ALIAS` : baseName
 
-  // rename state
   const [renaming, setRenaming] = useState(false)
   const [value, setValue] = useState(label)
 
-  // controlled dropdown open state + pending rename flag
   const [menuOpen, setMenuOpen] = useState(false)
   const pendingRenameRef = useRef(false)
 
@@ -112,7 +106,7 @@ export default function UserItem({
           try {
             existingUser = await userService.fetchById(item.userId)
           } catch (fetchErr) {
-            console.warn('Could not fetch full user, proceeding with minimal payload', fetchErr)
+            showErrorToast(fetchErr, 'Could not fetch full user, proceeding with minimal payload')
           }
         }
 
@@ -129,16 +123,13 @@ export default function UserItem({
 
         if (onAfterUserRename) await onAfterUserRename()
       } catch (err: any) {
-        console.error('rename user error', err)
-        const msg = err?.message ?? 'Erreur lors du renommage'
-        alert(`Impossible de renommer l'utilisateur : ${msg}`)
+        showErrorToast(err, 'Impossible to rename user')
       }
     } else {
       // alias and group case: nothing to update server-side here by default
     }
   }
 
-  // StopPropagation for the trigger button only
   const stopPropagation = (e: React.MouseEvent) => {
     e.stopPropagation()
   }
@@ -266,16 +257,6 @@ export default function UserItem({
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-            {(isUser || isGroup) && (
-              <DropdownMenuItem
-                onSelect={() => {
-                  pendingRenameRef.current = true
-                  setMenuOpen(false)
-                }}
-              >
-                Rename
-              </DropdownMenuItem>
-            )}
             {isUser && user && (
               <DropdownMenuItem
                 onSelect={() => {
@@ -284,7 +265,17 @@ export default function UserItem({
                   router.push(`/user/${user.id}`)
                 }}
               >
-                Settings
+                Set data
+              </DropdownMenuItem>
+            )}
+            {(isUser || isGroup) && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  pendingRenameRef.current = true
+                  setMenuOpen(false)
+                }}
+              >
+                Rename
               </DropdownMenuItem>
             )}
             {isUser && (

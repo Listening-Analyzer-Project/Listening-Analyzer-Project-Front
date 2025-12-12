@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react'
 
-import type { ViewState } from '@/lib/store'
 import { getOrderedSelection } from '@/lib/store'
-import type { FUser } from '@/types'
+import { isGroup, isItem } from '@/lib/utils/core-service'
+import type { FUser, ViewState } from '@/types'
 
 function initials(name = '') {
   return name
@@ -44,14 +44,14 @@ export default function AvatarStack({
     const it = viewState.items[id]
     if (!it) return
 
-    if (it.type === 'user' || it.type === 'alias') {
+    if (isItem(it)) {
       const user = usersById.get(it.userId)
       itemsToShow.push({
         name: user?.name ?? 'User',
         color: colorMap?.get(id) ?? colorMap?.get(String(it.userId)),
         id: id
       })
-    } else if (it.type === 'group') {
+    } else if (isGroup(it)) {
       itemsToShow.push({
         name: it.name ?? 'Group',
         color: colorMap?.get(id),
@@ -65,7 +65,16 @@ export default function AvatarStack({
   if (itemsToShow.length === 0) {
     // Fallback logic if nothing selected (show first item)
     const firstTop = viewState.order[0]
-    if (firstTop) processItem(firstTop)
+    if (firstTop) {
+      processItem(firstTop)
+    } else {
+      // If viewState is empty (not yet initialized), show a placeholder
+      itemsToShow.push({
+        name: 'U',
+        color: '#9CA3AF',
+        id: 'placeholder'
+      })
+    }
   }
 
   const displayCount = Math.min(itemsToShow.length, max)
