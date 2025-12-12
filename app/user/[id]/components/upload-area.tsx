@@ -1,6 +1,8 @@
 import { UploadCloud, X } from "lucide-react"
 import { useRef, useState } from "react"
 
+import DeletionDialog from "@/components/common/others/deletion-dialog"
+
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
@@ -10,24 +12,26 @@ import { cn } from "@/lib/cn"
 import { showErrorToast } from "@/lib/utils"
 import { FUser, ImportResult } from "@/types"
 
-function UploadArea({ user }: { user: FUser }) {
+function UploadArea({ user, onUploadComplete }: { user: FUser; onUploadComplete?: () => void }) {
   const [files, setFiles] = useState<File[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [progress, setProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(0)
   const [cumulativeResult, setCumulativeResult] = useState<ImportResult | null>(null)
+  const [showDeletionDialog, setShowDeletionDialog] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = (incoming: FileList | null) => {
     if (!incoming) return
+    const newFiles = Array.from(incoming)
     if (isUploading === 2) {
       setIsUploading(0)
       setCumulativeResult(null)
       setProgress(0)
-      setFiles(Array.from(incoming)) 
+      setFiles(newFiles) 
     } else {
-      setFiles(prev => [...prev, ...Array.from(incoming)])
+      setFiles(prev => [...prev, ...newFiles])
     }
   }
 
@@ -46,11 +50,8 @@ function UploadArea({ user }: { user: FUser }) {
 
   const onDragLeave = () => setIsDragging(false)
 
-  const onUploadFiles = async () => {
+  const handleUploadProcess = async () => {
     if (!user) return
-    if (user.syncro_status !== 0) {
-      // TODO: show dialog agreee to overwrite loaded data
-    }
     setIsUploading(1)
     setProgress(0)
     try {
@@ -58,12 +59,22 @@ function UploadArea({ user }: { user: FUser }) {
         setProgress(percent)
       }))
       resetFiles()
+      onUploadComplete?.()
     } catch (error) {
       showErrorToast(error, "Upload failed")
     } finally {
       setIsUploading(2)
       setProgress(0)
     }
+  }
+
+  const onUploadFiles = async () => {
+    if (!user) return
+    if (user.syncro_status >= 2) {
+      setShowDeletionDialog(true)
+      return
+    }
+    handleUploadProcess()
   };
 
   return (
@@ -160,6 +171,14 @@ function UploadArea({ user }: { user: FUser }) {
           {isUploading === 1 ? 'Envoi...' : 'Envoyer'}
         </Button>
       </div>
+
+      <DeletionDialog
+        open={showDeletionDialog}
+        onOpenChange={setShowDeletionDialog}
+        onConfirm={handleUploadProcess}
+        title="Attention !"
+        description="Vous avez déjà des données chargées pour cet utilisateur. Si vous continuez, les données existantes seront écrasées. Cette action est irréversible."
+      />
     </div>
   )
 }

@@ -6,20 +6,20 @@ import { USER_UPDATED_EVENT } from '@/lib/events'
 
 // dnd-kit
 import {
-  closestCorners,
-  DndContext,
-  DragEndEvent,
-  DragStartEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors
+    closestCorners,
+    DndContext,
+    DragEndEvent,
+    DragStartEvent,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors
 } from '@dnd-kit/core'
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 
 import { Button } from '@/components/ui/button'
@@ -27,8 +27,9 @@ import { userService } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
-  buildRestoredPayload,
-  loadPersistedPayload
+    buildRestoredPayload,
+    loadPersistedPayload,
+    reconcileViewStateWithUsers
 } from '@/lib/store/users/users-view-persistence'
 import { showErrorToast } from '@/lib/utils'
 import { buildColorMap, isGroup, isItem } from '@/lib/utils/core-service'
@@ -199,6 +200,28 @@ export default function UsersMenu() {
     
     doRestore()
   }, [usersRaw, restoreViewState, setSelection, initFromUsers, viewInitialized])
+
+  // Keep a ref to viewState to access it in the effect below without triggering re-runs
+  const viewStateRef = useRef(viewState)
+  useEffect(() => {
+    viewStateRef.current = viewState
+  }, [viewState])
+
+  // Reconcile viewState when usersRaw changes (e.g. after create/delete)
+  useEffect(() => {
+    if (!viewInitialized || !usersRaw) return
+    
+    const currentViewState = viewStateRef.current
+    const reconciled = reconcileViewStateWithUsers(currentViewState, usersRaw)
+
+    // Only restore if the order or items count changed to avoid unnecessary updates
+    // Simple check: compare order length or JSON stringify to be safe?
+    // reconcileViewStateWithUsers returns new object references, so equality check fails.
+    // Let's rely on the fact that this effect ONLY runs when usersRaw changes (ref change).
+    // usersRaw changes when refetch() completes.
+    
+    restoreViewState(reconciled)
+  }, [usersRaw, viewInitialized, restoreViewState])
 
   const usersById = new Map(
     usersRaw

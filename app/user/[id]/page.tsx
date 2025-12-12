@@ -41,22 +41,23 @@ export default function UserSettingsPage() {
     },
   })
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const u = await userService.fetchById(id)
-        setUser(u)
-        form.reset({
-          name: u.name,
-          type: u.type,
-          isadmin: u.isadmin,
-          syncro_status: u.syncro_status,
-        })
-      } finally {
-        setLoading(false)
-      }
+  async function loadUser() {
+    try {
+      const u = await userService.fetchById(id)
+      setUser(u)
+      form.reset({
+        name: u.name,
+        type: u.type,
+        isadmin: u.isadmin,
+        syncro_status: u.syncro_status,
+      })
+    } finally {
+      setLoading(false)
     }
-    load()
+  }
+
+  useEffect(() => {
+    loadUser()
   }, [id])
 
   async function handleSave(data: Omit<FUser, 'id'>) {
@@ -111,6 +112,9 @@ export default function UserSettingsPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">
+        Paramètres de l'utilisateur {user.name}
+      </h1>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <aside className="md:col-span-1">
           <div className="sticky top-6 space-y-2">
@@ -218,7 +222,7 @@ export default function UserSettingsPage() {
                     <p className="text-sm text-muted-foreground">
                         ⚠️ Si vous uploadez de nouveaux fichiers, cela remplacera les fichiers existants pour cet utilisateur.
                     </p>
-                    <UploadArea user={user} />
+                    <UploadArea user={user} onUploadComplete={loadUser} />
                 </CardContent>
             </Card>
           )}
