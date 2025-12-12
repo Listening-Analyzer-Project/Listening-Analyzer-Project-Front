@@ -1,13 +1,9 @@
-import type { ViewState } from './users-view-store'
-import { buildDisplayOrder, buildStructuralOrder } from './users-view-store'
+import { buildDisplayOrder, buildStructuralOrder } from '@/lib/utils/core-service';
+import type { SelectionState, ViewState } from '@/types';
 
 /* -------------------------
    Types & reducer
    ------------------------- */
-
-export type SelectionState = {
-  selectedIds: string[] // ordered according to structural order (see below)
-}
 
 export type SelectionAction =
   | { type: 'TOGGLE'; payload: { id: string } }

@@ -12,8 +12,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { showErrorToast } from '@/lib/utils'
 
-//TODO mettre dans un fichier types pour les forms
+//TODO mettre dans un fichier types pour les forms (gérer plus tard, alban a fait quelque chose là dessus)
 type UserCreateForm = {
   name: string
   type: number
@@ -55,9 +56,7 @@ export default function UserCreateDialog({
       await onCreate(data)
       onOpenChange(false)
     } catch (err) {
-      //TODO gérer erreurs
-      console.error('UserCreateDialog create error', err)
-      alert('Erreur lors de la création (voir console)')
+      showErrorToast(err, 'User creation failed')
     }
   }
 

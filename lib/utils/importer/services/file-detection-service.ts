@@ -1,6 +1,4 @@
-import * as XLSX from 'xlsx'
 import { CanonicalListen, SpotifyListen } from '../../../../types/imports-types'
-import { findSheetByColumns } from './deezer-service'
 
 type FileType = 'spotify-json' | 'deezer-excel' | 'canonical-json'
 
@@ -10,21 +8,7 @@ export async function detectFileType(file: File): Promise<FileType> {
 
   // Try Excel detection for .xlsx/.xls
   if (ext === 'xlsx' || ext === 'xls') {
-    try {
-      const arrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
-
-      const requiredColumns = ['Song Title', 'Artist', 'Listening Time', 'Date']
-      const sheetInfo = findSheetByColumns(workbook, requiredColumns)
-      if (sheetInfo) return 'deezer-excel'
-    } catch (error) {
-      console.warn(
-        `[file-detection] Not a valid Excel file or failed to read workbook: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      )
-      // Continue to JSON detection
-    }
+    return 'deezer-excel'
   }
 
   // Detect JSON files

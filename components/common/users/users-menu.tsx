@@ -1,7 +1,6 @@
-//TODO : use chad/cn Button
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { USER_UPDATED_EVENT } from '@/lib/events'
 
@@ -30,17 +29,17 @@ import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
   buildRestoredPayload,
   loadPersistedPayload,
-  savePersistedPayload,
+  reconcileViewStateWithUsers
 } from '@/lib/store/users/users-view-persistence'
-import type { GroupViewItem, ViewState } from '@/lib/store/users/users-view-store'
-import { buildColorMap } from '@/lib/store/users/users-view-store'
-import type { FUser } from '@/types'
+import { showErrorToast } from '@/lib/utils'
+import { buildColorMap, isGroup, isItem } from '@/lib/utils/core-service'
+import type { FUser, ViewState } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
 
+import SortableItem from './sortable-user-item'
 import UserCreateDialog from './user-create-dialog'
 import UserItem from './user-item'
-import SortableItem from './sortable-user-item'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
@@ -49,18 +48,10 @@ const LUMINANCE_PRESET = 'shortlist' as const
 function findParentId(viewState: ViewState, targetId: string): string | null {
   for (const id of viewState.order) {
     const it = viewState.items[id]
-    if (!it || it.type !== 'group') continue
-    const g = it as GroupViewItem
-    if (g.children.includes(targetId)) return id
+    if (!isGroup(it)) continue
+    if (it.children.includes(targetId)) return id
   }
   return null
-}
-
-function indexInParent(viewState: ViewState, parentId: string | null, id: string) {
-  if (parentId == null) return viewState.order.indexOf(id)
-  const parent = viewState.items[parentId] as GroupViewItem | undefined
-  if (!parent || parent.type !== 'group') return -1
-  return parent.children.indexOf(id)
 }
 
 export default function UsersMenu() {
@@ -68,7 +59,20 @@ export default function UsersMenu() {
     data: usersRaw,
     loading,
     refetch,
-  } = useApi<FUser[]>((signal?: AbortSignal) => userService.fetchAll({ signal }), [])
+  } = useApi<FUser[]>(() => userService.fetchAll(), [])
+
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Failsafe: If mounted, no data, and not loading -> Force fetch
+  useEffect(() => {
+    if (mounted && !usersRaw && !loading) {
+      refetch()
+    }
+  }, [mounted, usersRaw, loading, refetch])
 
   useEffect(() => {
     const handleUserUpdate = () => {
@@ -109,6 +113,7 @@ export default function UsersMenu() {
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [preCollapseMap, setPreCollapseMap] = useState<Record<string, boolean> | null>(null)
+  const [viewInitialized, setViewInitialized] = useState(false)
 
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -116,66 +121,95 @@ export default function UsersMenu() {
   // Analyze selection
   const selectedIds = selectionState.selectedIds
   const selectedItems = selectedIds.map(id => viewState.items[id]).filter(Boolean)
-  const selectedGroups = selectedItems.filter(it => it.type === 'group') as GroupViewItem[]
-  const selectedUsers = selectedItems.filter(it => it.type === 'user' || it.type === 'alias')
+  const selectedGroups = selectedItems.filter(isGroup)
+  const selectedUsers = selectedItems.filter(isItem)
 
-  // Button is enabled when:
-  // - 2+ items selected (users/groups) OR
-  // - 1 child item selected (to remove from group)
-  // - BUT NOT when multiple groups + users are selected together (ambiguous action)
-  // - BUT NOT when 1 group + its own children are selected (already in that group)
-  let canCreateGroup = selectedIds.length >= 2 && !(selectedGroups.length > 1 && selectedUsers.length > 0)
-  
-  let isSingleChildRemoval = false
-  //TODO : Déplasser toute les logiques conditionnelles dans des UseEffect
-  if (selectedIds.length === 1 && selectedUsers.length === 1) {
-    const userId = selectedUsers[0].id
-    const parentId = findParentId(viewState, userId)
-    if (parentId) {
-      isSingleChildRemoval = true
-      canCreateGroup = true
+  const isSingleChildRemoval = useMemo(() => {
+    if (selectedIds.length === 1 && selectedUsers.length === 1) {
+      const parentId = findParentId(viewState, selectedUsers[0].id)
+      return !!parentId
     }
-  }
-  
-  if (selectedGroups.length === 1 && selectedUsers.length > 0 && !isSingleChildRemoval) {
-    const group = selectedGroups[0]
-    const allUsersAreChildren = selectedUsers.every(u => group.children.includes(u.id))
-    if (allUsersAreChildren) {
-      canCreateGroup = false
+    return false
+  }, [selectedIds.length, selectedUsers, viewState])
+
+  // Compute whether the group action button should be enabled
+  const canCreateGroup = useMemo(() => {
+    let can = selectedIds.length >= 2 && !(selectedGroups.length > 1 && selectedUsers.length > 0)
+    
+    if (isSingleChildRemoval) {
+      can = true
     }
-  }
-
-  let actionLabel = 'Créer groupe'
-  if (isSingleChildRemoval) {
-    actionLabel = 'Sortir du groupe'
-  } else if (selectedGroups.length === 1 && selectedUsers.length > 0) {
-    actionLabel = 'Ajouter au groupe'
-  } else if (selectedGroups.length > 1) {
-    actionLabel = 'Fusionner groupes'
-  }
-
-  useEffect(() => {
-    if (!usersRaw) return
-    let mounted = true
-    try {
-      const loaded = loadPersistedPayload()
-      const restored = buildRestoredPayload(loaded, usersRaw)
-      if (!mounted) return
-      restoreViewState(restored.viewState)
-      setSelection(restored.selectionState.selectedIds)
-      try {
-        savePersistedPayload(restored)
-      } catch (e) {
-        console.warn('savePersistedPayload failed', e)
+    
+    if (selectedGroups.length === 1 && selectedUsers.length > 0 && !isSingleChildRemoval) {
+      const group = selectedGroups[0]
+      const anyUserIsChild = selectedUsers.some(u => group.children.includes(u.id))
+      if (anyUserIsChild) {
+        can = false
       }
-    } catch (err) {
-      console.error('error restoring persisted users view', err)
-      initFromUsers(usersRaw)
     }
-    return () => {
-      mounted = false
+    
+    return can
+  }, [selectedIds.length, selectedGroups, selectedUsers, isSingleChildRemoval])
+
+  // Compute the action button label based on current selection
+  const actionLabel = useMemo(() => {
+    if (isSingleChildRemoval) {
+      return 'Sortir du groupe'
+    } else if (selectedGroups.length === 1 && selectedUsers.length > 0) {
+      return 'Ajouter au groupe'
+    } else if (selectedGroups.length > 1) {
+      return 'Fusionner groupes'
     }
-  }, [usersRaw, restoreViewState, setSelection, initFromUsers])
+    return 'Créer groupe'
+  }, [isSingleChildRemoval, selectedGroups.length, selectedUsers.length])
+
+ useEffect(() => {
+    // Safety check: don't run if no users or already initialized
+    if (!usersRaw || viewInitialized) return
+    
+    const doRestore = () => {
+      try {
+        let loaded
+        
+        try {
+            loaded = loadPersistedPayload()
+        } catch (e) {
+            console.warn('[UsersMenu] LocalStorage corrupted, resetting view.', e)
+            throw e 
+        }
+
+        const restored = buildRestoredPayload(loaded, usersRaw)
+        restoreViewState(restored.viewState)
+        setSelection(restored.selectionState.selectedIds)
+        setViewInitialized(true)
+        
+      } catch (err) {
+        console.error('[UsersMenu] Restoration failed, initializing from scratch', err)
+        
+        // Fallback: Initialize standard view if storage is broken
+        initFromUsers(usersRaw)
+        setViewInitialized(true)
+      }
+    }
+    
+    doRestore()
+  }, [usersRaw, restoreViewState, setSelection, initFromUsers, viewInitialized])
+
+  // Keep a ref to viewState to access it in the effect below without triggering re-runs
+  const viewStateRef = useRef(viewState)
+  useEffect(() => {
+    viewStateRef.current = viewState
+  }, [viewState])
+
+  // Reconcile viewState when usersRaw changes (e.g. after create/delete)
+  useEffect(() => {
+    if (!viewInitialized || !usersRaw) return
+    
+    const currentViewState = viewStateRef.current
+    const reconciled = reconcileViewStateWithUsers(currentViewState, usersRaw)
+    
+    restoreViewState(reconciled)
+  }, [usersRaw, viewInitialized, restoreViewState])
 
   const usersById = new Map(
     usersRaw
@@ -207,7 +241,7 @@ export default function UsersMenu() {
       
       const allGroupIds = viewState.order.filter(id => {
         const item = viewState.items[id]
-        return item?.type === 'group'
+        return isGroup(item)
       })
       
       allGroupIds.forEach(groupId => {
@@ -234,7 +268,7 @@ export default function UsersMenu() {
       })
       viewState.order.forEach(id => {
         const item = viewState.items[id]
-        if (item?.type === 'group' && !(id in preCollapseMap)) {
+        if (isGroup(item) && !(id in preCollapseMap)) {
           const isCurrentlyCollapsed = !!viewState.collapseMap[id]
           if (isCurrentlyCollapsed) {
             toggleCollapse(id)
@@ -267,9 +301,11 @@ export default function UsersMenu() {
         reorder(arrayMove(viewState.order, oldIndex, newIndex))
       }
     } else {
-      const parent = viewState.items[activeParent] as GroupViewItem
-      const insertIndex = parent.children.indexOf(overId)
-      addChildrenToGroup(activeParent, [activeId], insertIndex)
+      const parent = viewState.items[activeParent]
+      if (isGroup(parent)) {
+        const insertIndex = parent.children.indexOf(overId)
+        addChildrenToGroup(activeParent, [activeId], insertIndex)
+      }
     }
   }
 
@@ -279,8 +315,7 @@ export default function UsersMenu() {
       await refetch()
       setDialogOpen(false)
     } catch (err) {
-      //TODO : Gérer les erreurs
-      console.error('save user error', err)
+      showErrorToast(err, 'User creation failed')
     }
   }
 
@@ -294,7 +329,7 @@ export default function UsersMenu() {
         // Also remove all aliases of this user
         Object.keys(viewState.items).forEach(itemId => {
           const item = viewState.items[itemId]
-          if (item.type === 'alias' && item.userId === userId) {
+          if (isItem(item) && item.isAlias && item.userId === userId) {
             idsToRemove.add(itemId)
           }
         })
@@ -305,7 +340,7 @@ export default function UsersMenu() {
       } else if (type === 'group') {
         // Also remove all children of this group
         const group = viewState.items[id]
-        if (group && group.type === 'group') {
+        if (isGroup(group)) {
           group.children.forEach(childId => idsToRemove.add(childId))
         }
         deleteGroup(id)
@@ -317,8 +352,7 @@ export default function UsersMenu() {
       
       await refetch()
     } catch (err) {
-      //TODO : Gérer les erreurs
-      console.error('delete error', err)
+      showErrorToast(err, 'User deletion failed')
     }
   }
 
@@ -355,8 +389,7 @@ export default function UsersMenu() {
         createAlias(userId)
       }
     } catch (err) {
-      //TODO : Gérer les erreurs
-      console.error('create alias error', err)
+      showErrorToast(err, 'Alias creation failed')
     }
   }
 
@@ -430,10 +463,11 @@ export default function UsersMenu() {
     const isSelected = selectionState.selectedIds.includes(id)
     const isCollapsed = !!viewState.collapseMap[id]
 
-    if (item.type === 'user' || item.type === 'alias') {
+    if (!mounted) return null
+    
+    if (isItem(item)) {
       return (
         <UserItem
-          id={id}
           key={id}
           item={item}
           usersById={usersById}
@@ -446,11 +480,10 @@ export default function UsersMenu() {
           onCloseMenu={() => setMenuOpen(false)}
         />
       )
-    } else if (item.type === 'group') {
+    } else if (isGroup(item)) {
       return (
         <div key={id} className="space-y-1">
           <UserItem
-            id={id}
             item={item}
             usersById={usersById}
             selected={isSelected}
@@ -463,11 +496,11 @@ export default function UsersMenu() {
           />
           {!isCollapsed && (
             <SortableContext
-              items={(item as GroupViewItem).children}
+              items={item.children}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-1">
-                {(item as GroupViewItem).children.map(childId => (
+                {item.children.map(childId => (
                   <SortableItem
                     id={childId}
                     key={childId}
@@ -527,42 +560,51 @@ export default function UsersMenu() {
             style={{ maxHeight: 'calc(100vh - 140px)', height: '100%' }}
           >
             <div className="px-4 pt-4 pb-4">
-              {loading ? (
-                <div>Chargement...</div>
-              ) : viewState.order.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Aucun utilisateur trouvé.</div>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCorners}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                  modifiers={[({ transform }) => ({ ...transform, x: 0 })]}
-                  autoScroll={{
-                    enabled: true,
-                    threshold: { x: 0.15, y: 0.15 },
-                    layoutShiftCompensation: false,
-                    acceleration: 2,
-                    interval: 10,
-                  }}
-                >
-                  <SortableContext items={viewState.order} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-1">
-                      {viewState.order.map(id => (
-                        <SortableItem
-                          id={id}
-                          key={id}
-                          disabled={
-                            activeId !== null && findParentId(viewState, activeId) !== null
-                          }
-                        >
-                          {renderItemContent(id)}
-                        </SortableItem>
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              )}
+              {(() => {
+                const showLoading = !usersRaw || loading || !viewInitialized
+                const orderLength = viewState.order.length
+                
+                if (showLoading) {
+                  return <div>Chargement...</div>
+                }
+                
+                if (orderLength === 0) {
+                  return <div className="text-sm text-muted-foreground">Aucun utilisateur trouvé.</div>
+                }
+                
+                return (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCorners}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[({ transform }) => ({ ...transform, x: 0 })]}
+                    autoScroll={{
+                      enabled: true,
+                      threshold: { x: 0.15, y: 0.15 },
+                      layoutShiftCompensation: false,
+                      acceleration: 2,
+                      interval: 10,
+                    }}
+                  >
+                    <SortableContext items={viewState.order} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-1">
+                        {viewState.order.map(id => (
+                          <SortableItem
+                            id={id}
+                            key={id}
+                            disabled={
+                              activeId !== null && findParentId(viewState, activeId) !== null
+                            }
+                          >
+                            {renderItemContent(id)}
+                          </SortableItem>
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )
+              })()}
             </div>
           </div>
         </div>

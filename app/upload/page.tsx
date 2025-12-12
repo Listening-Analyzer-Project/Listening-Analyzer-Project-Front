@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { showErrorToast } from '@/lib/utils'
 
 interface ImportResult {
   success: boolean
@@ -147,7 +148,6 @@ export default function UploadPage() {
                 if (data.type === 'progress') {
                   setProgress(data.progress || 0)
                   setMessage(data.message || 'Import en cours...')
-                  console.log('PROGRESS:', data.message, data.progress) // AJOUTÉ
                 }
 
                 // Résultat final
@@ -155,16 +155,13 @@ export default function UploadPage() {
                   setProgress(100)
                   setImportResult(data.result)
                   setMessage('Import terminé avec succès !')
-                  console.log('COMPLETE:', data.result) // AJOUTÉ
                 }
 
                 // Gestion des erreurs
                 if (data.type === 'error') {
                   throw new Error(data.message || 'Erreur inconnue')
-                  console.error('ERROR:', data.message) // AJOUTÉ
                 }
               } catch (parseError) {
-                console.log('Ligne non-JSON ignorée:', line)
               }
             }
           }
@@ -212,6 +209,7 @@ export default function UploadPage() {
     } catch (error: any) {
       console.error('Erreur de vidage:', error)
       setMessage(`Erreur: ${error.message}`)
+      showErrorToast(error, 'Error while clearing database')
     } finally {
       setIsUploading(false)
     }
