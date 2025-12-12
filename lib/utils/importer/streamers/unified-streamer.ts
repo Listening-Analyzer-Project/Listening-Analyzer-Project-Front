@@ -1,9 +1,9 @@
 import * as XLSX from 'xlsx'
-import { CanonicalListen } from '../../../../types/imports-types'
+import { CanonicalListen } from '@/types/imports-types'
 import { validateCanonicalListen } from '../parsers/canonical-validator'
 import { parseDeezerListen } from '../parsers/deezer-parser'
 import { parseSpotifyListen } from '../parsers/spotify-parser'
-import { detectFileType } from '../services/file-detection-service'
+import { detectFileType } from '../../core-service'
 
 export type StreamOptions = {
   batchSize?: number

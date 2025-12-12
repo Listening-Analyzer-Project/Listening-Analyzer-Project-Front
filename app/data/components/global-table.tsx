@@ -20,8 +20,7 @@ import {
 import { Card } from '@/components/ui/card'
 
 import { ColumnOption, ViewType, SortDirection, RenderType } from '@/types'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import { formatDateToDisplay } from '@/lib/utils/format-date'
 import { cn } from '@/lib/cn'
 import { COLUMN_CELL_STYLES, COLUMN_FIELD_MAPPINGS, COLUMN_RENDER_TYPES, COLUMNS_BY_VIEW } from '@/lib/constants'
 
@@ -107,9 +106,9 @@ export default function GlobalTable({
 
   // Renderers: fonctions de rendu pour chaque type
   const cellRenderers: Record<RenderType, (value: any) => React.ReactNode> = {
-    timestamp: (value) => format(new Date(value), 'dd/MM/yyyy HH:mm', { locale: fr }),
+    timestamp: (value) => formatDateToDisplay(value, 'minute', '/', true),
     
-    date: (value) => value ? format(new Date(value), 'dd/MM/yyyy') : '-',
+    date: (value) => formatDateToDisplay(value, 'day', '/', true),
     
     title: (value) => value,
     
@@ -166,7 +165,9 @@ export default function GlobalTable({
           const renderType = COLUMN_RENDER_TYPES[col.key] || 'text'
           const renderer = cellRenderers[renderType]
           const cellStyle = COLUMN_CELL_STYLES[renderType]
-          
+          if (renderType === 'timestamp') {
+            console.log(value, renderer(value))
+          }
           return (
             <TableCell key={col.key} className={cellStyle}>
               {renderer(value)}

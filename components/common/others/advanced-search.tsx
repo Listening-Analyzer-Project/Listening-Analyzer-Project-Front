@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
+import { formatDateForSearch } from '@/lib/utils/format-date'
+
 interface AdvancedSearchProps {
   onSearchChange: (query: string) => void
   onSuggestionQueryChange: (query: string) => void
@@ -17,6 +19,11 @@ interface AdvancedSearchProps {
 
 type Operator = 'and' | 'or'
 
+interface SearchTerm {
+  display: string
+  value: string
+}
+
 export function AdvancedSearch({
   onSearchChange,
   onSuggestionQueryChange,
@@ -25,7 +32,7 @@ export function AdvancedSearch({
   loading = false
 }: AdvancedSearchProps) {
   const [localQuery, setLocalQuery] = useState('')
-  const [searchTerms, setSearchTerms] = useState<string[]>([])
+  const [searchTerms, setSearchTerms] = useState<SearchTerm[]>([])
   const [operators, setOperators] = useState<Operator[]>([])
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
 
@@ -44,14 +51,14 @@ export function AdvancedSearch({
   }, [localQuery, onSuggestionQueryChange])
 
   // Construire la requête finale
-  const buildQueryString = (terms: string[], ops: Operator[]): string => {
+  const buildQueryString = (terms: SearchTerm[], ops: Operator[]): string => {
     if (terms.length === 0) return ''
-    if (terms.length === 1) return terms[0]
+    if (terms.length === 1) return terms[0].value
 
-    let query = terms[0]
+    let query = terms[0].value
     for (let i = 1; i < terms.length; i++) {
       const operator = ops[i - 1] === 'and' ? '+' : ' | '
-      query += operator + terms[i]
+      query += operator + terms[i].value
     }
     return query
   }
@@ -59,7 +66,10 @@ export function AdvancedSearch({
   // Ajouter un terme de recherche
   const addSearchTerm = (term: string) => {
     const cleanTerm = truncateSuggestion(term)
-    const newTerms = [...searchTerms, cleanTerm]
+    const value = formatDateForSearch(cleanTerm)
+
+    const newTerm: SearchTerm = { display: cleanTerm, value }
+    const newTerms = [...searchTerms, newTerm]
     const newOperators = [...operators]
     
     if (searchTerms.length > 0) {
@@ -191,9 +201,8 @@ export function AdvancedSearch({
         <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 rounded-md border border-gray-200">
           {searchTerms.map((term, index) => (
             <React.Fragment key={index}>
-              {/* Chip */}
               <div className="group relative flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors">
-                <span>{term}</span>
+                <span>{term.display}</span>
                 <button
                   onClick={() => removeSearchTerm(index)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity ml-1"

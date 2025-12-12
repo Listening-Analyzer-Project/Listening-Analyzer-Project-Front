@@ -1,5 +1,5 @@
-import { CanonicalListen, SpotifyListen } from '../../../../types/imports-types'
-import { normalizeDate } from '../services/date-service'
+import { CanonicalListen, SpotifyListen } from '@/types/imports-types'
+import { normalizeDate } from '../../format-date'
 
 export function parseSpotifyListen(input: SpotifyListen): CanonicalListen | null {
   if (!input) return null
