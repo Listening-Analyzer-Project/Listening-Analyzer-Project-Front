@@ -1,5 +1,6 @@
-import { ArtistType, CanonicalListen } from '../../../../types/imports-types'
-import { normalizeDate } from '../services/date-service'
+import { ArtistType, CanonicalListen } from '@/types/imports-types'
+import { normalizeDate } from '../../format-date'
+
 
 export function validateCanonicalListen(raw: unknown): CanonicalListen | null {
   if (raw === null || typeof raw !== 'object') return null

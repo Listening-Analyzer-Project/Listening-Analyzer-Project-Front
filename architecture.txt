@@ -1,0 +1,129 @@
+Listening-Analyzer-Project-Front
+├── README.md
+├── app
+│   ├── data
+│   │   ├── components
+│   │   │   └── global-table.tsx
+│   │   └── page.tsx
+│   ├── graphs
+│   │   └── page.tsx
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── stats
+│   │   └── page.tsx
+│   ├── update
+│   │   ├── components
+│   │   │   └── artist-table-row.tsx
+│   │   └── page.tsx
+│   ├── upload
+│   │   └── page.tsx
+│   └── user
+│       └── [id]
+│           ├── components
+│           │   └── upload-area.tsx
+│           └── page.tsx
+├── architecture.txt
+├── components
+│   ├── common
+│   │   ├── others
+│   │   │   └── deletion-dialog.tsx
+│   │   ├── tables
+│   │   │   ├── column-selector.tsx
+│   │   │   ├── table-navigation.tsx
+│   │   │   └── table-toolbar.tsx
+│   │   ├── truncated-text-with-tooltip.tsx
+│   │   └── users
+│   │       ├── avatar-stack.tsx
+│   │       ├── inline-rename-input.tsx
+│   │       ├── sortable-user-item.tsx
+│   │       ├── user-create-dialog.tsx
+│   │       ├── user-item.tsx
+│   │       └── users-menu.tsx
+│   └── ui
+│       ├── alert-dialog.tsx
+│       ├── alert.tsx
+│       ├── avatar.tsx
+│       ├── button.tsx
+│       ├── card.tsx
+│       ├── checkbox.tsx
+│       ├── dialog.tsx
+│       ├── dropdown-menu.tsx
+│       ├── form.tsx
+│       ├── input.tsx
+│       ├── label.tsx
+│       ├── popover.tsx
+│       ├── progress.tsx
+│       ├── select.tsx
+│       ├── sheet.tsx
+│       ├── table.tsx
+│       ├── toast.tsx
+│       ├── toaster.tsx
+│       └── tooltip.tsx
+├── components.json
+├── lib
+│   ├── api
+│   │   ├── api-clients.ts
+│   │   ├── core
+│   │   │   └── user-service.ts
+│   │   ├── index.ts
+│   │   └── other
+│   │       ├── analytics-service.ts
+│   │       └── import-service.ts
+│   ├── cn.ts
+│   ├── events.ts
+│   ├── hooks
+│   │   ├── index.ts
+│   │   ├── use-api.ts
+│   │   └── use-debounce.ts
+│   ├── store
+│   │   ├── index.ts
+│   │   └── users
+│   │       ├── users-provider.tsx
+│   │       ├── users-selection-store.ts
+│   │       ├── users-view-logic.ts
+│   │       ├── users-view-persistence.ts
+│   │       └── users-view-store.ts
+│   ├── supabase.ts
+│   └── utils
+│       ├── colors.ts
+│       ├── core-service
+│       │   ├── index.ts
+│       │   └── users-service
+│       ├── format-date.ts
+│       ├── importer
+│       │   ├── parsers
+│       │   │   ├── canonical-validator.ts
+│       │   │   ├── deezer-parser.ts
+│       │   │   └── spotify-parser.ts
+│       │   ├── services
+│       │   │   ├── date-service.ts
+│       │   │   ├── deezer-service.ts
+│       │   │   └── file-detection-service.ts
+│       │   └── streamers
+│       │       └── unified-streamer.ts
+│       ├── index.ts
+│       └── use-toast.ts
+├── next-env.d.ts
+├── next.config.mjs
+├── package-lock.json
+├── package.json
+├── pnpm-lock.yaml
+├── postcss.config.mjs
+├── public
+│   ├── placeholder-logo.png
+│   ├── placeholder-logo.svg
+│   ├── placeholder-user.jpg
+│   ├── placeholder.jpg
+│   └── placeholder.svg
+├── styles
+│   ├── colors.scss
+│   └── globals.css
+├── tailwind.config.ts
+├── tsconfig.json
+└── types
+    ├── bdd-types-front.ts
+    ├── imports-types.ts
+    ├── index.ts
+    ├── request-params-types.ts
+    ├── specific-analytics-types.ts
+    └── temp-file-for-types.tsx
