@@ -243,3 +243,110 @@ export function getCyclicColor(
   // return final hex computed from eq color hue & saturation but with new lightness
   return convertHSLToHex({ h: eqHSL.h, s: eqHSL.s, l: targetL })
 }
+
+/* -------------------------
+Helpers
+------------------------- */
+
+/**
+ * Parses a color string (Hex or RGB/RGBA) into RGB components
+ */
+function parseColor(color: string): { r: number; g: number; b: number } | null {
+  if (!color) return null
+  
+  // Handle Hex
+  if (color.startsWith("#")) {
+    const hex = color.replace("#", "")
+    if (hex.length === 3) {
+      return {
+        r: parseInt(hex[0] + hex[0], 16),
+        g: parseInt(hex[1] + hex[1], 16),
+        b: parseInt(hex[2] + hex[2], 16),
+      }
+    }
+    if (hex.length === 6) {
+      return {
+        r: parseInt(hex.substring(0, 2), 16),
+        g: parseInt(hex.substring(2, 4), 16),
+        b: parseInt(hex.substring(4, 6), 16),
+      }
+    }
+    return null
+  }
+
+  // Handle RGB/RGBA
+  const rgbMatch = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (rgbMatch) {
+    return {
+      r: Math.min(255, Math.max(0, parseInt(rgbMatch[1], 10))),
+      g: Math.min(255, Math.max(0, parseInt(rgbMatch[2], 10))),
+      b: Math.min(255, Math.max(0, parseInt(rgbMatch[3], 10))),
+    }
+  }
+
+  return null
+}
+
+/**
+ * @param color - Color string (Hex or RGB)
+ * @param percent - Percentage to darken (0-100)
+ * @returns Darkened hex color string
+ */
+export const darkenColor = (color: string, percent: number): string => {
+  const rgb = parseColor(color)
+  if (!rgb) return "#000000"
+  
+  const { r, g, b } = rgb
+  const newR = Math.max(0, Math.floor(r * (1 - percent / 100)))
+  const newG = Math.max(0, Math.floor(g * (1 - percent / 100)))
+  const newB = Math.max(0, Math.floor(b * (1 - percent / 100)))
+  
+  return `#${((1 << 24) + (newR << 16) + (newG << 8) + newB).toString(16).slice(1)}`
+}
+
+/**
+ * @param color - Color string (Hex or RGB)
+ * @param percent - Percentage to lighten (0-100)
+ * @returns Lightened hex color string
+ */
+export const lightenColor = (color: string, percent: number): string => {
+  const rgb = parseColor(color)
+  if (!rgb) return "#FFFFFF"
+
+  const { r, g, b } = rgb
+  const newR = Math.min(255, Math.floor(r + (255 - r) * (percent / 100)))
+  const newG = Math.min(255, Math.floor(g + (255 - g) * (percent / 100)))
+  const newB = Math.min(255, Math.floor(b + (255 - b) * (percent / 100)))
+  
+  return `#${((1 << 24) + (newR << 16) + (newG << 8) + newB).toString(16).slice(1)}`
+}
+
+/**
+ * @param color - Color string (Hex or RGB)
+ * @returns Luminance value between 0 and 1
+ */
+export const getLuminance = (color: string): number => {
+  const rgb = parseColor(color)
+  if (!rgb) return 0.5
+
+  const { r, g, b } = rgb
+  const rs = r / 255
+  const gs = g / 255
+  const bs = b / 255
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs
+}
+
+/**
+ * @param backgroundColor - Background color string
+ * @param darkColor - Color to use for dark text
+ * @param lightColor - Color to use for light text
+ * @returns Appropriate text color
+ */
+export const getTextColorForBackground = (backgroundColor: string, darkColor: string, lightColor: string): string => {
+  if (backgroundColor === "transparent") {
+    return darkColor
+  }
+
+  const luminance = getLuminance(backgroundColor)
+  return luminance > 0.8 ? darkColor : lightColor
+}

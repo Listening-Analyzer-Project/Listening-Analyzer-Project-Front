@@ -23,7 +23,7 @@ import {
 } from '@dnd-kit/sortable'
 
 import { Button } from '@/components/ui/button'
-import { userService } from '@/lib/api'
+import { userEndpoint } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
@@ -59,7 +59,7 @@ export default function UsersMenu() {
     data: usersRaw,
     loading,
     refetch,
-  } = useApi<FUser[]>(() => userService.fetchAll(), [])
+  } = useApi<FUser[]>(() => userEndpoint.fetchAll(), [])
 
   const [mounted, setMounted] = useState(false)
 
@@ -311,7 +311,7 @@ export default function UsersMenu() {
 
   const handleCreateUser = async (payload: Partial<FUser>) => {
     try {
-      await userService.create(payload)
+      await userEndpoint.create(payload)
       await refetch()
       setDialogOpen(false)
     } catch (err) {
@@ -334,7 +334,7 @@ export default function UsersMenu() {
           }
         })
         deleteUser(userId)
-        await userService.remove(userId)
+        await userEndpoint.remove(userId)
       } else if (type === 'alias') {
         deleteAlias(id)
       } else if (type === 'group') {

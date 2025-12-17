@@ -107,6 +107,17 @@ export interface FEvent {
   user?: FUser
 }
 
+export interface FEventWithCategory {
+  id?: number
+  title: string
+  start_date: string
+  end_date: string
+  description?: string
+  user_name?: string
+  category_id?: number
+  category_name?: string
+}
+
 export interface FCategory {
   id?: number
   name: string

@@ -1,4 +1,4 @@
-import { toast } from "@/lib/utils/use-toast"
+import { toast } from "@/lib/utils/toasts/use-toast"
 
 // Standardized error toast
 export function showErrorToast(error: unknown, fallbackTitle = "Une erreur est survenue") {

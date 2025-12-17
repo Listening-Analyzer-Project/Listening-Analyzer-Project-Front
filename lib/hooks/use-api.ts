@@ -1,3 +1,4 @@
+import { showErrorToast } from '@/lib/utils/toasts/toast-handler'
 import { useEffect, useRef, useState } from 'react'
 
 // To use for fetching data from an API
@@ -17,7 +18,10 @@ export function useApi<T>(factory: (signal?: AbortSignal) => Promise<T>, deps: a
       const result = await factory(controller.signal)
       if (!controller.signal.aborted) setData(result as T)
     } catch (err) {
-      if ((err as any)?.name !== 'AbortError') setError(err)
+      if ((err as any)?.name !== 'AbortError') {
+        setError(err)
+        showErrorToast(err, 'Erreur lors du chargement des données')
+      }
     } finally {
       if (!controllerRef.current?.signal.aborted) setLoading(false)
     }

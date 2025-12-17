@@ -1,8 +1,9 @@
 'use client'
 
-import React from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, HelpCircle } from 'lucide-react'
+import React from 'react'
 
+import { Card } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -17,12 +18,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Card } from '@/components/ui/card'
 
-import { ColumnOption, ViewType, SortDirection, RenderType } from '@/types'
-import { formatDateToDisplay } from '@/lib/utils/format-date'
 import { cn } from '@/lib/cn'
 import { COLUMN_CELL_STYLES, COLUMN_FIELD_MAPPINGS, COLUMN_RENDER_TYPES, COLUMNS_BY_VIEW } from '@/lib/constants'
+import { formatDateToDisplay } from '@/lib/utils/format-date'
+import { ColumnOption, RenderType, SortDirection, ViewType } from '@/types'
 
 interface GlobalTableProps {
   data: any[]
@@ -165,9 +165,6 @@ export default function GlobalTable({
           const renderType = COLUMN_RENDER_TYPES[col.key] || 'text'
           const renderer = cellRenderers[renderType]
           const cellStyle = COLUMN_CELL_STYLES[renderType]
-          if (renderType === 'timestamp') {
-            console.log(value, renderer(value))
-          }
           return (
             <TableCell key={col.key} className={cellStyle}>
               {renderer(value)}
