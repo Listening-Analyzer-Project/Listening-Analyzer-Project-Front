@@ -229,11 +229,15 @@ export function getCyclicColor(
 
   // which luminance pass (0..Lcount-1)
   const luminancePass = Math.floor(pos / count) % Lcount
-  const hueIdx = pos % count // which equidistant color in this pass
+
+  // Calculate hue with drift: 1/5 of a step per cycle
+  const baseHSL = convertHexToHSL(baseColor)
+  const stepAngle = 360 / count
+  const driftPerStep = stepAngle / (5 * count)
+  const hue = (baseHSL.h + pos * (stepAngle + driftPerStep)) % 360
 
   // equidistant color (same saturation & lightness as base color)
-  const eqHex = equidistantColorAtIndex(baseColor, count, hueIdx)
-  const eqHSL = convertHexToHSL(eqHex) // we will use eqHSL.h & eqHSL.s, and eqHSL.l is the baseL for step 400
+  const eqHSL = { h: hue, s: baseHSL.s, l: baseHSL.l }
 
   const targetStep = luminanceCycle[luminancePass]
 

@@ -56,6 +56,10 @@ export interface FGenre {
   name: string
 }
 
+export interface FGenreWithSubGenres extends FGenre {
+  sub_genres: FSubGenre[]
+}
+
 export interface FTag {
   id?: number
   name: string

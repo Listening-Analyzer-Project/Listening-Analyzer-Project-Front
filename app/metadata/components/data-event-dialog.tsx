@@ -7,35 +7,35 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@/components/ui/popover'
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import categoryEndpoint from '@/lib/api/core/category-endpoint'
@@ -220,13 +220,13 @@ export default function DataEventDialog({ userIds, existingTitles, onSuccess, ev
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || <Button>Créer un évènement</Button>}
+        {trigger || <Button size="sm">Create an event</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Modifier l'évènement" : "Créer un nouvel évènement"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit event" : "Create a new event"}</DialogTitle>
           <DialogDescription>
-            {isEditing ? "Modifiez les informations de l'évènement." : "Ajoutez un évènement à votre timeline."}
+            {isEditing ? "Modify the event information." : "Add an event to your timeline."}
           </DialogDescription>
         </DialogHeader>
 
