@@ -25,6 +25,8 @@ interface EditableTextProps {
   textAlign?: "left" | "center" | "right"
   visualMode?: "default" | "border"
   emptyInputAtFocus?: boolean
+  startInEditMode?: boolean
+  onCancel?: () => void
   className?: string
   inputClassName?: string
   displayClassName?: string
@@ -60,6 +62,8 @@ export function EditableText({
   textAlign = "left",
   visualMode = "default",
   emptyInputAtFocus = false,
+  startInEditMode = false,
+  onCancel,
   className,
   inputClassName,
   displayClassName,
@@ -351,12 +355,22 @@ export function EditableText({
   const cancelEditing = () => {
     setIsEditing(false)
     setEditingValue("")
+    onCancel?.()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") finishEditing()
     else if (e.key === "Escape") cancelEditing()
   }
+
+  // Auto-start editing mode if requested
+  useEffect(() => {
+    if (startInEditMode && !isEditing) {
+      startEditing()
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
     if (autoSelectOnClick && !emptyInputAtFocus) {

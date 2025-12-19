@@ -19,6 +19,7 @@ import { useToast } from '@/lib/utils/toasts/use-toast'
 import { FCategory, FEventWithCategory, FUser } from '@/types'
 import CategoryEventList from './components/category-event-list'
 import DataEventDialog from './components/data-event-dialog'
+import GenreList from './components/genre-list'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
@@ -145,6 +146,29 @@ export default function MetadataPage() {
     }
   }
 
+  const handleCategoryDelete = async (id: number) => {
+    try {
+      await categoryEndpoint.remove(id, {})
+      refetchCategories()
+      refetchEvents()
+      toast({
+        title: "Catégorie supprimée",
+        description: "La catégorie a été supprimée avec succès.",
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la catégorie.",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Sort categories alphabetically
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  }, [categories])
+
   return (
     <div className="max-w-6xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Metadata</h1>
@@ -199,7 +223,7 @@ export default function MetadataPage() {
                 <div>Chargement des évènements...</div>
               ) : (
                 <div className="space-y-8">
-                  {categories.map(category => (
+                  {sortedCategories.map(category => (
                     <CategoryEventList
                         key={category.id}
                         category={category}
@@ -209,6 +233,7 @@ export default function MetadataPage() {
                         userColorMap={userColorMap}
                         onRefresh={refetchEvents}
                         onUpdateName={(val) => category.id && handleCategoryNameUpdate(category.id, val)}
+                        onDelete={() => category.id && handleCategoryDelete(category.id)}
                     />
                   ))}
 
@@ -228,16 +253,7 @@ export default function MetadataPage() {
           )}
 
           {activeSection === 'genres' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Genres et Sous-genres</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Organisation et visualisation des genres musicaux de la base de données.
-                </p>
-              </CardContent>
-            </Card>
+            <GenreList />
           )}
 
           {activeSection === 'tags' && (

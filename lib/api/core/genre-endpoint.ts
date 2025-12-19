@@ -14,18 +14,21 @@ export const genreEndpoint = {
     create: async (payload: Partial<FGenre>) => {
       const result = await apiClient.post<FGenre>('/api/genres', payload)
       apiClient.invalidateCache('/api/genres')
+      apiClient.invalidateCache('/api/genres/withSubGenres')
       return result
     },
     
     update: async (id: string | number, payload: Partial<FGenre>) => {
       const result = await apiClient.put<FGenre>(`/api/genres?id=${id}`, payload)
       apiClient.invalidateCache('/api/genres')
+      apiClient.invalidateCache('/api/genres/withSubGenres')
       return result
     },
     
     remove: async (id: string | number, payload: Partial<FGenre>) => {
       const result = await apiClient.delete<void>(`/api/genres?id=${id}`, payload)
       apiClient.invalidateCache('/api/genres')
+      apiClient.invalidateCache('/api/genres/withSubGenres')
       return result
     },
 }

@@ -2,6 +2,16 @@ import { ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 
 import EditableText from '@/components/common/editable-text'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils'
 import { FCategory, FEventWithCategory } from '@/types'
 
@@ -16,6 +26,7 @@ interface CategoryEventListProps {
   userColorMap?: Map<string, string>
   onRefresh: () => void
   onUpdateName?: (newName: string) => void
+  onDelete?: () => void
 }
 
 export default function CategoryEventList({
@@ -26,9 +37,23 @@ export default function CategoryEventList({
   existingTitles,
   userColorMap,
   onRefresh,
-  onUpdateName
+  onUpdateName,
+  onDelete
 }: CategoryEventListProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  const handleNameChange = (newName: string) => {
+    if (newName === "" && onDelete) {
+      // User wants to delete - show confirmation dialog after a brief delay
+      setTimeout(() => {
+        setShowDeleteDialog(true)
+      }, 50)
+    } else if (onUpdateName) {
+      // User wants to rename
+      onUpdateName(newName)
+    }
+  }
 
   const displayTitle = category ? category.name : title
   const eventCount = events.length
@@ -50,13 +75,14 @@ export default function CategoryEventList({
              {category && onUpdateName ? (
                  <EditableText
                    value={displayTitle || ''}
-                   onChange={onUpdateName}
+                   onChange={handleNameChange}
                    mode="text"
                    placeholder="Category Name"
                    fontSize={18}
                    fontSizeRatio={0.6}
                    fontWeight="600"
                    autoWidth
+                   allowEmpty={true}
                  />
              ) : (
                  <span className="font-semibold text-lg text-muted-foreground">{displayTitle}</span>
@@ -85,6 +111,31 @@ export default function CategoryEventList({
             </div>
         </div>
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la catégorie ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>Attention :</strong> Cette action supprimera la catégorie "{displayTitle}".
+              <br /><br />
+              Les évènements associés ne seront pas supprimés mais deviendront non classés. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowDeleteDialog(false)
+                onDelete?.()
+              }} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
