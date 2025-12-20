@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, HelpCircle } from 'lucide-react'
 
 import {
@@ -43,30 +43,31 @@ export default function GlobalTable({
   onSort,
   visibleColumns 
 }: GlobalTableProps) {
+  const [displayedColumns, setDisplayedColumns] = React.useState<ColumnOption[]>([])
 
-  const getColumns = (): ColumnOption[] => {
-    switch (type) {
-      case 'listens':
-        return COLUMNS_BY_VIEW.listens
-      case 'tracks':
-        return COLUMNS_BY_VIEW.tracks
-      case 'artists':
-        return COLUMNS_BY_VIEW.artists
-      case 'albums':
-        return COLUMNS_BY_VIEW.albums
-      default:
-        return []
+  useEffect(() => {
+    const getColumns = (): ColumnOption[] => {
+      switch (type) {
+        case 'listens':
+          return COLUMNS_BY_VIEW.listens
+        case 'tracks':
+          return COLUMNS_BY_VIEW.tracks
+        case 'artists':
+          return COLUMNS_BY_VIEW.artists
+        case 'albums':
+          return COLUMNS_BY_VIEW.albums
+        default:
+          return []
+      }
     }
-  }
 
-  const allColumns = getColumns()
-  const columns = visibleColumns 
-    ? allColumns.filter((col) => visibleColumns.includes(col.key))
-    : allColumns
+    const newColumns = getColumns()
+    setDisplayedColumns(visibleColumns ? newColumns.filter((col) => visibleColumns.includes(col.key)) : newColumns)
+  }, [type, visibleColumns])
 
   const renderHeader = () => (
     <TableRow className="hover:bg-transparent border-b border-border/50">
-      {columns.map((col) => (
+      {displayedColumns.map((col) => (
         <TableHead key={col.key} className="h-12">
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -153,10 +154,10 @@ export default function GlobalTable({
     return item[keyFields[type]] || String(Math.random())
   }
 
-  const renderRow = (item: any, index: number) => {
+  const renderRow = (item: any, index: number, key: string) => {
     return (
-      <TableRow key={getRowKey(item)} className="hover:bg-muted/50 transition-colors">
-        {columns.map((col) => {
+      <TableRow key={key} className="hover:bg-muted/50 transition-colors">
+        {displayedColumns.map((col) => {
           // Récupérer le nom du champ dans les données
           const fieldName = COLUMN_FIELD_MAPPINGS[type][col.key] || col.key
           const value = item[fieldName]
@@ -165,9 +166,6 @@ export default function GlobalTable({
           const renderType = COLUMN_RENDER_TYPES[col.key] || 'text'
           const renderer = cellRenderers[renderType]
           const cellStyle = COLUMN_CELL_STYLES[renderType]
-          if (renderType === 'timestamp') {
-            console.log(value, renderer(value))
-          }
           return (
             <TableCell key={col.key} className={cellStyle}>
               {renderer(value)}
@@ -188,7 +186,7 @@ export default function GlobalTable({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={displayedColumns.length} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground animate-pulse py-8">
                     <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
                     <p>Chargement des données...</p>
@@ -197,7 +195,7 @@ export default function GlobalTable({
               </TableRow>
             ) : (!data || data.length === 0) ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={displayedColumns.length} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground py-8">
                     <HelpCircle className="h-12 w-12 mb-4 opacity-20" />
                     <p className="text-lg font-medium">Aucune donnée disponible</p>
@@ -206,7 +204,17 @@ export default function GlobalTable({
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((item, index) => renderRow(item, index))
+              (() => {
+                const keys = new Set<string>()
+                return data.map((item, index) => {
+                  let key = getRowKey(item)
+                  if (keys.has(key)) {
+                    key = `${key}-${index}`
+                  }
+                  keys.add(key)
+                  return renderRow(item, index, key)
+                })
+              })()
             )}
           </TableBody>
         </Table>
