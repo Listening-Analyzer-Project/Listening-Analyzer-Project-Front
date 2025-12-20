@@ -7,9 +7,10 @@ export function parseDeezerListen(input: any): CanonicalListen | null {
 
   // Extract fields using the keys from the raw Excel export
   const title = (input['Song Title'] ?? '').toString().trim()
-  const artistName = (input['Artist'] ?? '').toString().trim()
+  const artistsName = (input['Artist'] ?? '').toString().trim()
 
-  if (!title || !artistName) return null
+  if (!title || !artistsName) return null
+  const artists: any = artistsName.split(',').map((artistName: string) => ({ name: artistName.trim() }))
 
   const date = normalizeDate(input['Date'])
   const listeningTimeMs = parseListeningTimeToMs(input['Listening Time'])
@@ -26,7 +27,7 @@ export function parseDeezerListen(input: any): CanonicalListen | null {
     track: {
       title,
       ...(album ? { album } : {}),
-      artists: [{ name: artistName }],
+      artists: artists,
       tags: [],
     },
   }

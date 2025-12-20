@@ -11,23 +11,14 @@ import {
   useRef,
 } from 'react'
 
-import {
-  initialSelectionState,
-  initialViewState,
-  selectionActions,
-  selectionReducer,
-  viewActions,
-  viewReducer,
-} from '@/lib/store'
+import { initialSelectionState, selectionActions, selectionReducer } from './users-selection-store'
+import { initialViewState, viewActions, viewReducer } from './users-view-store'
 import type { FUser, SelectionState, ViewState } from '@/types'
 
 // Persistence helpers (localStorage payload containing viewState + selectionState)
 import { showErrorToast } from '@/lib/utils'
 import type { PersistedPayload } from '@/types'
-import {
-  clearPersistedPayload,
-  savePersistedPayload,
-} from './users-view-persistence'
+import { clearPersistedPayload, savePersistedPayload } from './users-view-persistence'
 
 type UserViewContextValue = {
   viewState: ViewState

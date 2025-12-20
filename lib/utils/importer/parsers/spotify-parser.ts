@@ -27,8 +27,11 @@ export function parseSpotifyListen(input: SpotifyListen): CanonicalListen | null
 
   // Must have at least a track title and an artist name
   const title = (input.master_metadata_track_name ?? '').toString().trim()
-  const artistName = (input.master_metadata_album_artist_name ?? '').toString().trim()
-  if (!title || !artistName) return null
+  const artistsName = (input.master_metadata_album_artist_name ?? '').toString().trim()
+  if (!title || !artistsName) return null
+
+  const artists: any = artistsName.split(',').map((artistName: string) => ({ name: artistName.trim() }))
+
 
   // Album is optional — include only if present and non-empty
   const albumTitle = (input.master_metadata_album_album_name ?? '').toString().trim()
@@ -49,11 +52,7 @@ export function parseSpotifyListen(input: SpotifyListen): CanonicalListen | null
       title,
       ...(album ? { album } : {}),
 
-      artists: [
-        {
-          name: artistName,
-        },
-      ],
+      artists: artists,
 
       tags: [],
     },
