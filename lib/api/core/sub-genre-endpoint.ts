@@ -8,7 +8,7 @@ export const subGenreEndpoint = {
       return result
     },
     
-    update: async (id: string | number, payload: Partial<FSubGenre>) => {
+    update: async (id: string | number, payload: Partial<FSubGenre> & { genre_id?: number }) => {
       const result = await apiClient.put<FSubGenre>(`/api/sub-genres?id=${id}`, payload)
       apiClient.invalidateCache('/api/genres/withSubGenres')
       return result

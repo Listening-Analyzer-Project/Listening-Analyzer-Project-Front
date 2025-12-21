@@ -10,11 +10,11 @@ import { isGroup, isItem, makeUserViewId } from './users-helpers'
  * @param preset - Luminance preset for color generation (default: 'shortlist')
  * @returns Map of item IDs to color strings
  */
-export function buildColorMap(
+export function buildUserColorMap(
   viewState: ViewState,
   baseColor: string = '#16A34A',
   count: number = 8,
-  preset: LuminancePreset = 'shortlist'
+  preset: LuminancePreset = 'shortList'
 ): Map<string, string> {
   const colorMap = new Map<string, string>()
   let colorIndex = 0

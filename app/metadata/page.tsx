@@ -14,8 +14,8 @@ import { categoryEndpoint } from '@/lib/api/core/category-endpoint'
 import { eventEndpoint } from '@/lib/api/core/event-endpoint'
 import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store'
-import { buildColorMap, makeUserViewId } from '@/lib/utils/core-service'
-import { useToast } from '@/lib/utils/toasts/use-toast'
+import { buildUserColorMap, makeUserViewId } from '@/lib/utils/core-service'
+import { showErrorToast, showSuccessToast } from '@/lib/utils/toasts/toast-handler'
 import { FCategory, FEventWithCategory, FUser } from '@/types'
 import CategoryEventList from './components/category-event-list'
 import DataEventDialog from './components/data-event-dialog'
@@ -23,11 +23,10 @@ import GenreList from './components/genre-list'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
-const LUMINANCE_PRESET = 'shortlist' as const
+const LUMINANCE_PRESET = 'shortList' as const
 
 export default function MetadataPage() {
   const { selectionState, viewState } = useUsersViewStore()
-  const { toast } = useToast()
   const [userIds, setUserIds] = useState<string[]>([])
   const [activeSection, setActiveSection] = useState<'periods' | 'genres' | 'tags'>('periods')
 
@@ -80,7 +79,7 @@ export default function MetadataPage() {
     const map = new Map<string, string>()
     
     // 1. Generate base color map from viewState (keys are view IDs like u:1, g:1, etc.)
-    const baseColorMap = buildColorMap(
+    const baseColorMap = buildUserColorMap(
       viewState,
       BASE_COLOR_HEX,
       EQU_DIST_COUNT,
@@ -133,16 +132,9 @@ export default function MetadataPage() {
     try {
       await categoryEndpoint.update(id, { name: newName })
       refetchCategories()
-      toast({
-        title: "Catégorie mise à jour",
-        description: "Le nom de la catégorie a été modifié avec succès.",
-      })
+      showSuccessToast("Catégorie mise à jour")
     } catch (error) {
-       toast({
-        title: "Erreur",
-        description: "Impossible de modifier le nom de la catégorie.",
-        variant: "destructive"
-      })
+       showErrorToast(error, "Impossible de modifier le nom de la catégorie")
     }
   }
 
@@ -151,23 +143,20 @@ export default function MetadataPage() {
       await categoryEndpoint.remove(id, {})
       refetchCategories()
       refetchEvents()
-      toast({
-        title: "Catégorie supprimée",
-        description: "La catégorie a été supprimée avec succès.",
-      })
+      showSuccessToast("Catégorie supprimée")
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer la catégorie.",
-        variant: "destructive"
-      })
+      showErrorToast(error, "Impossible de supprimer la catégorie")
     }
   }
 
-  // Sort categories alphabetically
+  // Sort categories by number of events (descending)
   const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-  }, [categories])
+    return [...categories].sort((a, b) => {
+      const countA = (a.id && groupedEvents.get(a.id)?.length) || 0;
+      const countB = (b.id && groupedEvents.get(b.id)?.length) || 0;
+      return countB - countA;
+    })
+  }, [categories, groupedEvents])
 
   return (
     <div className="max-w-6xl mx-auto p-6">

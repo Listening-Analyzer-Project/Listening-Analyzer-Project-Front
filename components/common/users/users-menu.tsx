@@ -6,20 +6,20 @@ import { USER_UPDATED_EVENT } from '@/lib/events'
 
 // dnd-kit
 import {
-  closestCorners,
-  DndContext,
-  DragEndEvent,
-  DragStartEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors
+    closestCorners,
+    DndContext,
+    DragEndEvent,
+    DragStartEvent,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors
 } from '@dnd-kit/core'
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 
 import { Button } from '@/components/ui/button'
@@ -27,12 +27,12 @@ import { userEndpoint } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
-  buildRestoredPayload,
-  loadPersistedPayload,
-  reconcileViewStateWithUsers
+    buildRestoredPayload,
+    loadPersistedPayload,
+    reconcileViewStateWithUsers
 } from '@/lib/store/users/users-view-persistence'
 import { showErrorToast } from '@/lib/utils'
-import { buildColorMap, isGroup, isItem } from '@/lib/utils/core-service'
+import { buildUserColorMap, isGroup, isItem } from '@/lib/utils/core-service'
 import type { FUser, ViewState } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
@@ -43,7 +43,7 @@ import UserItem from './user-item'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
-const LUMINANCE_PRESET = 'shortlist' as const
+const LUMINANCE_PRESET = 'shortList' as const
 
 function findParentId(viewState: ViewState, targetId: string): string | null {
   for (const id of viewState.order) {
@@ -217,7 +217,7 @@ export default function UsersMenu() {
       .map(u => [u.id, u]) ?? []
   )
 
-  const colorMap = buildColorMap(
+  const colorMap = buildUserColorMap(
     viewState,
     BASE_COLOR_HEX,
     EQU_DIST_COUNT,

@@ -22,15 +22,20 @@ import {
 import { genreEndpoint } from "@/lib/api/core/genre-endpoint"
 import { subGenreEndpoint } from "@/lib/api/core/sub-genre-endpoint"
 import { useApi } from "@/lib/hooks"
+import { buildGenreColorMap } from "@/lib/utils/core-service"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
 import { FGenreWithSubGenres } from "@/types"
+
+const BASE_COLOR_HEX = '#16A34A'
+const EQU_DIST_COUNT = 8
+const LUMINANCE_PRESET = 'shortList'
+const SOFT_DARK_TEXT_COLOR = '#374151'
 
 export default function GenreList() {
     const { data: genres, refetch } = useApi<FGenreWithSubGenres[]>(
         () => genreEndpoint.fetchWithSubGenres(),
         []
     )
-    
     
     // State for pending creations
     const [isCreatingGenre, setIsCreatingGenre] = useState(false)
@@ -49,10 +54,8 @@ export default function GenreList() {
     const handlePendingGenreChange = async (newName: string) => {
         setIsCreatingGenre(false)
         if (newName.trim() === "") {
-            // Empty - creation was cancelled via onCancel, no action needed
             return
         }
-        // Create the genre with the validated name
         try {
             await genreEndpoint.create({ name: newName })
             showSuccessToast("Genre créé")
@@ -74,10 +77,8 @@ export default function GenreList() {
         const genreId = pendingSubGenreFor
         setPendingSubGenreFor(null)
         if (newName.trim() === "" || !genreId) {
-            // Empty - creation was cancelled via onCancel, no action needed
             return
         }
-        // Create the sub-genre with the validated name
         try {
             await subGenreEndpoint.create({ 
                 name: newName, 
@@ -96,13 +97,10 @@ export default function GenreList() {
 
     const handleGenreNameChange = async (genre: FGenreWithSubGenres, newName: string) => {
         if (newName === "") {
-            // User wants to delete - show confirmation dialog after a brief delay
-            // This delay allows EditableText to finish its closing process
             setTimeout(() => {
                 setGenreToDelete(genre)
             }, 50)
         } else {
-            // User wants to rename
             try {
                 await genreEndpoint.update(genre.id!, { name: newName })
                 showSuccessToast("Genre renommé")
@@ -125,16 +123,17 @@ export default function GenreList() {
         }
     }
 
-    const handleSubGenreNameChange = async (subGenre: { id?: number, name: string }, genreName: string, newName: string) => {
+    const handleSubGenreNameChange = async (subGenre: { id?: number, name: string }, genreId: number, genreName: string, newName: string) => {
         if (newName === "") {
-            // User wants to delete - show confirmation dialog after a brief delay
             setTimeout(() => {
                 setSubGenreToDelete({ id: subGenre.id!, name: subGenre.name, genreName })
             }, 50)
         } else {
-            // User wants to rename
             try {
-                await subGenreEndpoint.update(subGenre.id!, { name: newName })
+                await subGenreEndpoint.update(subGenre.id!, { 
+                    name: newName,
+                    genre_id: genreId
+                })
                 showSuccessToast("Sous-genre renommé")
                 refetch()
             } catch (e) {
@@ -155,11 +154,11 @@ export default function GenreList() {
         }
     }
 
-    // Sort genres and sub-genres alphabetically
+    // Sort genres by number of sub-genres (descending)
     const sortedGenres = useMemo(() => {
         if (!genres) return []
         return [...genres]
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .sort((a, b) => (b.sub_genres?.length || 0) - (a.sub_genres?.length || 0))
             .map(genre => ({
                 ...genre,
                 sub_genres: genre.sub_genres 
@@ -167,6 +166,11 @@ export default function GenreList() {
                     : []
             }))
     }, [genres])
+
+    // Build the color map for sub-genres
+    const subGenreColorMap = useMemo(() => {
+        return buildGenreColorMap(sortedGenres, BASE_COLOR_HEX, EQU_DIST_COUNT, LUMINANCE_PRESET)
+    }, [sortedGenres])
 
     return (
         <div className="space-y-6">
@@ -196,7 +200,7 @@ export default function GenreList() {
                                     <EditableText
                                         key={sub.id}
                                         value={sub.name || ''}
-                                        onChange={(newName) => handleSubGenreNameChange(sub, genre.name || '', newName)}
+                                        onChange={(newName) => handleSubGenreNameChange(sub, genre.id!, genre.name || '', newName)}
                                         mode="button"
                                         rounded={true}
                                         placeholder="Sub-genre"
@@ -205,6 +209,8 @@ export default function GenreList() {
                                         fontWeight="500"
                                         autoWidth
                                         allowEmpty={true}
+                                        mainColor={sub.id ? subGenreColorMap.get(sub.id) : undefined}
+                                        darkTextColor={SOFT_DARK_TEXT_COLOR}
                                     />
                                 ))}
 
@@ -279,8 +285,6 @@ export default function GenreList() {
                     </CardContent>
                 </Card>
             </div>
-
-
 
             <AlertDialog open={genreToDelete !== null} onOpenChange={(open) => !open && setGenreToDelete(null)}>
                 <AlertDialogContent>

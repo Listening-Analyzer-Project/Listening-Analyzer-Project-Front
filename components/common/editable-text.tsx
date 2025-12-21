@@ -227,22 +227,22 @@ export function EditableText({
         return {
           backgroundColor: mainColor,
           color: textColor,
-          border: "none",
+          border: `1px solid ${mainColor}`,
           hover: {
             backgroundColor: darkenedMainColor,
             color: hoverTextColor,
-            border: "none",
+            border: `1px solid ${darkenedMainColor}`,
           },
         }
       }
       return {
         backgroundColor: "transparent",
         color: darkTextColor,
-        border: "none",
+        border: "1px solid transparent",
         hover: {
           backgroundColor: mainColor,
           color: getTextColorForBackground(mainColor, darkTextColor, lightTextColor),
-          border: "none",
+          border: `1px solid ${mainColor}`,
         },
       }
     }
@@ -272,13 +272,6 @@ export function EditableText({
 
   const getEditingStyles = () => {
     const editingBackgroundColor = "white"
-    if (mode === "button" && visualMode === "default") {
-      return {
-        backgroundColor: editingBackgroundColor,
-        border: `1px solid ${mainColor}`,
-        color: darkTextColor,
-      }
-    }
     return {
       backgroundColor: editingBackgroundColor,
       border: `1px solid ${mainColor}`,
@@ -368,8 +361,6 @@ export function EditableText({
     if (startInEditMode && !isEditing) {
       startEditing()
     }
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
@@ -391,7 +382,7 @@ export function EditableText({
 
   if (isEditing) {
     return (
-      <div style={{ display: "inline-block", position: "relative" }}>
+      <div style={{ display: "inline-flex", position: "relative", verticalAlign: "middle" }}>
         <Input
           ref={inputRef}
           value={editingValue}
@@ -403,7 +394,7 @@ export function EditableText({
             "focus-visible:ring-0 focus-visible:ring-offset-0",
             "h-auto",
             "py-0",
-            "inline-flex items-center box-border leading-none",
+            "inline-flex items-center box-border",
             autoWidth && "justify-center",
             !autoWidth && textAlign === "center" && "justify-center",
             !autoWidth && textAlign === "right" && "justify-end",
@@ -413,6 +404,7 @@ export function EditableText({
           )}
           style={{
             ...textStyle,
+            lineHeight: textStyle.height,
             ...commonWidthStyle,
             ...alignmentStyle,
             ...inputStyle,
@@ -451,7 +443,7 @@ export function EditableText({
       onClick={startEditing}
       className={cn(
         "cursor-pointer",
-        "flex items-center overflow-hidden box-border leading-none",
+        "inline-flex items-center overflow-hidden box-border",
         autoWidth && "justify-center",
         !autoWidth && textAlign === "center" && "justify-center",
         !autoWidth && textAlign === "right" && "justify-end",
@@ -469,6 +461,7 @@ export function EditableText({
         borderRadius: borderRadius,
         paddingLeft: `${horizontalPaddingPx}px`,
         paddingRight: `${horizontalPaddingPx}px`,
+        verticalAlign: "middle",
         ...transitionStyle,
       }}
       role="button"
