@@ -37,16 +37,18 @@ export default function DataPage() {
 
   const { data: apiResult, loading, error } = useApi(async () => {
     const resolvedUserIds = resolveUserIds(selectionState.selectedIds)
-
     const currentParams: any = {
       limit: rowsPerPage,
       offset: (currentPage - 1) * rowsPerPage,
       search: effectiveSearchQuery,
       order_by: sortColumn,
       order_dir: sortDirection,
-      user_ids: resolvedUserIds.length > 0 ? resolvedUserIds.join(',') : ''
     }
-  
+
+    if (resolvedUserIds.length > 0) {
+      currentParams.user_ids = resolvedUserIds.join(',')
+    }
+
     if (viewType === 'listens') {
         if (!showInvalidRows) {
           currentParams.is_valid = true
