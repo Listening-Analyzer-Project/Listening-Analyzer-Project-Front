@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/ui/card'
 import { userEndpoint } from '@/lib/api'
 import { categoryEndpoint } from '@/lib/api/core/category-endpoint'
@@ -208,7 +208,7 @@ export default function MetadataPage() {
                   </CardContent>
                </Card>
 
-              {loadingEvents ? (
+              {loadingEvents && !eventsRaw ? (
                 <div>Chargement des évènements...</div>
               ) : (
                 <div className="space-y-8">

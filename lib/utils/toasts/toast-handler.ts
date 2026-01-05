@@ -2,8 +2,6 @@ import { toast } from "@/lib/utils/toasts/use-toast"
 
 // Standardized error toast
 export function showErrorToast(error: unknown, fallbackTitle = "Une erreur est survenue") {
-  console.log('[showErrorToast] Called with:', { error, fallbackTitle })
-  
   let description = "Veuillez réessayer plus tard."
 
   if (error instanceof Error) {
@@ -11,8 +9,6 @@ export function showErrorToast(error: unknown, fallbackTitle = "Une erreur est s
   } else if (typeof error === "string") {
     description = error
   }
-
-  console.log('[showErrorToast] Calling toast with:', { title: fallbackTitle, description })
 
   toast({
     variant: "destructive",
@@ -23,10 +19,11 @@ export function showErrorToast(error: unknown, fallbackTitle = "Une erreur est s
 }
 
 // Standardized success toast
-export function showSuccessToast(title: string, description?: string) {
+export function showSuccessToast(title: string, description?: string, duration = 3000) {
   toast({
     variant: "default",
     title: title,
     description: description,
+    duration: duration,
   })
 }

@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 
 import EditableText from '@/components/common/editable-text'
 import {
@@ -29,7 +29,7 @@ interface CategoryEventListProps {
   onDelete?: () => void
 }
 
-export default function CategoryEventList({
+const CategoryEventList = memo(function CategoryEventList({
   category,
   title,
   events,
@@ -138,4 +138,6 @@ export default function CategoryEventList({
       </AlertDialog>
     </div>
   )
-}
+})
+
+export default CategoryEventList

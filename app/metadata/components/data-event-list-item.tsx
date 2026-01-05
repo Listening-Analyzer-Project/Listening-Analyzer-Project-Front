@@ -1,6 +1,8 @@
 // TODO : travail date
 
+import EditableText from '@/components/common/editable-text'
 import { Pencil, Trash2 } from 'lucide-react'
+import { memo } from 'react'
 
 import {
   AlertDialog,
@@ -30,7 +32,7 @@ interface EventListItemProps {
   userColorMap?: Map<string, string>
 }
 
-export default function DataEventListItem({ event, onRefresh, userIds, existingTitles, userColorMap }: EventListItemProps) {
+const DataEventListItem = memo(function DataEventListItem({ event, onRefresh, userIds, existingTitles, userColorMap }: EventListItemProps) {
   const startStr = formatDateToDisplay(event.start_date, "day")
   const endStr = formatDateToDisplay(event.end_date, "day")
   
@@ -46,6 +48,30 @@ export default function DataEventListItem({ event, onRefresh, userIds, existingT
         onRefresh()
     } catch (err) {
         showErrorToast(err, 'Erreur lors de la suppression')
+    }
+  }
+
+  const handleTitleChange = async (newTitle: string) => {
+    try {
+      if (!event.id || newTitle === event.title) return
+      if (newTitle.trim() === "") {
+        showErrorToast(new Error("Le titre ne peut pas être vide"), "Erreur")
+        return
+      }
+
+      const payload: any = {
+        title: newTitle,
+        start_date: event.start_date,
+        end_date: event.end_date,
+        description: event.description,
+        category_id: event.category_id
+      }
+
+      await eventEndpoint.update(event.id, payload)
+      showSuccessToast('Évènement renommé')
+      onRefresh()
+    } catch (err) {
+      showErrorToast(err, 'Erreur lors du renommage')
     }
   }
 
@@ -65,7 +91,16 @@ export default function DataEventListItem({ event, onRefresh, userIds, existingT
     <div className="px-4 py-2 bg-white hover:bg-gray-50 flex justify-between items-center group transition-colors">
       <div className="flex flex-col gap-0.5 w-full max-w-[calc(100%-4rem)]">
         <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
-             <h3 className="font-medium text-base whitespace-nowrap">{event.title}</h3>
+             <EditableText
+               value={event.title}
+               onChange={handleTitleChange}
+               mode="text"
+               placeholder="Titre de l'évènement"
+               fontSize={16}
+               fontSizeRatio={0.6}
+               fontWeight="500"
+               autoWidth
+             />
              
              <span className="text-xs text-muted-foreground whitespace-nowrap">
                {dateStr}
@@ -127,4 +162,6 @@ export default function DataEventListItem({ event, onRefresh, userIds, existingT
       </div>
     </div>
   )
-}
+})
+
+export default DataEventListItem
