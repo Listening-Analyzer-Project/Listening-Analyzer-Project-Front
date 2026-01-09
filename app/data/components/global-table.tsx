@@ -118,11 +118,30 @@ export default function GlobalTable({
     
     duration: (value) => `${Math.floor(value / 1000)}s`,
     
-    badge: (value) => (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
-        {value}
-      </span>
-    ),
+    badge: (value) => {
+      const renderSingleBadge = (val: any, key?: any) => {
+        if (!val) return null
+        
+        // Handle both simple strings and tag objects
+        const label = typeof val === 'object' && val !== null && 'name' in val ? val.name : val
+
+        return (
+          <span key={key} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
+            {label}
+          </span>
+        )
+      }
+
+      if (Array.isArray(value)) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {value.map((item, idx) => renderSingleBadge(item, idx))}
+          </div>
+        )
+      }
+
+      return renderSingleBadge(value)
+    },
     
     boolean: (value) => (
       <span className={cn(

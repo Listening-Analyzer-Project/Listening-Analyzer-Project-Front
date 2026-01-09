@@ -134,7 +134,7 @@ export const COLUMN_RENDER_TYPES: Record<string, RenderType> = {
     country: 'text',
     region: 'text',
     allArtists: 'text',
-    allTags: 'text',
+    allTags: 'badge',
 
     // Tracks, Artists, Albums communs
     rank_num: 'rank',
@@ -148,7 +148,7 @@ export const COLUMN_RENDER_TYPES: Record<string, RenderType> = {
     valid_listens: 'validListens',
     invalid_listens: 'invalidListens',
     sub_genre_name: 'badge',
-    all_tags: 'text',
+    all_tags: 'badge',
     sub_genres: 'text',
 }
 
@@ -164,5 +164,5 @@ export const COLUMN_CELL_STYLES: Record<RenderType, string> = {
     boolean: '',
     number: 'text-right tabular-nums',
     validListens: 'text-right font-medium text-green-600 dark:text-green-400 tabular-nums',
-    invalidListens: 'text-right text-muted-foreground tabular-nums'
+    invalidListens: 'text-right text-muted-foreground tabular-nums',
 }

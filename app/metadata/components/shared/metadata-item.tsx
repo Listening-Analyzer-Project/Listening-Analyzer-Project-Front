@@ -1,25 +1,27 @@
 "use client"
 
 import EditableText from "@/components/common/editable-text"
-import { FSubGenre } from "@/types"
 import { useDraggable } from "@dnd-kit/core"
 import React from "react"
 
-interface DraggableSubGenreProps {
-  sub: FSubGenre
-  genreId: number
-  genreName: string
+export interface MetadataItemProps {
+  item: { id?: number; name: string }
+  groupId: number
+  groupName: string
   color?: string
   darkTextColor?: string
-  onNameChange: (subGenre: { id?: number; name: string }, genreId: number, genreName: string, newName: string) => Promise<void>
+  lightTextColor?: string
+  onNameChange: (item: { id?: number; name: string }, groupId: number, groupName: string, newName: string) => Promise<void>
+  type: 'sub' | 'tag' // To distinguish in drag events
 }
 
-export function DraggableSubGenre({ sub, genreId, genreName, color, darkTextColor, onNameChange }: DraggableSubGenreProps) {
+export function MetadataItem({ item, groupId, groupName, color, darkTextColor, lightTextColor, onNameChange, type }: MetadataItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `sub:${sub.id}`,
+    id: `${type}:${item.id}`,
     data: {
-      sub,
-      originalGenreId: genreId,
+      item,
+      originalGroupId: groupId,
+      type
     },
   })
 
@@ -40,11 +42,11 @@ export function DraggableSubGenre({ sub, genreId, genreName, color, darkTextColo
       className="touch-none select-none"
     >
       <EditableText
-        value={sub.name || ''}
-        onChange={(newName) => onNameChange(sub, genreId, genreName, newName)}
+        value={item.name || ''}
+        onChange={(newName) => onNameChange(item, groupId, groupName, newName)}
         mode="button"
         rounded={true}
-        placeholder="Sub-genre"
+        placeholder={type === 'sub' ? "Sub-genre" : "Tag"}
         fontSize={12}
         fontSizeRatio={0.5}
         fontWeight="500"
@@ -52,6 +54,7 @@ export function DraggableSubGenre({ sub, genreId, genreName, color, darkTextColo
         allowEmpty={true}
         mainColor={color}
         darkTextColor={darkTextColor}
+        lightTextColor={lightTextColor}
       />
     </div>
   )

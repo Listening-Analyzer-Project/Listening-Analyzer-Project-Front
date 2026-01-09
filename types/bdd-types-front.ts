@@ -63,6 +63,7 @@ export interface FGenreWithSubGenres extends FGenre {
 export interface FTag {
   id?: number
   name: string
+  color_index: number
 }
 
 export interface FCountry {

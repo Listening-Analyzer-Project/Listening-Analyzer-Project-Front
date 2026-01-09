@@ -3,24 +3,13 @@ import {
     DndContext,
     DragEndEvent,
     PointerSensor,
-    useDroppable,
     useSensor,
     useSensors
 } from "@dnd-kit/core"
-import { Plus, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import EditableText from "@/components/common/editable-text"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 
 import {
@@ -31,28 +20,22 @@ import {
 import { genreEndpoint } from "@/lib/api/core/genre-endpoint"
 import { subGenreEndpoint } from "@/lib/api/core/sub-genre-endpoint"
 import { useApi } from "@/lib/hooks"
-import { cn } from "@/lib/utils"
+import { getCyclicColor } from "@/lib/utils"
 import { buildGenreColorMap } from "@/lib/utils/core-service"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
 import { FGenreWithSubGenres, FSubGenre } from "@/types"
-import { DraggableSubGenre } from "./draggable-sub-genre"
+import { MetadataAddCard } from "./shared/metadata-add-card"
+import { MetadataDeleteDialog } from "./shared/metadata-delete-dialog"
+import { MetadataGroup } from "./shared/metadata-group"
+import { MetadataItem } from "./shared/metadata-item"
+import { MetadataPendingItem } from "./shared/metadata-pending-item"
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
 const LUMINANCE_PRESET = 'shortList'
 const SOFT_DARK_TEXT_COLOR = '#374151'
 
-function DroppableGenre({ genre, children }: { genre: FGenreWithSubGenres; children: React.ReactNode }) {
-    const { setNodeRef, isOver } = useDroppable({
-        id: `genre:${genre.id}`,
-    })
-
-    return (
-        <div ref={setNodeRef} className={cn("transition-colors rounded-xl h-full", isOver && "bg-primary/5 ring-2 ring-primary/30")}>
-            {children}
-        </div>
-    )
-}
+// DroppableGenre definition removed, replaced by DroppableMetadataContainer
 
 export default function GenreList() {
     const { data: genres, refetch } = useApi<FGenreWithSubGenres[]>(
@@ -205,7 +188,13 @@ export default function GenreList() {
         
         sorted.forEach(g => {
             subGenreIdsByGenre[g.id!] = (g.sub_genres || [])
-                .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                .sort((a, b) => {
+                    const nameA = a.name || ''
+                    const nameB = b.name || ''
+                    if (nameA === 'Other') return 1
+                    if (nameB === 'Other') return -1
+                    return nameA.localeCompare(nameB)
+                })
                 .map(s => s.id!)
         })
 
@@ -256,16 +245,16 @@ export default function GenreList() {
 
         const activeData = active.data.current
         const overGenreId = parseInt(String(over.id).split(":")[1])
-        const subGenre = activeData?.sub
-        const originalGenreId = activeData?.originalGenreId
+        const item = activeData?.item
+        const originalGroupId = activeData?.originalGroupId
 
-        if (subGenre && overGenreId !== originalGenreId) {
+        if (item && overGenreId !== originalGroupId) {
             try {
-                await subGenreEndpoint.update(subGenre.id, {
+                await subGenreEndpoint.update(item.id, {
                     genre_id: overGenreId,
-                    name: subGenre.name // Keep name same, endpoint might require it or it's good practice
+                    name: item.name // Keep name same, endpoint might require it or it's good practice
                 })
-                showSuccessToast(`${subGenre.name} déplacé`)
+                showSuccessToast(`${item.name} déplacé`)
                 refetch()
             } catch (e) {
                 showErrorToast(e, "Impossible de déplacer le sous-genre")
@@ -287,85 +276,76 @@ export default function GenreList() {
                 collisionDetection={closestCorners} 
                 onDragEnd={handleDragEnd}
             >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {sortedGenres.map(genre => (
-                        <DroppableGenre key={genre.id} genre={genre}>
-                            <Card className="flex flex-col h-full group transition-colors">
-                                <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                                    <div onClick={(e) => e.stopPropagation()} className="flex-1">
-                                        <EditableText
-                                            value={genre.name || ''}
-                                            onChange={(newName) => handleGenreNameChange(genre, newName)}
-                                            mode="text"
-                                            placeholder="Genre name"
-                                            fontSize={16}
-                                            fontSizeRatio={0.65}
-                                            fontWeight="600"
-                                            autoWidth
-                                            allowEmpty={true}
-                                        />
-                                    </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-7 w-7 text-destructive/70 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setGenreToDelete(genre);
-                                        }}
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </CardHeader>
-                                <CardContent className="px-4 pb-4 pt-0">
-                                    <div className="flex flex-wrap gap-1.5 items-center">
-                                        {genre.sub_genres?.map(sub => (
-                                            <DraggableSubGenre
-                                                key={sub.id}
-                                                sub={sub}
-                                                genreId={genre.id!}
-                                                genreName={genre.name || ''}
-                                                color={sub.id ? subGenreColorMap.get(sub.id) : undefined}
-                                                darkTextColor={SOFT_DARK_TEXT_COLOR}
-                                                onNameChange={handleSubGenreNameChange}
-                                            />
-                                        ))}
-
-                                        {pendingSubGenreFor === genre.id && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start" style={{ overflowAnchor: 'none' }}>
+                    {sortedGenres.map((genre, idx) => {
+                        const genreColor = getCyclicColor(BASE_COLOR_HEX, EQU_DIST_COUNT, LUMINANCE_PRESET, idx + 1)
+                        
+                        return (
+                        <MetadataGroup
+                            key={genre.id}
+                            id={`genre:${genre.id}`}
+                            groupColor={genreColor}
+                            header={
+                                <>
+                                    <div 
+                                        className="w-full h-1 rounded-t-xl"
+                                        style={{ backgroundColor: genreColor }}
+                                    />
+                                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+                                        <div onClick={(e) => e.stopPropagation()} className="flex-1">
                                             <EditableText
-                                                key="pending-sub-genre"
-                                                value=""
-                                                onChange={handlePendingSubGenreChange}
-                                                onCancel={handleCancelSubGenreCreation}
-                                                mode="button"
-                                                rounded={true}
-                                                placeholder="Nouveau sous-genre"
-                                                fontSize={12}
-                                                fontSizeRatio={0.5}
-                                                fontWeight="500"
+                                                value={genre.name || ''}
+                                                onChange={(newName) => handleGenreNameChange(genre, newName)}
+                                                mode="text"
+                                                placeholder="Genre name"
+                                                fontSize={16}
+                                                fontSizeRatio={0.65}
+                                                fontWeight="600"
                                                 autoWidth
                                                 allowEmpty={true}
-                                                emptyInputAtFocus={true}
-                                                startInEditMode={true}
                                             />
-                                        )}
-                                        
-                                        <Button
-                                            size="icon"
-                                            variant="outline"
-                                            className="h-6 w-6 rounded-full shrink-0"
-                                            onClick={() => handleStartCreateSubGenre(genre.id!)}
+                                        </div>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-7 w-7 text-destructive/70 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setGenreToDelete(genre);
+                                            }}
                                         >
-                                            <Plus className="h-3 w-3" />
-                                            <span className="sr-only">Ajouter un sous-genre</span>
+                                            <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </DroppableGenre>
-                    ))}
-
-                    {/* Show pending genre if creating */}
+                                    </CardHeader>
+                                </>
+                            }
+                            onAddItem={() => handleStartCreateSubGenre(genre.id!)}
+                            addItemLabel="Ajouter un sous-genre"
+                            pendingItem={pendingSubGenreFor === genre.id ? (
+                                <MetadataPendingItem
+                                    key="pending-sub-genre"
+                                    value=""
+                                    onChange={handlePendingSubGenreChange}
+                                    onCancel={handleCancelSubGenreCreation}
+                                    placeholder="Nouveau sous-genre"
+                                    color={genreColor}
+                                />
+                            ) : undefined}
+                        >
+                            {genre.sub_genres?.map(sub => (
+                                <MetadataItem
+                                    key={sub.id}
+                                    type="sub"
+                                    item={sub}
+                                    groupId={genre.id!}
+                                    groupName={genre.name || ''}
+                                    color={sub.id ? subGenreColorMap.get(sub.id) : undefined}
+                                    darkTextColor={SOFT_DARK_TEXT_COLOR}
+                                    onNameChange={handleSubGenreNameChange}
+                                />
+                            ))}
+                        </MetadataGroup>
+                    )})}
                     {isCreatingGenre && (
                         <Card className="flex flex-col">
                             <CardHeader className="p-4 pb-2">
@@ -395,51 +375,37 @@ export default function GenreList() {
                         </Card>
                     )}
 
-                    <Card className="flex flex-col cursor-pointer hover:bg-accent/50 transition-colors" onClick={handleStartCreateGenre}>
-                        <CardContent className="flex-1 flex items-center justify-center min-h-[100px] p-0">
-                            <Plus className="h-8 w-8 text-muted-foreground" />
-                        </CardContent>
-                    </Card>
+                    <MetadataAddCard onClick={handleStartCreateGenre} />
                 </div>
             </DndContext>
 
-            <AlertDialog open={genreToDelete !== null} onOpenChange={(open) => !open && setGenreToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Supprimer le genre ?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <strong>Attention :</strong> Cette action supprimera le genre "{genreToDelete?.name}" et tous ses sous-genres associés.
-                            <br /><br />
-                            Les données d'écoutes affectées à ce genre seront altérées. Cette action est irréversible.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Supprimer
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <MetadataDeleteDialog 
+                open={genreToDelete !== null} 
+                onOpenChange={(open) => !open && setGenreToDelete(null)}
+                title="Supprimer le genre ?"
+                description={
+                    <>
+                        <strong>Attention :</strong> Cette action supprimera le genre "{genreToDelete?.name}" et tous ses sous-genres associés.
+                        <br /><br />
+                        Les données d'écoutes affectées à ce genre seront altérées. Cette action est irréversible.
+                    </>
+                }
+                onConfirm={handleConfirmDelete}
+            />
 
-            <AlertDialog open={subGenreToDelete !== null} onOpenChange={(open) => !open && setSubGenreToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Supprimer le sous-genre ?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <strong>Attention :</strong> Cette action supprimera le sous-genre "{subGenreToDelete?.name}" du genre "{subGenreToDelete?.genreName}".
-                            <br /><br />
-                            Les données d'écoutes affectées à ce sous-genre seront altérées. Cette action est irréversible.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmSubGenreDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Supprimer
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <MetadataDeleteDialog 
+                open={subGenreToDelete !== null} 
+                onOpenChange={(open) => !open && setSubGenreToDelete(null)}
+                title="Supprimer le sous-genre ?"
+                description={
+                    <>
+                        <strong>Attention :</strong> Cette action supprimera le sous-genre "{subGenreToDelete?.name}" du genre "{subGenreToDelete?.genreName}".
+                        <br /><br />
+                        Les données d'écoutes affectées à ce sous-genre seront altérées. Cette action est irréversible.
+                    </>
+                }
+                onConfirm={handleConfirmSubGenreDelete}
+            />
         </div>
     )
 }

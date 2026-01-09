@@ -1,0 +1,390 @@
+import {
+    closestCorners,
+    DndContext,
+    DragEndEvent,
+    PointerSensor,
+    useSensor,
+    useSensors
+} from "@dnd-kit/core"
+import { Trash2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+
+import { Button } from "@/components/ui/button"
+import { tagEndpoint } from "@/lib/api/core/tag-endpoints"
+import { useApi } from "@/lib/hooks"
+import { buildTagColorMap, getTagGroupColor } from "@/lib/utils/core-service"
+import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
+import { FTag } from "@/types"
+import { MetadataAddCard } from "./shared/metadata-add-card"
+import { MetadataDeleteDialog } from "./shared/metadata-delete-dialog"
+import { MetadataGroup } from "./shared/metadata-group"
+import { MetadataItem } from "./shared/metadata-item"
+import { MetadataPendingItem } from "./shared/metadata-pending-item"
+
+const SOFT_DARK_TEXT_COLOR = '#374151'
+const LIGHT_TEXT_COLOR = '#FFFFFF'
+
+// DroppableTagGroup definition removed, replaced by DroppableMetadataContainer
+
+export default function TagList() {
+    const { data: tags, refetch } = useApi<FTag[]>(
+        () => tagEndpoint.fetchAll(),
+    )
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 6,
+            },
+        })
+    )
+
+    // State for max group index visible (to allow adding new empty groups)
+    const [maxVisibleIndex, setMaxVisibleIndex] = useState(0)
+
+    // Order state to defer sorting until refresh
+    const [displayOrder, setDisplayOrder] = useState<{
+        groupIds: number[],
+        tagIdsByGroup: Record<number, number[]>
+    } | null>(null)
+
+    // Capture initial order when tags data is first available
+    useMemo(() => {
+        if (!tags || displayOrder) return
+
+        // Initial grouping and sorting
+        const groups = new Map<number, FTag[]>()
+        tags.forEach(tag => {
+            const idx = tag.color_index
+            if (!groups.has(idx)) groups.set(idx, [])
+            groups.get(idx)?.push(tag)
+        })
+
+        const groupIds = Array.from(groups.keys()).sort((a, b) => a - b)
+        // Group 0 always last or treated specifically? Logic was separate indices loop.
+        // Let's keep logic: 1..max, then 0.
+        // But for `displayOrder`, we just capture what we have.
+        
+        const tagIdsByGroup: Record<number, number[]> = {}
+        groups.forEach((groupTags, idx) => {
+             tagIdsByGroup[idx] = groupTags
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                .map(t => t.id!)
+        })
+
+        setDisplayOrder({ groupIds, tagIdsByGroup })
+    }, [tags, displayOrder])
+
+
+    // Compute the visual list based on preserved order + new items
+    const groupedTags = useMemo(() => {
+         const groups = new Map<number, FTag[]>()
+         if (!tags) return groups
+         
+         if (!displayOrder) {
+             // Fallback: standard immediate sort
+             tags.forEach(tag => {
+                const idx = tag.color_index
+                if (!groups.has(idx)) groups.set(idx, [])
+                groups.get(idx)?.push(tag)
+            })
+            groups.forEach(group => {
+                group.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            })
+            return groups
+         }
+
+         const tagMap = new Map(tags.map(t => [t.id, t]))
+         
+         // Reconstruct groups based on displayOrder
+         // We iterate over ALL observed indices in tags, plus any from displayOrder
+         const allIndices = new Set([...displayOrder.groupIds, ...tags.map(t => t.color_index)])
+         
+         allIndices.forEach(idx => {
+             const preservedTagIds = displayOrder.tagIdsByGroup[idx] || []
+             
+             // a. Preserved tags in order
+             const orderedTags = preservedTagIds
+                .map(id => tagMap.get(id))
+                .filter((t): t is FTag => !!t && t.color_index === idx) // Verify it's still in this group
+             
+             // b. New tags (added or moved here) or tags that were in displayOrder but moved to this group
+             // Actually, if a tag moves, it changes group.
+             // We need to find all tags currently in this group
+             const currentTagsInGroup = tags.filter(t => t.color_index === idx)
+             const knownTagIds = new Set(orderedTags.map(t => t.id!))
+             
+             const newTags = currentTagsInGroup.filter(t => !knownTagIds.has(t.id!))
+             
+             // Combine: Ordered + New (appended)
+             groups.set(idx, [...orderedTags, ...newTags])
+         })
+
+         return groups
+    }, [tags, displayOrder])
+
+    // Derived state: tag colors
+    const tagColorMap = useMemo(() => {
+        return buildTagColorMap(groupedTags)
+    }, [groupedTags])
+
+    // Update maxVisibleIndex when tags change, ensuring we show at least up to the highest existing index
+    useEffect(() => {
+        if (!tags) return
+        let max = 0
+        tags.forEach(t => {
+            if (t.color_index > max) max = t.color_index
+        })
+        setMaxVisibleIndex(prev => Math.max(prev, max))
+    }, [tags])
+
+    // States for interaction
+    const [pendingCreateIn, setPendingCreateIn] = useState<number | null>(null)
+    const [tagToDelete, setTagToDelete] = useState<FTag | null>(null)
+    const [groupToDelete, setGroupToDelete] = useState<number | null>(null)
+
+    const handleCreateGroup = () => {
+        setMaxVisibleIndex(prev => prev + 1)
+    }
+
+    const handleStartCreateTag = (index: number) => {
+        setPendingCreateIn(index)
+    }
+
+    const handlePendingTagChange = async (newName: string) => {
+        const index = pendingCreateIn
+        setPendingCreateIn(null)
+        if (newName.trim() === "" || index === null) return
+
+        try {
+            await tagEndpoint.create({
+                name: newName,
+                color_index: index
+            })
+            showSuccessToast("Tag créé")
+            refetch()
+        } catch (e) {
+            showErrorToast(e, "Impossible de créer le tag")
+        }
+    }
+
+    const handleCancelTagCreation = () => {
+        setPendingCreateIn(null)
+    }
+
+    const handleTagNameChange = async (tag: {id?: number, name: string}, groupId: number, groupName: string, newName: string) => {
+         if (newName === "") {
+            setTimeout(() => {
+                // Must find the original tag object to delete
+                const original = tags?.find(t => t.id === tag.id)
+                if (original) setTagToDelete(original)
+            }, 50)
+        } else {
+             try {
+                await tagEndpoint.update(tag.id!, {
+                    name: newName,
+                    color_index: groupId
+                })
+                showSuccessToast("Tag renommé")
+                refetch()
+            } catch (e) {
+                showErrorToast(e, "Impossible de renommer le tag")
+            }
+        }
+    }
+
+    const handleConfirmDeleteTag = async () => {
+        if (!tagToDelete) return
+        try {
+            await tagEndpoint.remove(tagToDelete.id!)
+            showSuccessToast("Tag supprimé")
+            setTagToDelete(null)
+            refetch()
+        } catch (e) {
+            showErrorToast(e, "Impossible de supprimer le tag")
+        }
+    }
+
+    const handleConfirmDeleteGroup = async () => {
+        if (groupToDelete === null) return
+        
+        // 1. Delete all tags in this group
+        // 2. Shift indices > groupToDelete
+        const tagsInGroup = groupedTags.get(groupToDelete) || []
+        const tagsToShift = (tags || []).filter(t => t.color_index > groupToDelete)
+
+        try {
+             await Promise.all(tagsInGroup.map(t => tagEndpoint.remove(t.id!)))
+
+            // Shift others
+            for (const t of tagsToShift) {
+                await tagEndpoint.update(t.id!, {
+                    name: t.name,
+                    color_index: t.color_index - 1
+                })
+            }
+
+            showSuccessToast(`Groupe ${groupToDelete} supprimé`)
+            setGroupToDelete(null)
+            
+            // Reduce max visible index if it was the last one
+            if (groupToDelete === maxVisibleIndex) {
+                 setMaxVisibleIndex(prev => Math.max(0, prev - 1))
+            } else {
+                 // Actually we just reduced the count of groups effectively
+                 setMaxVisibleIndex(prev => Math.max(0, prev - 1))
+            }
+            
+            refetch()
+
+        } catch (e) {
+            showErrorToast(e, "Erreur lors de la suppression du groupe")
+        }
+    }
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event
+        if (!over) return
+
+        const activeData = active.data.current
+        const overGroupId = parseInt(String(over.id).split(":")[1])
+        const item = activeData?.item
+        const originalGroupId = activeData?.originalGroupId
+
+        if (item && overGroupId !== originalGroupId) {
+            try {
+                await tagEndpoint.update(item.id, {
+                    color_index: overGroupId,
+                    name: item.name 
+                })
+                showSuccessToast("Tag déplacé")
+                refetch()
+            } catch (e) {
+                showErrorToast(e, "Impossible de déplacer le tag")
+            }
+        }
+    }
+
+    // Determine list of indices to render
+    // 1 to maxVisibleIndex
+    const indices = []
+    for (let i = 1; i <= maxVisibleIndex; i++) {
+        indices.push(i)
+    }
+    // Only append 0 if there are tags in it
+    if ((groupedTags.get(0)?.length || 0) > 0) {
+        indices.push(0)
+    }
+
+    return (
+        <div className="space-y-6">
+             <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Liste des tags</h2>
+            </div>
+
+             <DndContext 
+                sensors={sensors} 
+                collisionDetection={closestCorners} 
+                onDragEnd={handleDragEnd}
+            >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start" style={{ overflowAnchor: 'none' }}>
+                    {indices.map(idx => {
+                        const color = getTagGroupColor(idx)
+                        const groupTags = groupedTags.get(idx) || []
+                        const isDefault = idx === 0
+
+                        return (
+
+
+                            <MetadataGroup
+                                key={idx}
+                                id={`group:${idx}`}
+                                groupColor={color}
+                                header={
+                                     <div 
+                                        className="w-full h-1 transition-all duration-300 ease-in-out group-hover:h-9 rounded-t-xl"
+                                        style={{ backgroundColor: color }}
+                                    >
+                                         {!isDefault && (
+                                            <div className="flex h-full items-center justify-end px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-7 w-7 text-white hover:bg-white/20 hover:text-white"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setGroupToDelete(idx);
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                }
+                                onAddItem={() => handleStartCreateTag(idx)}
+                                addItemLabel="Ajouter un tag"
+                                pendingItem={pendingCreateIn === idx ? (
+                                    <MetadataPendingItem
+                                        key="pending-tag"
+                                        value=""
+                                        onChange={handlePendingTagChange}
+                                        onCancel={handleCancelTagCreation}
+                                        placeholder="Nouveau tag"
+                                        color={color}
+                                        darkTextColor={SOFT_DARK_TEXT_COLOR}
+                                        lightTextColor={LIGHT_TEXT_COLOR} 
+                                    />
+                                ) : undefined}
+                            >
+                                {groupTags.map(tag => (
+                                    <MetadataItem
+                                        key={tag.id}
+                                        type="tag"
+                                        item={tag}
+                                        groupId={idx}
+                                        groupName={isDefault ? 'Non classés' : `Groupe ${idx}`}
+                                        color={tag.id ? tagColorMap.get(tag.id) : undefined}
+                                        darkTextColor={SOFT_DARK_TEXT_COLOR}
+                                        lightTextColor={LIGHT_TEXT_COLOR} 
+                                        onNameChange={handleTagNameChange}
+                                    />
+                                ))}
+                            </MetadataGroup>
+                        )
+                    })}
+                    
+                    <MetadataAddCard onClick={handleCreateGroup} />
+                </div>
+            </DndContext>
+
+            <MetadataDeleteDialog 
+                open={tagToDelete !== null} 
+                onOpenChange={(open) => !open && setTagToDelete(null)}
+                title="Supprimer le tag ?"
+                description={
+                    <>
+                        <strong>Attention :</strong> Cette action supprimera le tag "{tagToDelete?.name}".
+                        <br /><br />
+                        Cette action est irréversible.
+                    </>
+                }
+                onConfirm={handleConfirmDeleteTag}
+            />
+
+            <MetadataDeleteDialog 
+                open={groupToDelete !== null} 
+                onOpenChange={(open) => !open && setGroupToDelete(null)}
+                title={`Supprimer le groupe ${groupToDelete} ?`}
+                description={
+                    <>
+                        <strong>Attention :</strong> Cette action supprimera tous les tags de ce groupe et décalera les groupes suivants.
+                        <br /><br />
+                        Cette action est irréversible.
+                    </>
+                }
+                onConfirm={handleConfirmDeleteGroup}
+            />
+        </div>
+    )
+}

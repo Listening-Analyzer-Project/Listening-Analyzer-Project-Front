@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card'
 import { userEndpoint } from '@/lib/api'
 import { categoryEndpoint } from '@/lib/api/core/category-endpoint'
@@ -20,6 +20,7 @@ import { FCategory, FEventWithCategory, FUser } from '@/types'
 import CategoryEventList from './components/category-event-list'
 import DataEventDialog from './components/data-event-dialog'
 import GenreList from './components/genre-list'
+import TagList from './components/tag-list'
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
@@ -246,16 +247,7 @@ export default function MetadataPage() {
           )}
 
           {activeSection === 'tags' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Tags</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Gestion des tags, groupes de tags et affiliation aux titres.
-                </p>
-              </CardContent>
-            </Card>
+            <TagList />
           )}
         </div>
       </div>

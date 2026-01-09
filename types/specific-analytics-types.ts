@@ -1,3 +1,5 @@
+import { FTag } from "./bdd-types-front"
+
 export interface FListenAnalytics {
     listen_id: number,
     listen_timestamp: string,
@@ -32,7 +34,7 @@ export interface FListenAnalytics {
     region_id: number,
     region_name: string,
     all_artists: string,
-    all_tags: string,
+    all_tags: FTag[],
     rank_num: number
 }
 
@@ -43,7 +45,7 @@ export interface FTrackAnalytics {
     all_artists: string,
     genre_name: string,
     sub_genre_name: string,
-    all_tags: string,
+    all_tags: FTag[],
     valid_listens: number,
     invalid_listens: number,
     rank_num: number
