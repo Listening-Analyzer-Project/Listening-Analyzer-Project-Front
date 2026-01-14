@@ -1,20 +1,22 @@
 import { ChevronRight } from 'lucide-react'
 import { memo, useState } from 'react'
 
-import EditableText from '@/components/common/editable-text'
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+
 import { cn } from '@/lib/utils'
+
 import { FCategory, FEventWithCategory } from '@/types'
 
+import EditableText from '@/components/common/editable-text'
 import DataEventListItem from './data-event-list-item'
 
 interface CategoryEventListProps {

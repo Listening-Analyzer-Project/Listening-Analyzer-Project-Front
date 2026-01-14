@@ -16,10 +16,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button'
+
 import { eventEndpoint } from '@/lib/api/core/event-endpoint'
+
 import { getTextColorForBackground } from '@/lib/utils'
 import { formatDateToDisplay } from '@/lib/utils/format-date'
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toasts/toast-handler'
+
 import { FEventWithCategory } from '@/types'
 
 import DataEventDialog from './data-event-dialog'

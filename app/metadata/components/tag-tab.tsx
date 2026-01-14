@@ -6,27 +6,26 @@ import {
     useSensor,
     useSensors
 } from "@dnd-kit/core"
-import { Trash2 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Plus, Trash2 } from "lucide-react"
+
 import { tagEndpoint } from "@/lib/api/core/tag-endpoints"
 import { useApi } from "@/lib/hooks"
+
 import { buildTagColorMap, getTagGroupColor } from "@/lib/utils/core-service"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
 import { FTag } from "@/types"
-import { MetadataAddCard } from "./shared/metadata-add-card"
-import { MetadataDeleteDialog } from "./shared/metadata-delete-dialog"
-import { MetadataGroup } from "./shared/metadata-group"
+
+import DeletionDialog from "@/components/common/others/deletion-dialog"
+import {
+    MetadataGroup
+} from "./shared/metadata-group"
 import { MetadataItem } from "./shared/metadata-item"
-import { MetadataPendingItem } from "./shared/metadata-pending-item"
 
-const SOFT_DARK_TEXT_COLOR = '#374151'
-const LIGHT_TEXT_COLOR = '#FFFFFF'
-
-// DroppableTagGroup definition removed, replaced by DroppableMetadataContainer
-
-export default function TagList() {
+export default function TagTab() {
     const { data: tags, refetch } = useApi<FTag[]>(
         () => tagEndpoint.fetchAll(),
     )
@@ -61,10 +60,8 @@ export default function TagList() {
         })
 
         const groupIds = Array.from(groups.keys()).sort((a, b) => a - b)
-        // Group 0 always last or treated specifically? Logic was separate indices loop.
-        // Let's keep logic: 1..max, then 0.
-        // But for `displayOrder`, we just capture what we have.
         
+        // Group 0 always last
         const tagIdsByGroup: Record<number, number[]> = {}
         groups.forEach((groupTags, idx) => {
              tagIdsByGroup[idx] = groupTags
@@ -97,7 +94,6 @@ export default function TagList() {
          const tagMap = new Map(tags.map(t => [t.id, t]))
          
          // Reconstruct groups based on displayOrder
-         // We iterate over ALL observed indices in tags, plus any from displayOrder
          const allIndices = new Set([...displayOrder.groupIds, ...tags.map(t => t.color_index)])
          
          allIndices.forEach(idx => {
@@ -108,9 +104,6 @@ export default function TagList() {
                 .map(id => tagMap.get(id))
                 .filter((t): t is FTag => !!t && t.color_index === idx) // Verify it's still in this group
              
-             // b. New tags (added or moved here) or tags that were in displayOrder but moved to this group
-             // Actually, if a tag moves, it changes group.
-             // We need to find all tags currently in this group
              const currentTagsInGroup = tags.filter(t => t.color_index === idx)
              const knownTagIds = new Set(orderedTags.map(t => t.id!))
              
@@ -325,15 +318,15 @@ export default function TagList() {
                                 onAddItem={() => handleStartCreateTag(idx)}
                                 addItemLabel="Ajouter un tag"
                                 pendingItem={pendingCreateIn === idx ? (
-                                    <MetadataPendingItem
-                                        key="pending-tag"
-                                        value=""
-                                        onChange={handlePendingTagChange}
+                                    <MetadataItem
+                                        isPending={true}
+                                        type="tag"
+                                        groupId={idx}
+                                        groupName={isDefault ? 'Non classés' : `Groupe ${idx}`}
+                                        color={color}
+                                        onNameChange={async (_, gId, __, newName) => handlePendingTagChange(newName)}
                                         onCancel={handleCancelTagCreation}
                                         placeholder="Nouveau tag"
-                                        color={color}
-                                        darkTextColor={SOFT_DARK_TEXT_COLOR}
-                                        lightTextColor={LIGHT_TEXT_COLOR} 
                                     />
                                 ) : undefined}
                             >
@@ -345,8 +338,6 @@ export default function TagList() {
                                         groupId={idx}
                                         groupName={isDefault ? 'Non classés' : `Groupe ${idx}`}
                                         color={tag.id ? tagColorMap.get(tag.id) : undefined}
-                                        darkTextColor={SOFT_DARK_TEXT_COLOR}
-                                        lightTextColor={LIGHT_TEXT_COLOR} 
                                         onNameChange={handleTagNameChange}
                                     />
                                 ))}
@@ -354,11 +345,16 @@ export default function TagList() {
                         )
                     })}
                     
-                    <MetadataAddCard onClick={handleCreateGroup} />
+                    <Card className="flex flex-col cursor-pointer hover:bg-accent/50 transition-colors border-dashed" onClick={handleCreateGroup}>
+                        <CardContent className="flex-1 flex items-center justify-center min-h-[80px] p-2">
+                            <Plus className="h-8 w-8 text-muted-foreground" />
+                            <span className="sr-only">Ajouter</span>
+                        </CardContent>
+                    </Card>
                 </div>
             </DndContext>
 
-            <MetadataDeleteDialog 
+            <DeletionDialog 
                 open={tagToDelete !== null} 
                 onOpenChange={(open) => !open && setTagToDelete(null)}
                 title="Supprimer le tag ?"
@@ -372,7 +368,7 @@ export default function TagList() {
                 onConfirm={handleConfirmDeleteTag}
             />
 
-            <MetadataDeleteDialog 
+            <DeletionDialog 
                 open={groupToDelete !== null} 
                 onOpenChange={(open) => !open && setGroupToDelete(null)}
                 title={`Supprimer le groupe ${groupToDelete} ?`}
@@ -388,3 +384,4 @@ export default function TagList() {
         </div>
     )
 }
+

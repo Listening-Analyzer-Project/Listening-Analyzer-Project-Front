@@ -18,12 +18,16 @@ export default function DeletionDialog({
   onConfirm,
   title = 'Supprimer ?',
   description = 'Cette action est irréversible. Voulez-vous continuer ?',
+  confirmLabel = 'Supprimer',
+  cancelLabel = 'Annuler',
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   onConfirm: () => Promise<void> | void
   title?: string
-  description?: string
+  description?: React.ReactNode
+  confirmLabel?: string
+  cancelLabel?: string
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -35,7 +39,7 @@ export default function DeletionDialog({
 
         <AlertDialogFooter className="flex justify-end gap-2">
           <AlertDialogCancel asChild>
-            <Button variant="outline">Annuler</Button>
+            <Button variant="outline">{cancelLabel}</Button>
           </AlertDialogCancel>
 
           <AlertDialogAction asChild>
@@ -46,7 +50,7 @@ export default function DeletionDialog({
                 onOpenChange(false)
               }}
             >
-              Supprimer
+              {confirmLabel}
             </Button>
           </AlertDialogAction>
         </AlertDialogFooter>

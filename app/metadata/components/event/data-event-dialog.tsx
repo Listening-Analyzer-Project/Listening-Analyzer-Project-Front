@@ -7,43 +7,47 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@/components/ui/popover'
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+
 import categoryEndpoint from '@/lib/api/core/category-endpoint'
 import eventEndpoint from '@/lib/api/core/event-endpoint'
 import userEndpoint from '@/lib/api/core/user-endpoint'
 import { useApi } from '@/lib/hooks'
+
 import { cn } from '@/lib/utils'; // Fixed import based on recent fix
+
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toasts/toast-handler'
+
 import { FCategory, FEvent, FEventWithCategory, FUser } from '@/types'
 
 interface EventDialogProps {
@@ -87,15 +91,6 @@ export default function DataEventDialog({ userIds, existingTitles, onSuccess, ev
       end_date: event?.end_date || new Date().toISOString(),
       category: event?.category_id ? { id: event.category_id } as any : undefined,
       user: event?.user_name ? undefined : (userIds.length > 0 ? { id: Number(userIds[0]) } : {} as any)
-      // Note: for edit, we might need to map user_name back to ID if we don't have user_id in FEventWithCategory
-      // FEventWithCategory has user_name, but not user_id apparently based on types. 
-      // But FEvent has user object. FEventWithCategory extends FEvent usually? 
-      // Let's assume FEventWithCategory might have standard FEvent fields if intersection or look at definition.
-      // Definition: FEventWithCategory { ... user_name?: string; category_id?: number ... }
-      // It implies it might not have the full 'user' object. 
-      // We might need to find the user ID from the name or hope we can get it.
-      // Actually typical fetchAllWithCategory might return user object too if backend sends it.
-      // For now, if editing, we try to match user by Name from availableUsers if ID is missing.
     }
   })
 

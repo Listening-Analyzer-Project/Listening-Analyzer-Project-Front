@@ -6,38 +6,39 @@ import {
     useSensor,
     useSensors
 } from "@dnd-kit/core"
-import { Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import EditableText from "@/components/common/editable-text"
 import { Button } from "@/components/ui/button"
+import { Plus, Trash2 } from "lucide-react"
 
 import {
     Card,
     CardContent,
     CardHeader
 } from "@/components/ui/card"
+
 import { genreEndpoint } from "@/lib/api/core/genre-endpoint"
 import { subGenreEndpoint } from "@/lib/api/core/sub-genre-endpoint"
 import { useApi } from "@/lib/hooks"
+
 import { getCyclicColor } from "@/lib/utils"
 import { buildGenreColorMap } from "@/lib/utils/core-service"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
+
 import { FGenreWithSubGenres, FSubGenre } from "@/types"
-import { MetadataAddCard } from "./shared/metadata-add-card"
-import { MetadataDeleteDialog } from "./shared/metadata-delete-dialog"
-import { MetadataGroup } from "./shared/metadata-group"
+
+import EditableText from "@/components/common/editable-text"
+import DeletionDialog from "@/components/common/others/deletion-dialog"
+import {
+    MetadataGroup
+} from "./shared/metadata-group"
 import { MetadataItem } from "./shared/metadata-item"
-import { MetadataPendingItem } from "./shared/metadata-pending-item"
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
 const LUMINANCE_PRESET = 'shortList'
-const SOFT_DARK_TEXT_COLOR = '#374151'
 
-// DroppableGenre definition removed, replaced by DroppableMetadataContainer
-
-export default function GenreList() {
+export default function GenreTab() {
     const { data: genres, refetch } = useApi<FGenreWithSubGenres[]>(
         () => genreEndpoint.fetchWithSubGenres(),
     )
@@ -322,13 +323,15 @@ export default function GenreList() {
                             onAddItem={() => handleStartCreateSubGenre(genre.id!)}
                             addItemLabel="Ajouter un sous-genre"
                             pendingItem={pendingSubGenreFor === genre.id ? (
-                                <MetadataPendingItem
-                                    key="pending-sub-genre"
-                                    value=""
-                                    onChange={handlePendingSubGenreChange}
+                                <MetadataItem
+                                    isPending={true}
+                                    type="sub"
+                                    groupId={genre.id!}
+                                    groupName={genre.name || ''}
+                                    color={genreColor}
+                                    onNameChange={async (_, gId, __, newName) => handlePendingSubGenreChange(newName)}
                                     onCancel={handleCancelSubGenreCreation}
                                     placeholder="Nouveau sous-genre"
-                                    color={genreColor}
                                 />
                             ) : undefined}
                         >
@@ -340,7 +343,6 @@ export default function GenreList() {
                                     groupId={genre.id!}
                                     groupName={genre.name || ''}
                                     color={sub.id ? subGenreColorMap.get(sub.id) : undefined}
-                                    darkTextColor={SOFT_DARK_TEXT_COLOR}
                                     onNameChange={handleSubGenreNameChange}
                                 />
                             ))}
@@ -375,11 +377,16 @@ export default function GenreList() {
                         </Card>
                     )}
 
-                    <MetadataAddCard onClick={handleStartCreateGenre} />
+                    <Card className="flex flex-col cursor-pointer hover:bg-accent/50 transition-colors border-dashed" onClick={handleStartCreateGenre}>
+                        <CardContent className="flex-1 flex items-center justify-center min-h-[80px] p-2">
+                            <Plus className="h-8 w-8 text-muted-foreground" />
+                            <span className="sr-only">Ajouter</span>
+                        </CardContent>
+                    </Card>
                 </div>
             </DndContext>
 
-            <MetadataDeleteDialog 
+            <DeletionDialog 
                 open={genreToDelete !== null} 
                 onOpenChange={(open) => !open && setGenreToDelete(null)}
                 title="Supprimer le genre ?"
@@ -393,7 +400,7 @@ export default function GenreList() {
                 onConfirm={handleConfirmDelete}
             />
 
-            <MetadataDeleteDialog 
+            <DeletionDialog 
                 open={subGenreToDelete !== null} 
                 onOpenChange={(open) => !open && setSubGenreToDelete(null)}
                 title="Supprimer le sous-genre ?"
@@ -409,3 +416,5 @@ export default function GenreList() {
         </div>
     )
 }
+
+

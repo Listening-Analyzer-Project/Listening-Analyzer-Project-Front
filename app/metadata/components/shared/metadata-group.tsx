@@ -1,7 +1,12 @@
-import { Card, CardContent } from "@/components/ui/card"
+"use client"
+
+import { Plus } from "lucide-react"
 import { ReactNode } from "react"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+
 import { DroppableMetadataContainer } from "./droppable-metadata-container"
-import { MetadataAddButton } from "./metadata-add-button"
 
 interface MetadataGroupProps {
     id: string
@@ -36,10 +41,15 @@ export function MetadataGroup({
                         
                         {pendingItem}
                         
-                        <MetadataAddButton
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 rounded-full shrink-0 border border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-accent"
                             onClick={onAddItem}
-                            label={addItemLabel}
-                        />
+                        >
+                            <Plus className="h-3 w-3" />
+                            <span className="sr-only">{addItemLabel}</span>
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
