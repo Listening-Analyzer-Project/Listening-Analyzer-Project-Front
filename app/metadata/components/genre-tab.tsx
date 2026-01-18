@@ -6,7 +6,7 @@ import {
     useSensor,
     useSensors
 } from "@dnd-kit/core"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Plus, Trash2 } from "lucide-react"
@@ -59,7 +59,7 @@ export default function GenreTab() {
 
     // State for pending creations
     const [isCreatingGenre, setIsCreatingGenre] = useState(false)
-    const [pendingSubGenreFor, setPendingSubGenreFor] = useState<number | null>(null)
+    const [pendingSubGenre, setPendingSubGenre] = useState<number | null>(null)
     
     // State for deleting genre
     const [genreToDelete, setGenreToDelete] = useState<FGenreWithSubGenres | null>(null)
@@ -67,115 +67,7 @@ export default function GenreTab() {
     // State for deleting sub-genre
     const [subGenreToDelete, setSubGenreToDelete] = useState<{ id: number, name: string, genreName: string } | null>(null)
 
-    const handleStartCreateGenre = () => {
-        setIsCreatingGenre(true)
-    }
-
-    const handlePendingGenreChange = async (newName: string) => {
-        setIsCreatingGenre(false)
-        if (newName.trim() === "") {
-            return
-        }
-        try {
-            await genreEndpoint.create({ name: newName })
-            showSuccessToast("Genre créé")
-            refetch()
-        } catch (e) {
-            showErrorToast(e, "Impossible de créer le genre")
-        }
-    }
-
-    const handleCancelGenreCreation = () => {
-        setIsCreatingGenre(false)
-    }
-
-    const handleStartCreateSubGenre = (genreId: number) => {
-        setPendingSubGenreFor(genreId)
-    }
-
-    const handlePendingSubGenreChange = async (newName: string) => {
-        const genreId = pendingSubGenreFor
-        setPendingSubGenreFor(null)
-        if (newName.trim() === "" || !genreId) {
-            return
-        }
-        try {
-            await subGenreEndpoint.create({ 
-                name: newName, 
-                genre_id: genreId
-            })
-            showSuccessToast("Sous-genre créé")
-            refetch()
-        } catch (e) {
-            showErrorToast(e, "Impossible de créer le sous-genre")
-        }
-    }
-
-    const handleCancelSubGenreCreation = () => {
-        setPendingSubGenreFor(null)
-    }
-
-    const handleGenreNameChange = async (genre: FGenreWithSubGenres, newName: string) => {
-        if (newName === "") {
-            setTimeout(() => {
-                setGenreToDelete(genre)
-            }, 50)
-        } else {
-            try {
-                await genreEndpoint.update(genre.id!, { name: newName })
-                showSuccessToast("Genre renommé")
-                refetch()
-            } catch (e) {
-                showErrorToast(e, "Impossible de renommer le genre")
-            }
-        }
-    }
-
-    const handleConfirmDelete = async () => {
-        if (!genreToDelete) return
-        try {
-            await genreEndpoint.remove(genreToDelete.id!, {})
-            showSuccessToast("Genre supprimé")
-            setGenreToDelete(null)
-            refetch()
-        } catch (e) {
-            showErrorToast(e, "Impossible de supprimer le genre")
-        }
-    }
-
-    const handleSubGenreNameChange = async (subGenre: { id?: number, name: string }, genreId: number, genreName: string, newName: string) => {
-        if (newName === "") {
-            setTimeout(() => {
-                setSubGenreToDelete({ id: subGenre.id!, name: subGenre.name, genreName })
-            }, 50)
-        } else {
-            try {
-                await subGenreEndpoint.update(subGenre.id!, { 
-                    name: newName,
-                    genre_id: genreId
-                })
-                showSuccessToast("Sous-genre renommé")
-                refetch()
-            } catch (e) {
-                showErrorToast(e, "Impossible de renommer le sous-genre")
-            }
-        }
-    }
-
-    const handleConfirmSubGenreDelete = async () => {
-        if (!subGenreToDelete) return
-        try {
-            await subGenreEndpoint.remove(subGenreToDelete.id)
-            showSuccessToast("Sous-genre supprimé")
-            setSubGenreToDelete(null)
-            refetch()
-        } catch (e) {
-            showErrorToast(e, "Impossible de supprimer le sous-genre")
-        }
-    }
-
-    // Capture initial order when genres data is first available
-    useMemo(() => {
+    useEffect(() => {
         if (!genres || displayOrder) return
 
         const sorted = [...genres].sort((a, b) => {
@@ -240,6 +132,106 @@ export default function GenreTab() {
         })
     }, [genres, displayOrder])
 
+    // Build the color map for sub-genres
+    const subGenreColorMap = useMemo(() => {
+        return buildGenreColorMap(sortedGenres, BASE_COLOR_HEX, EQU_DIST_COUNT, LUMINANCE_PRESET)
+    }, [sortedGenres])
+
+    const handleStartCreateGenre = () => {
+        setIsCreatingGenre(true)
+    }
+
+    const handlePendingGenreChange = async (newName: string) => {
+        setIsCreatingGenre(false)
+        if (newName.trim() === "") {
+            return
+        }
+        try {
+            await genreEndpoint.create({ name: newName })
+            showSuccessToast("Genre créé")
+            refetch()
+        } catch (e) {
+            showErrorToast(e, "Impossible de créer le genre")
+        }
+    }
+
+    const handlePendingSubGenreChange = async (newName: string) => {
+        const genreId = pendingSubGenre
+        setPendingSubGenre(null)
+        if (newName.trim() === "" || !genreId) {
+            return
+        }
+        try {
+            await subGenreEndpoint.create({ 
+                name: newName, 
+                genre_id: genreId
+            })
+            showSuccessToast("Sous-genre créé")
+            refetch()
+        } catch (e) {
+            showErrorToast(e, "Impossible de créer le sous-genre")
+        }
+    }
+
+    const handleGenreNameChange = async (genre: FGenreWithSubGenres, newName: string) => {
+        if (newName === "") {
+            setTimeout(() => {
+                setGenreToDelete(genre)
+            }, 50)
+        } else {
+            try {
+                await genreEndpoint.update(genre.id!, { name: newName })
+                showSuccessToast("Genre renommé")
+                refetch()
+            } catch (e) {
+                showErrorToast(e, "Impossible de renommer le genre")
+            }
+        }
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!genreToDelete) return
+        try {
+            await genreEndpoint.remove(genreToDelete.id!, {})
+            showSuccessToast("Genre supprimé")
+            setGenreToDelete(null)
+            refetch()
+        } catch (e) {
+            showErrorToast(e, "Impossible de supprimer le genre")
+        }
+    }
+
+    const handleSubGenreNameChange = async (subGenre: { id?: number, name: string }, genreId: number, genreName: string, newName: string) => {
+        if (newName === "") {
+            setTimeout(() => {
+                setSubGenreToDelete({ id: subGenre.id!, name: subGenre.name, genreName })
+            }, 50)
+        } else {
+            try {
+                await subGenreEndpoint.update(subGenre.id!, { 
+                    name: newName,
+                    genre_id: genreId
+                })
+                showSuccessToast("Sous-genre renommé")
+                refetch()
+            } catch (e) {
+                showErrorToast(e, "Impossible de renommer le sous-genre")
+            }
+        }
+    }
+
+    const handleConfirmSubGenreDelete = async () => {
+        if (!subGenreToDelete) return
+        try {
+            await subGenreEndpoint.remove(subGenreToDelete.id)
+            showSuccessToast("Sous-genre supprimé")
+            setSubGenreToDelete(null)
+            refetch()
+        } catch (e) {
+            showErrorToast(e, "Impossible de supprimer le sous-genre")
+        }
+    }
+
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event
         if (!over) return
@@ -262,11 +254,6 @@ export default function GenreTab() {
             }
         }
     }
-
-    // Build the color map for sub-genres
-    const subGenreColorMap = useMemo(() => {
-        return buildGenreColorMap(sortedGenres, BASE_COLOR_HEX, EQU_DIST_COUNT, LUMINANCE_PRESET)
-    }, [sortedGenres])
 
     return (
         <div className="space-y-6">
@@ -320,9 +307,9 @@ export default function GenreTab() {
                                     </CardHeader>
                                 </>
                             }
-                            onAddItem={() => handleStartCreateSubGenre(genre.id!)}
+                            onAddItem={() => setPendingSubGenre(genre.id!)}
                             addItemLabel="Ajouter un sous-genre"
-                            pendingItem={pendingSubGenreFor === genre.id ? (
+                            pendingItem={pendingSubGenre === genre.id ? (
                                 <MetadataItem
                                     isPending={true}
                                     type="sub"
@@ -330,7 +317,7 @@ export default function GenreTab() {
                                     groupName={genre.name || ''}
                                     color={genreColor}
                                     onNameChange={async (_, gId, __, newName) => handlePendingSubGenreChange(newName)}
-                                    onCancel={handleCancelSubGenreCreation}
+                                    onCancel={() => setPendingSubGenre(null)}
                                     placeholder="Nouveau sous-genre"
                                 />
                             ) : undefined}
@@ -356,7 +343,7 @@ export default function GenreTab() {
                                         key="pending-genre"
                                         value=""
                                         onChange={handlePendingGenreChange}
-                                        onCancel={handleCancelGenreCreation}
+                                        onCancel={() => setIsCreatingGenre(false)}
                                         mode="text"
                                         placeholder="Nouveau genre"
                                         fontSize={16}

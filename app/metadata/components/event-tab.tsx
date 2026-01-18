@@ -17,10 +17,10 @@ import { buildUserColorMap, makeUserViewId } from '@/lib/utils/core-service'
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toasts/toast-handler'
 import { FCategory, FEventWithCategory, FUser } from '@/types'
 import CategoryEventList from './event/category-event-list'
-import DataEventDialog from './event/data-event-dialog'
+import EventDialog from './event/event-dialog'
 
-const BASE_COLOR_HEX = '#16A34A'
-const EQU_DIST_COUNT = 8
+const BASE_COLOR_HEX = '#16A34A' as const
+const EQU_DIST_COUNT = 8 as const
 const LUMINANCE_PRESET = 'shortList' as const
 
 export default function EventTab() {
@@ -45,27 +45,28 @@ export default function EventTab() {
     []
   )
 
+  // Fetch Total Global Event Count for default title naming
+  const { data: eventCount, refetch: refetchEventCount } = useApi<any>(
+    () => eventEndpoint.count(),
+    []
+  )
+
+  // Robust parsing of count (might be number, {count: X}, or [{count: X}])
+  const safeEventCount = useMemo(() => {
+    if (typeof eventCount === 'number') return eventCount
+    if (Array.isArray(eventCount)) {
+      const first = eventCount[0]
+      return typeof first === 'number' ? first : (Object.values(first ?? {})[0] as number ?? 0)
+    }
+    if (typeof eventCount === 'object' && eventCount !== null) {
+      return (Object.values(eventCount)[0] as number ?? 0)
+    }
+    return 0
+  }, [eventCount])
+
   const events = eventsRaw || []
   const categories = categoriesRaw || []
   const users = usersRaw || []
-
-  const resolveUserIds = (ids: string[]): string[] => {
-    const uniqueUserIds = new Set<string>()
-    
-    const visit = (id: string) => {
-      const item = viewState.items[id]
-      if (!item) return
-      
-      if ('userId' in item) {
-        uniqueUserIds.add(String(item.userId))
-      } else if ('children' in item) {
-        item.children.forEach(visit)
-      }
-    }
-    
-    ids.forEach(visit)
-    return Array.from(uniqueUserIds)
-  }
 
   useEffect(() => {
     setUserIds(resolveUserIds(selectionState.selectedIds))
@@ -125,10 +126,39 @@ export default function EventTab() {
     return { groupedEvents: map, uncategorizedEvents: uncategorized }
   }, [events, categories])
 
+  // Sort categories by number of events (descending)
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      const countA = (a.id && groupedEvents.get(a.id)?.length) || 0;
+      const countB = (b.id && groupedEvents.get(b.id)?.length) || 0;
+      return countB - countA;
+    })
+  }, [categories, groupedEvents])
+
+  // If latency issues on user change in store it could come from this
+  function resolveUserIds(ids: string[]): string[] {
+    const uniqueUserIds = new Set<string>()
+    
+    const visit = (id: string) => {
+      const item = viewState.items[id]
+      if (!item) return
+      
+      if ('userId' in item) {
+        uniqueUserIds.add(String(item.userId))
+      } else if ('children' in item) {
+        item.children.forEach(visit)
+      }
+    }
+    
+    ids.forEach(visit)
+    return Array.from(uniqueUserIds)
+  }
+
   const handleCategoryNameUpdate = async (id: number, newName: string) => {
     try {
       await categoryEndpoint.update(id, { name: newName })
       refetchCategories()
+      refetchEventCount()
       showSuccessToast("Catégorie mise à jour")
     } catch (error) {
        showErrorToast(error, "Impossible de modifier le nom de la catégorie")
@@ -140,30 +170,27 @@ export default function EventTab() {
       await categoryEndpoint.remove(id, {})
       refetchCategories()
       refetchEvents()
+      refetchEventCount() // Count changes
       showSuccessToast("Catégorie supprimée")
     } catch (error) {
       showErrorToast(error, "Impossible de supprimer la catégorie")
     }
   }
 
-  // Sort categories by number of events (descending)
-  const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
-      const countA = (a.id && groupedEvents.get(a.id)?.length) || 0;
-      const countB = (b.id && groupedEvents.get(b.id)?.length) || 0;
-      return countB - countA;
-    })
-  }, [categories, groupedEvents])
-
   return (
     <div className="space-y-6">
        <Card>
          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Gestion des évènements</CardTitle>
-            <DataEventDialog 
+            <EventDialog 
               userIds={userIds} 
-              existingTitles={events.map(e => e.title)} 
-              onSuccess={refetchEvents} 
+              onSuccess={() => {
+                refetchEvents()
+                refetchEventCount()
+              }} 
+              categories={categories}
+              availableUsers={users}
+              nextEventNumber={safeEventCount + 1}
             />
          </CardHeader>
           <CardContent>
@@ -183,11 +210,16 @@ export default function EventTab() {
                 category={category}
                 events={groupedEvents.get(category.id!) || []}
                 userIds={userIds}
-                existingTitles={events.map(e => e.title)}
                 userColorMap={userColorMap}
-                onRefresh={refetchEvents}
+                onRefresh={() => {
+                  refetchEvents()
+                  refetchEventCount()
+                }}
                 onUpdateName={(val) => category.id && handleCategoryNameUpdate(category.id, val)}
                 onDelete={() => category.id && handleCategoryDelete(category.id)}
+                categories={categories}
+                availableUsers={users}
+                nextEventNumber={safeEventCount + 1}
             />
           ))}
 
@@ -196,9 +228,14 @@ export default function EventTab() {
                 title="Non classés"
                 events={uncategorizedEvents}
                 userIds={userIds}
-                existingTitles={events.map(e => e.title)}
                 userColorMap={userColorMap}
-                onRefresh={refetchEvents}
+                onRefresh={() => {
+                  refetchEvents()
+                  refetchEventCount()
+                }}
+                categories={categories}
+                availableUsers={users}
+                nextEventNumber={safeEventCount + 1}
             />
           )}
         </div>

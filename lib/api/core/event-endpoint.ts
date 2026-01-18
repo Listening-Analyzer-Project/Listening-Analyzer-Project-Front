@@ -8,6 +8,9 @@ export const eventEndpoint = {
     fetchAllWithCategory: (params: EventParams) =>
       apiClient.get<FEventWithCategory[]>('/api/events/withCategory', { query: params as any }),
     
+    count: () =>
+      apiClient.get<number>('/api/events/count'),
+    
     fetchById: (id: string | number, opts?: { signal?: AbortSignal }) =>
       apiClient.get<FEvent>('/api/events/byId', { query: { id }, signal: opts?.signal }),
     

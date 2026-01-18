@@ -1,11 +1,9 @@
 'use client'
 
-import { format } from 'date-fns'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import {
   Dialog,
   DialogContent,
@@ -25,11 +23,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+
 import {
   Select,
   SelectContent,
@@ -41,51 +35,29 @@ import { Textarea } from '@/components/ui/textarea'
 
 import categoryEndpoint from '@/lib/api/core/category-endpoint'
 import eventEndpoint from '@/lib/api/core/event-endpoint'
-import userEndpoint from '@/lib/api/core/user-endpoint'
-import { useApi } from '@/lib/hooks'
-
-import { cn } from '@/lib/utils'; // Fixed import based on recent fix
 
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toasts/toast-handler'
 
+import { FormDatePicker } from '@/components/common/form-date-picker'
 import { FCategory, FEvent, FEventWithCategory, FUser } from '@/types'
 
 interface EventDialogProps {
   userIds: string[]
-  existingTitles: string[]
   onSuccess: () => void
-  event?: FEventWithCategory // Optional: If present, we are editing
-  trigger?: React.ReactNode // Optional trigger to override default button
+  event?: FEventWithCategory
+  trigger?: React.ReactNode
+  categories?: FCategory[]
+  availableUsers?: FUser[]
+  nextEventNumber?: number
 }
 
-export default function DataEventDialog({ userIds, existingTitles, onSuccess, event, trigger }: EventDialogProps) {
+export default function EventDialog({ userIds, onSuccess, event, trigger, categories, availableUsers, nextEventNumber }: EventDialogProps) {
   const [open, setOpen] = useState(false)
-  const isEditing = !!event
   
-  // Fetch categories
-  const { data: categories } = useApi<FCategory[]>(
-    () => categoryEndpoint.fetchAll(),
-    []
-  )
-
-  // Fetch users for proper display
-  const { data: availableUsers } = useApi<FUser[]>(
-    () => userEndpoint.fetchAll(),
-    []
-  )
-
-  const defaultTitle = (() => {
-    let i = 1
-    while (existingTitles.includes(`Event ${i}`)) {
-      i++
-    }
-    return `Event ${i}`
-  })()
-
   // Form setup
   const form = useForm<Partial<FEvent> & { category_name_input?: string }>({
     defaultValues: {
-      title: event?.title || defaultTitle,
+      title: event?.title || '',
       description: event?.description || '',
       start_date: event?.start_date || new Date().toISOString(),
       end_date: event?.end_date || new Date().toISOString(),
@@ -98,7 +70,8 @@ export default function DataEventDialog({ userIds, existingTitles, onSuccess, ev
   const [isNewCategory, setIsNewCategory] = useState(false)
   const [categorySelectValue, setCategorySelectValue] = useState<string | undefined>(undefined)
 
-  // Initialize form when opening
+  const isEditing = !!event
+
   useEffect(() => {
     if (open) {
         if (isEditing && event) {
@@ -122,11 +95,7 @@ export default function DataEventDialog({ userIds, existingTitles, onSuccess, ev
             }
         } else {
             // Create mode logic (defaults)
-            let i = 1
-            while (existingTitles.includes(`Event ${i}`)) {
-                i++
-            }
-            form.setValue('title', `Event ${i}`)
+            form.setValue('title', `Event ${nextEventNumber ?? 1}`)
             const now = new Date().toISOString()
             form.setValue('start_date', now)
             form.setValue('end_date', now)
@@ -138,7 +107,7 @@ export default function DataEventDialog({ userIds, existingTitles, onSuccess, ev
             setIsNewCategory(false)
         }
     }
-  }, [open, existingTitles, form, userIds, isEditing, event, availableUsers]) // Dependency on availableUsers to set defaults
+  }, [open, nextEventNumber, form, userIds, isEditing, event, availableUsers]) // Dependency on availableUsers to set defaults
 
   const onSubmit = async (data: any) => {
     try {
@@ -178,43 +147,6 @@ export default function DataEventDialog({ userIds, existingTitles, onSuccess, ev
     }
   }
 
-  const DatePicker = ({ field, label }: { field: any, label: string }) => (
-     <FormItem className="flex flex-col">
-          <FormLabel>{label}</FormLabel>
-          <Popover>
-            <PopoverTrigger asChild>
-              <FormControl>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full pl-3 text-left font-normal",
-                    !field.value && "text-muted-foreground"
-                  )}
-                >
-                  {field.value ? (
-                    format(new Date(field.value), "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                </Button>
-              </FormControl>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={field.value ? new Date(field.value) : undefined}
-                onSelect={(date) => field.onChange(date?.toISOString())}
-                initialFocus
-                captionLayout="dropdown"
-                fromYear={1900}
-                toYear={2100}
-              />
-            </PopoverContent>
-          </Popover>
-          <FormMessage />
-        </FormItem>
-  )
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -249,12 +181,16 @@ export default function DataEventDialog({ userIds, existingTitles, onSuccess, ev
                 <FormField
                     control={form.control}
                     name="start_date"
-                    render={({ field }) => <DatePicker field={field} label="Date de début" />}
+                    render={({ field }) => (
+                      <FormDatePicker field={field} label="Date de début" />
+                    )}
                 />
                 <FormField
                     control={form.control}
                     name="end_date"
-                    render={({ field }) => <DatePicker field={field} label="Date de fin" />}
+                    render={({ field }) => (
+                      <FormDatePicker field={field} label="Date de fin" />
+                    )}
                 />
             </div>
 
@@ -317,10 +253,10 @@ export default function DataEventDialog({ userIds, existingTitles, onSuccess, ev
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                            <SelectItem value="new">+ Nouvelle catégorie</SelectItem>
                             {categories?.map(cat => (
                                 <SelectItem key={cat.id} value={cat.id?.toString() || ''}>{cat.name}</SelectItem>
                             ))}
+                            <SelectItem value="new">+ Nouvelle catégorie</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

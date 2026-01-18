@@ -47,8 +47,12 @@ export default function TagTab() {
         tagIdsByGroup: Record<number, number[]>
     } | null>(null)
 
-    // Capture initial order when tags data is first available
-    useMemo(() => {
+    // States for interaction
+    const [pendingCreateIn, setPendingCreateIn] = useState<number | null>(null)
+    const [tagToDelete, setTagToDelete] = useState<FTag | null>(null)
+    const [groupToDelete, setGroupToDelete] = useState<number | null>(null)
+
+    useEffect(() => {
         if (!tags || displayOrder) return
 
         // Initial grouping and sorting
@@ -72,6 +76,15 @@ export default function TagTab() {
         setDisplayOrder({ groupIds, tagIdsByGroup })
     }, [tags, displayOrder])
 
+    // Update maxVisibleIndex when tags change, ensuring we show at least up to the highest existing index
+    useEffect(() => {
+        if (!tags) return
+        let max = 0
+        tags.forEach(t => {
+            if (t.color_index > max) max = t.color_index
+        })
+        setMaxVisibleIndex(prev => Math.max(prev, max))
+    }, [tags])
 
     // Compute the visual list based on preserved order + new items
     const groupedTags = useMemo(() => {
@@ -116,33 +129,22 @@ export default function TagTab() {
          return groups
     }, [tags, displayOrder])
 
-    // Derived state: tag colors
     const tagColorMap = useMemo(() => {
         return buildTagColorMap(groupedTags)
     }, [groupedTags])
 
-    // Update maxVisibleIndex when tags change, ensuring we show at least up to the highest existing index
-    useEffect(() => {
-        if (!tags) return
-        let max = 0
-        tags.forEach(t => {
-            if (t.color_index > max) max = t.color_index
-        })
-        setMaxVisibleIndex(prev => Math.max(prev, max))
-    }, [tags])
-
-    // States for interaction
-    const [pendingCreateIn, setPendingCreateIn] = useState<number | null>(null)
-    const [tagToDelete, setTagToDelete] = useState<FTag | null>(null)
-    const [groupToDelete, setGroupToDelete] = useState<number | null>(null)
-
-    const handleCreateGroup = () => {
-        setMaxVisibleIndex(prev => prev + 1)
-    }
-
-    const handleStartCreateTag = (index: number) => {
-        setPendingCreateIn(index)
-    }
+    // List of indices to render
+    const indices = useMemo(() => {
+        const result = []
+        for (let i = 1; i <= maxVisibleIndex; i++) {
+            result.push(i)
+        }
+        // Only append 0 if there are tags in it
+        if ((groupedTags.get(0)?.length || 0) > 0) {
+            result.push(0)
+        }
+        return result
+    }, [maxVisibleIndex, groupedTags])
 
     const handlePendingTagChange = async (newName: string) => {
         const index = pendingCreateIn
@@ -159,10 +161,6 @@ export default function TagTab() {
         } catch (e) {
             showErrorToast(e, "Impossible de créer le tag")
         }
-    }
-
-    const handleCancelTagCreation = () => {
-        setPendingCreateIn(null)
     }
 
     const handleTagNameChange = async (tag: {id?: number, name: string}, groupId: number, groupName: string, newName: string) => {
@@ -198,6 +196,7 @@ export default function TagTab() {
         }
     }
 
+    //TODO: Ne fonctionne pas
     const handleConfirmDeleteGroup = async () => {
         if (groupToDelete === null) return
         
@@ -258,17 +257,6 @@ export default function TagTab() {
         }
     }
 
-    // Determine list of indices to render
-    // 1 to maxVisibleIndex
-    const indices = []
-    for (let i = 1; i <= maxVisibleIndex; i++) {
-        indices.push(i)
-    }
-    // Only append 0 if there are tags in it
-    if ((groupedTags.get(0)?.length || 0) > 0) {
-        indices.push(0)
-    }
-
     return (
         <div className="space-y-6">
              <div className="flex items-center justify-between">
@@ -287,8 +275,6 @@ export default function TagTab() {
                         const isDefault = idx === 0
 
                         return (
-
-
                             <MetadataGroup
                                 key={idx}
                                 id={`group:${idx}`}
@@ -315,7 +301,7 @@ export default function TagTab() {
                                         )}
                                     </div>
                                 }
-                                onAddItem={() => handleStartCreateTag(idx)}
+                                onAddItem={() => setPendingCreateIn(idx)}
                                 addItemLabel="Ajouter un tag"
                                 pendingItem={pendingCreateIn === idx ? (
                                     <MetadataItem
@@ -325,7 +311,7 @@ export default function TagTab() {
                                         groupName={isDefault ? 'Non classés' : `Groupe ${idx}`}
                                         color={color}
                                         onNameChange={async (_, gId, __, newName) => handlePendingTagChange(newName)}
-                                        onCancel={handleCancelTagCreation}
+                                        onCancel={() => setPendingCreateIn(null)}
                                         placeholder="Nouveau tag"
                                     />
                                 ) : undefined}
@@ -345,7 +331,7 @@ export default function TagTab() {
                         )
                     })}
                     
-                    <Card className="flex flex-col cursor-pointer hover:bg-accent/50 transition-colors border-dashed" onClick={handleCreateGroup}>
+                    <Card className="flex flex-col cursor-pointer hover:bg-accent/50 transition-colors border-dashed" onClick={() => setMaxVisibleIndex(prev => prev + 1)}>
                         <CardContent className="flex-1 flex items-center justify-center min-h-[80px] p-2">
                             <Plus className="h-8 w-8 text-muted-foreground" />
                             <span className="sr-only">Ajouter</span>

@@ -1,34 +1,27 @@
 import { ChevronRight } from 'lucide-react'
 import { memo, useState } from 'react'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import DeletionDialog from '@/components/common/others/deletion-dialog'
 
 import { cn } from '@/lib/utils'
 
-import { FCategory, FEventWithCategory } from '@/types'
+import { FCategory, FEventWithCategory, FUser } from '@/types'
 
 import EditableText from '@/components/common/editable-text'
-import DataEventListItem from './data-event-list-item'
+import EventItem from './event-item'
 
 interface CategoryEventListProps {
   category?: FCategory
-  title?: string // For uncategorized fallback
+  title?: string
   events: FEventWithCategory[]
   userIds: string[]
-  existingTitles: string[]
   userColorMap?: Map<string, string>
   onRefresh: () => void
   onUpdateName?: (newName: string) => void
   onDelete?: () => void
+  categories?: FCategory[]
+  availableUsers?: FUser[]
+  nextEventNumber?: number
 }
 
 const CategoryEventList = memo(function CategoryEventList({
@@ -36,29 +29,27 @@ const CategoryEventList = memo(function CategoryEventList({
   title,
   events,
   userIds,
-  existingTitles,
   userColorMap,
   onRefresh,
   onUpdateName,
-  onDelete
+  onDelete,
+  categories,
+  availableUsers,
+  nextEventNumber
 }: CategoryEventListProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
+  const displayTitle = category ? category.name : title
+  const eventCount = events.length
+
   const handleNameChange = (newName: string) => {
     if (newName === "" && onDelete) {
-      // User wants to delete - show confirmation dialog after a brief delay
-      setTimeout(() => {
-        setShowDeleteDialog(true)
-      }, 50)
+      setShowDeleteDialog(true)
     } else if (onUpdateName) {
-      // User wants to rename
       onUpdateName(newName)
     }
   }
-
-  const displayTitle = category ? category.name : title
-  const eventCount = events.length
 
   return (
     <div className="space-y-2">
@@ -100,13 +91,15 @@ const CategoryEventList = memo(function CategoryEventList({
                     <div className="text-sm text-muted-foreground italic p-4">Aucun évènement dans cette catégorie.</div>
                 ) : (
                     events.map(event => (
-                        <DataEventListItem
+                        <EventItem
                             key={event.id}
                             event={event}
                             onRefresh={onRefresh}
                             userIds={userIds}
-                            existingTitles={existingTitles}
                             userColorMap={userColorMap}
+                            categories={categories}
+                            availableUsers={availableUsers}
+                            nextEventNumber={nextEventNumber}
                         />
                     ))
                 )}
@@ -114,30 +107,19 @@ const CategoryEventList = memo(function CategoryEventList({
         </div>
       )}
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer la catégorie ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <strong>Attention :</strong> Cette action supprimera la catégorie "{displayTitle}".
-              <br /><br />
-              Les évènements associés ne seront pas supprimés mais deviendront non classés. Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                setShowDeleteDialog(false)
-                onDelete?.()
-              }} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeletionDialog 
+        open={showDeleteDialog} 
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={() => onDelete?.()}
+        title="Supprimer la catégorie ?"
+        description={
+          <>
+            <strong>Attention :</strong> Cette action supprimera la catégorie "{displayTitle}".
+            <br /><br />
+            Les évènements associés ne seront pas supprimés mais deviendront non classés. Cette action est irréversible.
+          </>
+        }
+      />
     </div>
   )
 })

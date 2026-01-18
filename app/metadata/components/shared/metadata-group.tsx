@@ -1,18 +1,18 @@
 "use client"
 
+import { useDroppable } from "@dnd-kit/core"
 import { Plus } from "lucide-react"
 import { ReactNode } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-
-import { DroppableMetadataContainer } from "./droppable-metadata-container"
+import { cn } from "@/lib/utils"
 
 interface MetadataGroupProps {
     id: string
-    groupColor: string // For the droppable overlay
+    groupColor: string
     header: ReactNode
-    children: ReactNode // The list of items (MetadataItems)
+    children: ReactNode
     pendingItem?: ReactNode
     onAddItem: () => void
     addItemLabel: string
@@ -27,11 +27,19 @@ export function MetadataGroup({
     onAddItem,
     addItemLabel
 }: MetadataGroupProps) {
+    const { setNodeRef, isOver } = useDroppable({
+        id,
+    })
+
     return (
-        <DroppableMetadataContainer 
-            id={id} 
-            className="ring-primary/30" 
-            bgOverlayColor={groupColor}
+        <div 
+            ref={setNodeRef} 
+            className={cn("transition-colors rounded-xl relative", isOver && "ring-2 ring-primary/30")}
+            style={{ 
+                backgroundColor: isOver 
+                    ? (groupColor ? `${groupColor}10` : 'hsl(var(--primary) / 0.05)') 
+                    : 'transparent' 
+            }}
         >
             <Card className="flex flex-col group transition-colors h-full">
                 {header}
@@ -53,6 +61,6 @@ export function MetadataGroup({
                     </div>
                 </CardContent>
             </Card>
-        </DroppableMetadataContainer>
+        </div>
     )
 }
