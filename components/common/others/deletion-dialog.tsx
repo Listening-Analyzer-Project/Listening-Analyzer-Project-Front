@@ -1,14 +1,14 @@
 'use client'
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 
@@ -16,10 +16,10 @@ export default function DeletionDialog({
   open,
   onOpenChange,
   onConfirm,
-  title = 'Supprimer ?',
-  description = 'Cette action est irréversible. Voulez-vous continuer ?',
-  confirmLabel = 'Supprimer',
-  cancelLabel = 'Annuler',
+  title = 'Delete?',
+  description = 'This action is irreversible. Do you want to continue?',
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void

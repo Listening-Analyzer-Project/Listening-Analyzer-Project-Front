@@ -67,6 +67,9 @@ export default function GenreTab() {
     // State for deleting sub-genre
     const [subGenreToDelete, setSubGenreToDelete] = useState<{ id: number, name: string, genreName: string } | null>(null)
 
+    // Calculate next numbers for default names
+    const nextGenreNumber = (genres?.length || 0) + 1
+
     useEffect(() => {
         if (!genres || displayOrder) return
 
@@ -148,10 +151,10 @@ export default function GenreTab() {
         }
         try {
             await genreEndpoint.create({ name: newName })
-            showSuccessToast("Genre créé")
+            showSuccessToast("Genre created")
             refetch()
         } catch (e) {
-            showErrorToast(e, "Impossible de créer le genre")
+            showErrorToast(e, "Failed to create genre")
         }
     }
 
@@ -166,10 +169,10 @@ export default function GenreTab() {
                 name: newName, 
                 genre_id: genreId
             })
-            showSuccessToast("Sous-genre créé")
+            showSuccessToast("Sub-genre created")
             refetch()
         } catch (e) {
-            showErrorToast(e, "Impossible de créer le sous-genre")
+            showErrorToast(e, "Failed to create sub-genre")
         }
     }
 
@@ -181,10 +184,10 @@ export default function GenreTab() {
         } else {
             try {
                 await genreEndpoint.update(genre.id!, { name: newName })
-                showSuccessToast("Genre renommé")
+                showSuccessToast("Genre renamed")
                 refetch()
             } catch (e) {
-                showErrorToast(e, "Impossible de renommer le genre")
+                showErrorToast(e, "Failed to rename genre")
             }
         }
     }
@@ -193,11 +196,11 @@ export default function GenreTab() {
         if (!genreToDelete) return
         try {
             await genreEndpoint.remove(genreToDelete.id!, {})
-            showSuccessToast("Genre supprimé")
+            showSuccessToast("Genre deleted")
             setGenreToDelete(null)
             refetch()
         } catch (e) {
-            showErrorToast(e, "Impossible de supprimer le genre")
+            showErrorToast(e, "Failed to delete genre")
         }
     }
 
@@ -212,10 +215,10 @@ export default function GenreTab() {
                     name: newName,
                     genre_id: genreId
                 })
-                showSuccessToast("Sous-genre renommé")
+                showSuccessToast("Sub-genre renamed")
                 refetch()
             } catch (e) {
-                showErrorToast(e, "Impossible de renommer le sous-genre")
+                showErrorToast(e, "Failed to rename sub-genre")
             }
         }
     }
@@ -224,11 +227,11 @@ export default function GenreTab() {
         if (!subGenreToDelete) return
         try {
             await subGenreEndpoint.remove(subGenreToDelete.id)
-            showSuccessToast("Sous-genre supprimé")
+            showSuccessToast("Sub-genre deleted")
             setSubGenreToDelete(null)
             refetch()
         } catch (e) {
-            showErrorToast(e, "Impossible de supprimer le sous-genre")
+            showErrorToast(e, "Failed to delete sub-genre")
         }
     }
 
@@ -247,17 +250,22 @@ export default function GenreTab() {
                     genre_id: overGenreId,
                     name: item.name // Keep name same, endpoint might require it or it's good practice
                 })
-                showSuccessToast(`${item.name} déplacé`)
+                showSuccessToast(`${item.name} moved`)
                 refetch()
             } catch (e) {
-                showErrorToast(e, "Impossible de déplacer le sous-genre")
+                showErrorToast(e, "Failed to move sub-genre")
             }
         }
     }
 
     return (
         <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Liste des genres</h2>
+            <div className="flex flex-col gap-2">
+                <h2 className="text-xl font-semibold">List of Genres</h2>
+                <p className="text-muted-foreground text-sm">
+                    Manage musical genres and sub-genres.
+                </p>
+            </div>
 
             <DndContext 
                 sensors={sensors} 
@@ -308,7 +316,7 @@ export default function GenreTab() {
                                 </>
                             }
                             onAddItem={() => setPendingSubGenre(genre.id!)}
-                            addItemLabel="Ajouter un sous-genre"
+                            addItemLabel="Add sub-genre"
                             pendingItem={pendingSubGenre === genre.id ? (
                                 <MetadataItem
                                     isPending={true}
@@ -318,7 +326,8 @@ export default function GenreTab() {
                                     color={genreColor}
                                     onNameChange={async (_, gId, __, newName) => handlePendingSubGenreChange(newName)}
                                     onCancel={() => setPendingSubGenre(null)}
-                                    placeholder="Nouveau sous-genre"
+                                    placeholder="New subgenre"
+                                    defaultValue={`Subgenre ${(genre.sub_genres?.length || 0) + 1}`}
                                 />
                             ) : undefined}
                         >
@@ -341,24 +350,24 @@ export default function GenreTab() {
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <EditableText
                                         key="pending-genre"
-                                        value=""
+                                        value={`Genre ${nextGenreNumber}`}
                                         onChange={handlePendingGenreChange}
                                         onCancel={() => setIsCreatingGenre(false)}
                                         mode="text"
-                                        placeholder="Nouveau genre"
+                                        placeholder="New genre"
                                         fontSize={16}
                                         fontSizeRatio={0.65}
                                         fontWeight="600"
                                         autoWidth
                                         allowEmpty={true}
-                                        emptyInputAtFocus={true}
                                         startInEditMode={true}
+                                        cancelOnBlur={true}
                                     />
                                 </div>
                             </CardHeader>
                             <CardContent className="px-4 pb-4 pt-0 flex-1">
                                 <div className="flex flex-wrap gap-1.5 items-center text-xs text-muted-foreground italic">
-                                    Aucun sous-genre
+                                    No sub-genres
                                 </div>
                             </CardContent>
                         </Card>
@@ -367,7 +376,7 @@ export default function GenreTab() {
                     <Card className="flex flex-col cursor-pointer hover:bg-accent/50 transition-colors border-dashed" onClick={handleStartCreateGenre}>
                         <CardContent className="flex-1 flex items-center justify-center min-h-[80px] p-2">
                             <Plus className="h-8 w-8 text-muted-foreground" />
-                            <span className="sr-only">Ajouter</span>
+                            <span className="sr-only">Add</span>
                         </CardContent>
                     </Card>
                 </div>
@@ -376,12 +385,12 @@ export default function GenreTab() {
             <DeletionDialog 
                 open={genreToDelete !== null} 
                 onOpenChange={(open) => !open && setGenreToDelete(null)}
-                title="Supprimer le genre ?"
+                title="Delete genre ?"
                 description={
                     <>
-                        <strong>Attention :</strong> Cette action supprimera le genre "{genreToDelete?.name}" et tous ses sous-genres associés.
+                        <strong>Warning:</strong> This action will delete the genre "{genreToDelete?.name}" and all its associated sub-genres.
                         <br /><br />
-                        Les données d'écoutes affectées à ce genre seront altérées. Cette action est irréversible.
+                        Listening data assigned to this genre will be affected. This action is irreversible.
                     </>
                 }
                 onConfirm={handleConfirmDelete}
@@ -390,12 +399,12 @@ export default function GenreTab() {
             <DeletionDialog 
                 open={subGenreToDelete !== null} 
                 onOpenChange={(open) => !open && setSubGenreToDelete(null)}
-                title="Supprimer le sous-genre ?"
+                title="Delete sub-genre ?"
                 description={
                     <>
-                        <strong>Attention :</strong> Cette action supprimera le sous-genre "{subGenreToDelete?.name}" du genre "{subGenreToDelete?.genreName}".
+                        <strong>Warning:</strong> This action will delete the sub-genre "{subGenreToDelete?.name}" from genre "{subGenreToDelete?.genreName}".
                         <br /><br />
-                        Les données d'écoutes affectées à ce sous-genre seront altérées. Cette action est irréversible.
+                        Listening data assigned to this sub-genre will be affected. This action is irreversible.
                     </>
                 }
                 onConfirm={handleConfirmSubGenreDelete}

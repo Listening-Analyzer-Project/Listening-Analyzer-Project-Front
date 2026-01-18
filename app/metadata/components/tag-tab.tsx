@@ -156,10 +156,10 @@ export default function TagTab() {
                 name: newName,
                 color_index: index
             })
-            showSuccessToast("Tag créé")
+            showSuccessToast("Tag created")
             refetch()
         } catch (e) {
-            showErrorToast(e, "Impossible de créer le tag")
+            showErrorToast(e, "Failed to create tag")
         }
     }
 
@@ -176,10 +176,10 @@ export default function TagTab() {
                     name: newName,
                     color_index: groupId
                 })
-                showSuccessToast("Tag renommé")
+                showSuccessToast("Tag renamed")
                 refetch()
             } catch (e) {
-                showErrorToast(e, "Impossible de renommer le tag")
+                showErrorToast(e, "Failed to rename tag")
             }
         }
     }
@@ -188,11 +188,11 @@ export default function TagTab() {
         if (!tagToDelete) return
         try {
             await tagEndpoint.remove(tagToDelete.id!)
-            showSuccessToast("Tag supprimé")
+            showSuccessToast("Tag deleted")
             setTagToDelete(null)
             refetch()
         } catch (e) {
-            showErrorToast(e, "Impossible de supprimer le tag")
+            showErrorToast(e, "Failed to delete tag")
         }
     }
 
@@ -216,7 +216,7 @@ export default function TagTab() {
                 })
             }
 
-            showSuccessToast(`Groupe ${groupToDelete} supprimé`)
+            showSuccessToast(`Group ${groupToDelete} deleted`)
             setGroupToDelete(null)
             
             // Reduce max visible index if it was the last one
@@ -230,7 +230,7 @@ export default function TagTab() {
             refetch()
 
         } catch (e) {
-            showErrorToast(e, "Erreur lors de la suppression du groupe")
+            showErrorToast(e, "Failed to delete group")
         }
     }
 
@@ -249,18 +249,21 @@ export default function TagTab() {
                     color_index: overGroupId,
                     name: item.name 
                 })
-                showSuccessToast("Tag déplacé")
+                showSuccessToast("Tag moved")
                 refetch()
             } catch (e) {
-                showErrorToast(e, "Impossible de déplacer le tag")
+                showErrorToast(e, "Failed to move tag")
             }
         }
     }
 
     return (
         <div className="space-y-6">
-             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Liste des tags</h2>
+            <div className="flex flex-col gap-2">
+                <h2 className="text-xl font-semibold">List of Tags</h2>
+                <p className="text-muted-foreground text-sm">
+                    Manage tags and tag groups.
+                </p>
             </div>
 
              <DndContext 
@@ -302,17 +305,18 @@ export default function TagTab() {
                                     </div>
                                 }
                                 onAddItem={() => setPendingCreateIn(idx)}
-                                addItemLabel="Ajouter un tag"
+                                addItemLabel="Add tag"
                                 pendingItem={pendingCreateIn === idx ? (
                                     <MetadataItem
                                         isPending={true}
                                         type="tag"
                                         groupId={idx}
-                                        groupName={isDefault ? 'Non classés' : `Groupe ${idx}`}
+                                        groupName={isDefault ? 'Uncategorized' : `Group ${idx}`}
                                         color={color}
                                         onNameChange={async (_, gId, __, newName) => handlePendingTagChange(newName)}
                                         onCancel={() => setPendingCreateIn(null)}
-                                        placeholder="Nouveau tag"
+                                        placeholder="New tag"
+                                        defaultValue={`Tag ${(groupTags.length || 0) + 1}`}
                                     />
                                 ) : undefined}
                             >
@@ -322,7 +326,7 @@ export default function TagTab() {
                                         type="tag"
                                         item={tag}
                                         groupId={idx}
-                                        groupName={isDefault ? 'Non classés' : `Groupe ${idx}`}
+                                        groupName={isDefault ? 'Uncategorized' : `Group ${idx}`}
                                         color={tag.id ? tagColorMap.get(tag.id) : undefined}
                                         onNameChange={handleTagNameChange}
                                     />
@@ -334,7 +338,7 @@ export default function TagTab() {
                     <Card className="flex flex-col cursor-pointer hover:bg-accent/50 transition-colors border-dashed" onClick={() => setMaxVisibleIndex(prev => prev + 1)}>
                         <CardContent className="flex-1 flex items-center justify-center min-h-[80px] p-2">
                             <Plus className="h-8 w-8 text-muted-foreground" />
-                            <span className="sr-only">Ajouter</span>
+                            <span className="sr-only">Add</span>
                         </CardContent>
                     </Card>
                 </div>
@@ -343,12 +347,12 @@ export default function TagTab() {
             <DeletionDialog 
                 open={tagToDelete !== null} 
                 onOpenChange={(open) => !open && setTagToDelete(null)}
-                title="Supprimer le tag ?"
+                title="Delete tag ?"
                 description={
                     <>
-                        <strong>Attention :</strong> Cette action supprimera le tag "{tagToDelete?.name}".
+                        <strong>Warning:</strong> This action will delete the tag "{tagToDelete?.name}".
                         <br /><br />
-                        Cette action est irréversible.
+                        This action is irreversible.
                     </>
                 }
                 onConfirm={handleConfirmDeleteTag}
@@ -357,12 +361,12 @@ export default function TagTab() {
             <DeletionDialog 
                 open={groupToDelete !== null} 
                 onOpenChange={(open) => !open && setGroupToDelete(null)}
-                title={`Supprimer le groupe ${groupToDelete} ?`}
+                title={`Delete group ${groupToDelete} ?`}
                 description={
                     <>
-                        <strong>Attention :</strong> Cette action supprimera tous les tags de ce groupe et décalera les groupes suivants.
+                        <strong>Warning:</strong> This action will delete all tags in this group and shift subsequent groups.
                         <br /><br />
-                        Cette action est irréversible.
+                        This action is irreversible.
                     </>
                 }
                 onConfirm={handleConfirmDeleteGroup}

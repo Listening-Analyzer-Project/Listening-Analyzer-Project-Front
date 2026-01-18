@@ -2,12 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { ChevronRight, Plus } from 'lucide-react'
+
+import EditableText from '@/components/common/editable-text'
+import { Button } from '@/components/ui/button'
 import { userEndpoint } from '@/lib/api'
 import { categoryEndpoint } from '@/lib/api/core/category-endpoint'
 import { eventEndpoint } from '@/lib/api/core/event-endpoint'
@@ -26,6 +24,7 @@ const LUMINANCE_PRESET = 'shortList' as const
 export default function EventTab() {
   const { selectionState, viewState } = useUsersViewStore()
   const [userIds, setUserIds] = useState<string[]>([])
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
 
   // Fetch Categories
   const { data: categoriesRaw, refetch: refetchCategories } = useApi<FCategory[]>(
@@ -67,6 +66,8 @@ export default function EventTab() {
   const events = eventsRaw || []
   const categories = categoriesRaw || []
   const users = usersRaw || []
+
+  const nextCategoryNumber = categories.length + 1
 
   useEffect(() => {
     setUserIds(resolveUserIds(selectionState.selectedIds))
@@ -159,9 +160,9 @@ export default function EventTab() {
       await categoryEndpoint.update(id, { name: newName })
       refetchCategories()
       refetchEventCount()
-      showSuccessToast("Catégorie mise à jour")
+      showSuccessToast("Category updated")
     } catch (error) {
-       showErrorToast(error, "Impossible de modifier le nom de la catégorie")
+       showErrorToast(error, "Failed to update category name")
     }
   }
 
@@ -171,71 +172,150 @@ export default function EventTab() {
       refetchCategories()
       refetchEvents()
       refetchEventCount() // Count changes
-      showSuccessToast("Catégorie supprimée")
+      showSuccessToast("Category deleted")
     } catch (error) {
-      showErrorToast(error, "Impossible de supprimer la catégorie")
+      showErrorToast(error, "Failed to delete category")
+    }
+  }
+
+  const handleCreateCategory = async (name: string) => {
+    setIsCreatingCategory(false)
+    if (!name || name.trim() === "") return
+    
+    try {
+        await categoryEndpoint.create({ name })
+        showSuccessToast("Category created")
+        refetchCategories()
+        refetchEventCount()
+    } catch (error) {
+        showErrorToast(error, "Failed to create category")
     }
   }
 
   return (
     <div className="space-y-6">
-       <Card>
-         <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Gestion des évènements</CardTitle>
-            <EventDialog 
-              userIds={userIds} 
-              onSuccess={() => {
+      <div className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Events Management</h2>
+        <p className="text-muted-foreground text-sm">
+          Add, edit, or delete events.
+        </p>
+      </div>
+
+      <div className="flex justify-end pr-2 py-2">
+        <EventDialog
+          userIds={userIds}
+          onSuccess={() => {
+            refetchEvents()
+            refetchEventCount()
+          }}
+          categories={categories}
+          availableUsers={users}
+          nextEventNumber={safeEventCount + 1}
+          nextCategoryNumber={nextCategoryNumber}
+          trigger={
+            <div className="flex items-center gap-2 cursor-pointer group text-muted-foreground hover:text-foreground w-fit">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 rounded-full shrink-0 border border-dashed border-muted-foreground/30 bg-white hover:bg-accent p-0 shadow-sm"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-sm font-medium">Create an event</span>
+            </div>
+          }
+        />
+      </div>
+
+      {loadingEvents && !eventsRaw ? (
+        <div>Loading events...</div>
+      ) : (
+        <div className="space-y-8">
+          {sortedCategories.map((category) => (
+            <CategoryEventList
+              key={category.id}
+              category={category}
+              events={groupedEvents.get(category.id!) || []}
+              userIds={userIds}
+              userColorMap={userColorMap}
+              onRefresh={() => {
                 refetchEvents()
                 refetchEventCount()
-              }} 
+              }}
+              onUpdateName={(val) =>
+                category.id && handleCategoryNameUpdate(category.id, val)
+              }
+              onDelete={() => category.id && handleCategoryDelete(category.id)}
               categories={categories}
               availableUsers={users}
               nextEventNumber={safeEventCount + 1}
             />
-         </CardHeader>
-          <CardContent>
-             <p className="text-muted-foreground mb-4">
-                Ajoutez, modifiez ou supprimez des évènements temporels.
-             </p>
-          </CardContent>
-       </Card>
-
-      {loadingEvents && !eventsRaw ? (
-        <div>Chargement des évènements...</div>
-      ) : (
-        <div className="space-y-8">
-          {sortedCategories.map(category => (
-            <CategoryEventList
-                key={category.id}
-                category={category}
-                events={groupedEvents.get(category.id!) || []}
-                userIds={userIds}
-                userColorMap={userColorMap}
-                onRefresh={() => {
-                  refetchEvents()
-                  refetchEventCount()
-                }}
-                onUpdateName={(val) => category.id && handleCategoryNameUpdate(category.id, val)}
-                onDelete={() => category.id && handleCategoryDelete(category.id)}
-                categories={categories}
-                availableUsers={users}
-                nextEventNumber={safeEventCount + 1}
-            />
           ))}
+
+          {isCreatingCategory && (
+            <div className="space-y-2 animate-in slide-in-from-top-2 duration-200 fade-in">
+              <div className="flex items-center gap-2 select-none">
+                <div className="p-1 rounded-md transition-all duration-200 text-muted-foreground rotate-90">
+                  <ChevronRight className="h-4 w-4" />
+                </div>
+
+                <div className="flex items-center gap-2 flex-1">
+                  <EditableText
+                    value={`Category ${nextCategoryNumber}`}
+                    onChange={handleCreateCategory}
+                    onCancel={() => setIsCreatingCategory(false)}
+                    mode="text"
+                    placeholder="New Category Name"
+                    startInEditMode={true}
+                    allowEmpty={true}
+                    fontSize={18}
+                    fontWeight="600"
+                    autoWidth
+                    cancelOnBlur={true}
+                  />
+                  <span className="text-xs text-muted-foreground">(0)</span>
+                </div>
+              </div>
+
+              <div className="pl-6">
+                <div className="flex flex-col rounded-lg border bg-white shadow-sm overflow-hidden">
+                  <div className="text-sm text-muted-foreground italic p-4">
+                    No events in this category.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isCreatingCategory && (
+            <div
+              className="flex items-center gap-2 cursor-pointer group text-muted-foreground hover:text-foreground pl-1 w-fit"
+              onClick={() => setIsCreatingCategory(true)}
+            >
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 rounded-full shrink-0 border border-dashed border-muted-foreground/30 bg-white hover:bg-accent p-0 shadow-sm"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-sm font-medium">Create a category</span>
+            </div>
+          )}
 
           {uncategorizedEvents.length > 0 && (
             <CategoryEventList
-                title="Non classés"
-                events={uncategorizedEvents}
-                userIds={userIds}
-                userColorMap={userColorMap}
-                onRefresh={() => {
-                  refetchEvents()
-                  refetchEventCount()
-                }}
-                categories={categories}
-                availableUsers={users}
-                nextEventNumber={safeEventCount + 1}
+              title="Uncategorized"
+              events={uncategorizedEvents}
+              userIds={userIds}
+              userColorMap={userColorMap}
+              onRefresh={() => {
+                refetchEvents()
+                refetchEventCount()
+              }}
+              categories={categories}
+              availableUsers={users}
+              nextEventNumber={safeEventCount + 1}
             />
           )}
         </div>

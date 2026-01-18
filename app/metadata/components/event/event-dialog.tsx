@@ -49,9 +49,10 @@ interface EventDialogProps {
   categories?: FCategory[]
   availableUsers?: FUser[]
   nextEventNumber?: number
+  nextCategoryNumber?: number
 }
 
-export default function EventDialog({ userIds, onSuccess, event, trigger, categories, availableUsers, nextEventNumber }: EventDialogProps) {
+export default function EventDialog({ userIds, onSuccess, event, trigger, categories, availableUsers, nextEventNumber, nextCategoryNumber }: EventDialogProps) {
   const [open, setOpen] = useState(false)
   
   // Form setup
@@ -134,16 +135,16 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
 
       if (isEditing && event?.id) {
         await eventEndpoint.update(event.id, payload)
-        showSuccessToast('Évènement modifié')
+        showSuccessToast('Event updated')
       } else {
         await eventEndpoint.create(payload)
-        showSuccessToast('Évènement créé')
+        showSuccessToast('Event created')
       }
       
       setOpen(false)
       onSuccess()
     } catch (err) {
-      showErrorToast(err, isEditing ? 'Erreur lors de la modification' : 'Erreur lors de la création')
+      showErrorToast(err, isEditing ? 'Failed to update event' : 'Failed to create event')
     }
   }
 
@@ -168,7 +169,7 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Titre</FormLabel>
+                  <FormLabel>Title</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -182,14 +183,14 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
                     control={form.control}
                     name="start_date"
                     render={({ field }) => (
-                      <FormDatePicker field={field} label="Date de début" />
+                      <FormDatePicker field={field} label="Start Date" />
                     )}
                 />
                 <FormField
                     control={form.control}
                     name="end_date"
                     render={({ field }) => (
-                      <FormDatePicker field={field} label="Date de fin" />
+                      <FormDatePicker field={field} label="End Date" />
                     )}
                 />
             </div>
@@ -199,14 +200,14 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
               name="user.id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Utilisateur</FormLabel>
+                  <FormLabel>User</FormLabel>
                   <Select 
                     onValueChange={(val) => field.onChange(val === 'global' ? undefined : Number(val))} 
                     value={field.value?.toString() || 'global'}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un utilisateur" />
+                        <SelectValue placeholder="Select a user" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -228,7 +229,7 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
             />
 
             <div className="space-y-2">
-                <Label>Catégorie</Label>
+                <Label>Category</Label>
                 <div className="flex gap-2">
                     <Select 
                         value={categorySelectValue || 'uncategorized'}
@@ -236,7 +237,8 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
                             setCategorySelectValue(val)
                             if (val === 'new') {
                                 setIsNewCategory(true)
-                                form.setValue('category.id', undefined) 
+                                form.setValue('category.id', undefined)
+                                form.setValue('category_name_input', `Category ${nextCategoryNumber ?? (categories?.length || 0) + 1}`) 
                             } else if (val === 'uncategorized') {
                                 setIsNewCategory(false)
                                 form.setValue('category.id', undefined)
@@ -249,14 +251,14 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
                         }}
                     >
                         <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Choisir une catégorie" />
+                            <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="uncategorized">Uncategorized</SelectItem>
                             {categories?.map(cat => (
                                 <SelectItem key={cat.id} value={cat.id?.toString() || ''}>{cat.name}</SelectItem>
                             ))}
-                            <SelectItem value="new">+ Nouvelle catégorie</SelectItem>
+                            <SelectItem value="new">+ New category</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -265,7 +267,7 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
                         control={form.control}
                         name="category_name_input"
                         render={({ field }) => (
-                             <Input {...field} placeholder="Nom de la nouvelle catégorie" /> 
+                             <Input {...field} placeholder="New category name" /> 
                         )}
                     />
                 )}
@@ -286,7 +288,7 @@ export default function EventDialog({ userIds, onSuccess, event, trigger, catego
             />
 
             <DialogFooter>
-              <Button type="submit">Enregistrer</Button>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </Form>

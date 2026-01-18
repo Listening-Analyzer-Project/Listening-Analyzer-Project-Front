@@ -1,20 +1,10 @@
-import EditableText from '@/components/common/editable-text'
 import { Pencil, Trash2 } from 'lucide-react'
-import { memo } from 'react'
+import { memo, useState } from 'react'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import EditableText from '@/components/common/editable-text'
 import { Button } from '@/components/ui/button'
 
+import DeletionDialog from '@/components/common/others/deletion-dialog'
 import { eventEndpoint } from '@/lib/api/core/event-endpoint'
 
 import { getTextColorForBackground } from '@/lib/utils'
@@ -36,6 +26,8 @@ interface EventItemProps {
 }
 
 const EventItem = memo(function EventItem({ event, onRefresh, userIds, userColorMap, categories, availableUsers, nextEventNumber }: EventItemProps) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  
   const startStr = formatDateToDisplay(event.start_date, "day")
   const endStr = formatDateToDisplay(event.end_date, "day")
   
@@ -59,18 +51,21 @@ const EventItem = memo(function EventItem({ event, onRefresh, userIds, userColor
     try {
         if (!event.id) return
         await eventEndpoint.remove(event.id)
-        showSuccessToast('Évènement supprimé')
+        showSuccessToast('Event deleted')
         onRefresh()
     } catch (err) {
-        showErrorToast(err, 'Erreur lors de la suppression')
+        showErrorToast(err, 'Failed to delete event')
     }
   }
 
   const handleTitleChange = async (newTitle: string,) => {
     try {
       if (!event.id || newTitle === event.title) return
+      
       if (newTitle.trim() === "") {
-        showErrorToast(new Error("Le titre ne peut pas être vide"), "Erreur")
+        setTimeout(() => {
+          setIsDeleteDialogOpen(true)
+        }, 50)
         return
       }
       
@@ -78,7 +73,7 @@ const EventItem = memo(function EventItem({ event, onRefresh, userIds, userColor
       if (event.user_name) {
         const user = availableUsers?.find(u => u.name === event.user_name)
         if (!user) {
-          showErrorToast(new Error("L'utilisateur n'a pas été trouvé"), "Erreur")
+          showErrorToast(new Error("User not found"), "Error")
           return
         }
         userId = user.id
@@ -94,10 +89,10 @@ const EventItem = memo(function EventItem({ event, onRefresh, userIds, userColor
       }
 
       await eventEndpoint.update(event.id, payload)
-      showSuccessToast('Évènement renommé')
+      showSuccessToast('Event renamed')
       onRefresh()
     } catch (err) {
-      showErrorToast(err, 'Erreur lors du renommage')
+      showErrorToast(err, 'Failed to rename event')
     }
   }
 
@@ -109,11 +104,12 @@ const EventItem = memo(function EventItem({ event, onRefresh, userIds, userColor
                value={event.title}
                onChange={handleTitleChange}
                mode="text"
-               placeholder="Titre de l'évènement"
+               placeholder="Event title"
                fontSize={16}
                fontSizeRatio={0.6}
                fontWeight="500"
                autoWidth
+               allowEmpty={true}
              />
              
              <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -154,27 +150,22 @@ const EventItem = memo(function EventItem({ event, onRefresh, userIds, userColor
             }
         />
         
-        <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/70 hover:text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Supprimer l&apos;évènement ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Cette action est irréversible.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Supprimer
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-7 w-7 text-destructive/70 hover:text-destructive"
+            onClick={() => setIsDeleteDialogOpen(true)}
+        >
+            <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+
+        <DeletionDialog 
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            onConfirm={handleDelete}
+            title="Delete event ?"
+            description="This action is irreversible."
+        />
       </div>
     </div>
   )

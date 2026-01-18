@@ -27,6 +27,7 @@ interface EditableTextProps {
   emptyInputAtFocus?: boolean
   startInEditMode?: boolean
   onCancel?: () => void
+  cancelOnBlur?: boolean
   className?: string
   inputClassName?: string
   displayClassName?: string
@@ -64,6 +65,7 @@ export function EditableText({
   emptyInputAtFocus = false,
   startInEditMode = false,
   onCancel,
+  cancelOnBlur = false,
   className,
   inputClassName,
   displayClassName,
@@ -281,7 +283,7 @@ export function EditableText({
 
   const startEditing = () => {
     prevValueRef.current = value
-    const initialEditingValue = emptyInputAtFocus ? "" : value
+    const initialEditingValue = emptyInputAtFocus ? "" : (value || defaultValue || "")
 
     if (!autoWidth && editWidth !== undefined && editWidth !== width) {
       setCurrentWidth(width)
@@ -321,7 +323,7 @@ export function EditableText({
       final = current
     }
 
-    if (final === prevValueRef.current) {
+    if (final === prevValueRef.current && !startInEditMode) {
         cancelEditing()
         return
     }
@@ -356,12 +358,11 @@ export function EditableText({
     else if (e.key === "Escape") cancelEditing()
   }
 
-  // Auto-start editing mode if requested
   useEffect(() => {
     if (startInEditMode && !isEditing) {
       startEditing()
     }
-  }, [])
+  }, [startInEditMode, isEditing, value, defaultValue])
 
   const handleInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
     if (autoSelectOnClick && !emptyInputAtFocus) {
@@ -387,7 +388,7 @@ export function EditableText({
           ref={inputRef}
           value={editingValue}
           onChange={(e) => setEditingValue((e.target as HTMLInputElement).value)}
-          onBlur={finishEditing}
+          onBlur={cancelOnBlur ? cancelEditing : finishEditing}
           onKeyDown={handleKeyDown}
           onClick={handleInputClick}
           className={cn(

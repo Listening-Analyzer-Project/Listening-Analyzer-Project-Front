@@ -1,5 +1,7 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Trash2 } from 'lucide-react'
 import { memo, useState } from 'react'
+
+import { Button } from '@/components/ui/button'
 
 import DeletionDialog from '@/components/common/others/deletion-dialog'
 
@@ -44,8 +46,12 @@ const CategoryEventList = memo(function CategoryEventList({
   const eventCount = events.length
 
   const handleNameChange = (newName: string) => {
-    if (newName === "" && onDelete) {
-      setShowDeleteDialog(true)
+    if (newName === "") {
+      if (onDelete) {
+        setTimeout(() => {
+          setShowDeleteDialog(true)
+        }, 50)
+      }
     } else if (onUpdateName) {
       onUpdateName(newName)
     }
@@ -82,15 +88,31 @@ const CategoryEventList = memo(function CategoryEventList({
              )}
              <span className="text-xs text-muted-foreground">({eventCount})</span>
          </div>
+
+         {category && onDelete && (
+             <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 text-destructive/70 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteDialog(true);
+                }}
+            >
+                <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+         )}
       </div>
       
       {isOpen && (
         <div className="pl-6 animate-in slide-in-from-top-2 duration-200 fade-in">
-            <div className="flex flex-col rounded-lg border overflow-hidden shadow-sm divide-y bg-white">
-                {events.length === 0 ? (
-                    <div className="text-sm text-muted-foreground italic p-4">Aucun évènement dans cette catégorie.</div>
-                ) : (
-                    events.map(event => (
+             {events.length === 0 ? (
+                <div className="flex flex-col rounded-lg border bg-white shadow-sm overflow-hidden">
+                    <div className="text-sm text-muted-foreground italic p-4">No events in this category.</div>
+                </div>
+            ) : (
+                <div className="flex flex-col rounded-lg border overflow-hidden shadow-sm divide-y bg-white">
+                    {events.map(event => (
                         <EventItem
                             key={event.id}
                             event={event}
@@ -101,9 +123,9 @@ const CategoryEventList = memo(function CategoryEventList({
                             availableUsers={availableUsers}
                             nextEventNumber={nextEventNumber}
                         />
-                    ))
-                )}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
       )}
 
@@ -111,12 +133,12 @@ const CategoryEventList = memo(function CategoryEventList({
         open={showDeleteDialog} 
         onOpenChange={setShowDeleteDialog}
         onConfirm={() => onDelete?.()}
-        title="Supprimer la catégorie ?"
+        title="Delete category ?"
         description={
           <>
-            <strong>Attention :</strong> Cette action supprimera la catégorie "{displayTitle}".
+            <strong>Warning:</strong> This action will delete the category "{displayTitle}".
             <br /><br />
-            Les évènements associés ne seront pas supprimés mais deviendront non classés. Cette action est irréversible.
+            Associated events will not be deleted but will become uncategorized. This action is irreversible.
           </>
         }
       />

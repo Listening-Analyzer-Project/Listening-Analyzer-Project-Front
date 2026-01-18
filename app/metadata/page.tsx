@@ -22,14 +22,14 @@ export default function MetadataPage() {
               className="w-full justify-start"
               onClick={() => setActiveSection('periods')}
             >
-              Périodes et évènements
+              Periods & Events
             </Button>
             <Button
               variant={activeSection === 'genres' ? 'default' : 'outline'}
               className="w-full justify-start"
               onClick={() => setActiveSection('genres')}
             >
-              Genres musicaux
+              Musical Genres
             </Button>
             <Button
               variant={activeSection === 'tags' ? 'default' : 'outline'}

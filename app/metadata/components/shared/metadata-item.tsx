@@ -17,6 +17,7 @@ export interface MetadataItemProps {
     isPending?: boolean
     onCancel?: () => void
     placeholder?: string
+    defaultValue?: string
 }
 
 const SOFT_DARK_TEXT_COLOR = '#374151'
@@ -33,7 +34,8 @@ export function MetadataItem({
     type,
     isPending = false,
     onCancel,
-    placeholder
+    placeholder,
+    defaultValue
 }: MetadataItemProps) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: isPending ? `pending-${type}-${groupId}` : `${type}:${item?.id}`,
@@ -62,7 +64,7 @@ export function MetadataItem({
             className="touch-none select-none"
         >
             <EditableText
-                value={item?.name || ''}
+                value={item?.name || defaultValue || ''}
                 onChange={(newName) => onNameChange(item || { name: '' }, groupId, groupName, newName)}
                 onCancel={onCancel}
                 mode="button"
@@ -78,7 +80,8 @@ export function MetadataItem({
                 lightTextColor={lightTextColor || LIGHT_TEXT_COLOR}
                 // Pending creation specific props
                 startInEditMode={isPending}
-                emptyInputAtFocus={isPending}
+                cancelOnBlur={isPending}
+                emptyInputAtFocus={isPending && !defaultValue}
             />
         </div>
     )
