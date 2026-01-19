@@ -13,7 +13,6 @@ export function useApi<T>(factory: (signal?: AbortSignal) => Promise<T>, deps: a
     const controller = new AbortController()
     controllerRef.current = controller
     setLoading(true)
-    setData(null)
     setError(null)
     try {
       const result = await factory(controller.signal)
@@ -36,5 +35,5 @@ export function useApi<T>(factory: (signal?: AbortSignal) => Promise<T>, deps: a
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
 
-  return { data, loading, error, refetch: execute } as const
+  return { data, loading, error, refetch: execute, setData } as const
 }

@@ -27,13 +27,13 @@ export default function EventTab() {
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
 
   // Fetch Categories
-  const { data: categoriesRaw, refetch: refetchCategories } = useApi<FCategory[]>(
+  const { data: categoriesRaw, refetch: refetchCategories, setData: setCategories } = useApi<FCategory[]>(
     () => categoryEndpoint.fetchAll(),
     []
   )
 
   // Fetch Events
-  const { data: eventsRaw, loading: loadingEvents, refetch: refetchEvents } = useApi<FEventWithCategory[]>(
+  const { data: eventsRaw, loading: loadingEvents, refetch: refetchEvents, setData: setEvents } = useApi<FEventWithCategory[]>(
     () => eventEndpoint.fetchAllWithCategory({ user_ids: userIds.join(',') }),
     [userIds]
   )
@@ -156,12 +156,17 @@ export default function EventTab() {
   }
 
   const handleCategoryNameUpdate = async (id: number, newName: string) => {
+    // Optimistic Update
+    setCategories(prev => prev ? prev.map(c => c.id === id ? { ...c, name: newName } : c) : prev)
+
     try {
       await categoryEndpoint.update(id, { name: newName })
       refetchCategories()
       refetchEventCount()
       showSuccessToast("Category updated")
     } catch (error) {
+       // Rollback on error
+       refetchCategories()
        showErrorToast(error, "Failed to update category name")
     }
   }
@@ -176,6 +181,10 @@ export default function EventTab() {
     } catch (error) {
       showErrorToast(error, "Failed to delete category")
     }
+  }
+
+  const handleEventRename = (id: number, newTitle: string) => {
+    setEvents(prev => prev ? prev.map(e => e.id === id ? { ...e, title: newTitle } : e) : prev)
   }
 
   const handleCreateCategory = async (name: string) => {
@@ -201,7 +210,7 @@ export default function EventTab() {
         </p>
       </div>
 
-      <div className="flex justify-end pr-2 py-2">
+      <div className="flex justify-end pr-1">
         <EventDialog
           userIds={userIds}
           onSuccess={() => {
@@ -246,6 +255,7 @@ export default function EventTab() {
                 category.id && handleCategoryNameUpdate(category.id, val)
               }
               onDelete={() => category.id && handleCategoryDelete(category.id)}
+              onEventRename={handleEventRename}
               categories={categories}
               availableUsers={users}
               nextEventNumber={safeEventCount + 1}
@@ -313,6 +323,7 @@ export default function EventTab() {
                 refetchEvents()
                 refetchEventCount()
               }}
+              onEventRename={handleEventRename}
               categories={categories}
               availableUsers={users}
               nextEventNumber={safeEventCount + 1}

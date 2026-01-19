@@ -8,8 +8,7 @@ import {
 } from "@dnd-kit/core"
 import { useEffect, useMemo, useState } from "react"
 
-import { Button } from "@/components/ui/button"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus } from "lucide-react"
 
 import {
     Card,
@@ -29,17 +28,14 @@ import { FGenreWithSubGenres, FSubGenre } from "@/types"
 
 import EditableText from "@/components/common/editable-text"
 import DeletionDialog from "@/components/common/others/deletion-dialog"
-import {
-    MetadataGroup
-} from "./shared/metadata-group"
-import { MetadataItem } from "./shared/metadata-item"
+import { GenreItem } from "./genre-item"
 
 const BASE_COLOR_HEX = '#16A34A'
 const EQU_DIST_COUNT = 8
 const LUMINANCE_PRESET = 'shortList'
 
 export default function GenreTab() {
-    const { data: genres, refetch } = useApi<FGenreWithSubGenres[]>(
+    const { data: genres, refetch, setData: setGenres } = useApi<FGenreWithSubGenres[]>(
         () => genreEndpoint.fetchWithSubGenres(),
     )
 
@@ -183,10 +179,15 @@ export default function GenreTab() {
             }, 50)
         } else {
             try {
+                // Optimistic Update
+                setGenres(prev => prev ? prev.map(g => g.id === genre.id ? { ...g, name: newName } : g) : prev)
+
                 await genreEndpoint.update(genre.id!, { name: newName })
                 showSuccessToast("Genre renamed")
                 refetch()
             } catch (e) {
+                // Rollback on error
+                refetch()
                 showErrorToast(e, "Failed to rename genre")
             }
         }
@@ -211,6 +212,18 @@ export default function GenreTab() {
             }, 50)
         } else {
             try {
+                // Optimistic Update
+                setGenres(prev => {
+                    if (!prev) return prev
+                    return prev.map(g => {
+                        if (g.id !== genreId) return g
+                        return {
+                            ...g,
+                            sub_genres: g.sub_genres?.map(s => s.id === subGenre.id ? { ...s, name: newName } : s)
+                        }
+                    })
+                })
+
                 await subGenreEndpoint.update(subGenre.id!, { 
                     name: newName,
                     genre_id: genreId
@@ -218,6 +231,8 @@ export default function GenreTab() {
                 showSuccessToast("Sub-genre renamed")
                 refetch()
             } catch (e) {
+                // Rollback on error
+                refetch()
                 showErrorToast(e, "Failed to rename sub-genre")
             }
         }
@@ -277,72 +292,20 @@ export default function GenreTab() {
                         const genreColor = getCyclicColor(BASE_COLOR_HEX, EQU_DIST_COUNT, LUMINANCE_PRESET, idx + 1)
                         
                         return (
-                        <MetadataGroup
+                        <GenreItem
                             key={genre.id}
-                            id={`genre:${genre.id}`}
-                            groupColor={genreColor}
-                            header={
-                                <>
-                                    <div 
-                                        className="w-full h-1 rounded-t-xl"
-                                        style={{ backgroundColor: genreColor }}
-                                    />
-                                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                                        <div onClick={(e) => e.stopPropagation()} className="flex-1">
-                                            <EditableText
-                                                value={genre.name || ''}
-                                                onChange={(newName) => handleGenreNameChange(genre, newName)}
-                                                mode="text"
-                                                placeholder="Genre name"
-                                                fontSize={16}
-                                                fontSizeRatio={0.65}
-                                                fontWeight="600"
-                                                autoWidth
-                                                allowEmpty={true}
-                                            />
-                                        </div>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-7 w-7 text-destructive/70 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setGenreToDelete(genre);
-                                            }}
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </CardHeader>
-                                </>
-                            }
-                            onAddItem={() => setPendingSubGenre(genre.id!)}
-                            addItemLabel="Add sub-genre"
-                            pendingItem={pendingSubGenre === genre.id ? (
-                                <MetadataItem
-                                    isPending={true}
-                                    type="sub"
-                                    groupId={genre.id!}
-                                    groupName={genre.name || ''}
-                                    color={genreColor}
-                                    onNameChange={async (_, gId, __, newName) => handlePendingSubGenreChange(newName)}
-                                    onCancel={() => setPendingSubGenre(null)}
-                                    placeholder="New subgenre"
-                                    defaultValue={`Subgenre ${(genre.sub_genres?.length || 0) + 1}`}
-                                />
-                            ) : undefined}
-                        >
-                            {genre.sub_genres?.map(sub => (
-                                <MetadataItem
-                                    key={sub.id}
-                                    type="sub"
-                                    item={sub}
-                                    groupId={genre.id!}
-                                    groupName={genre.name || ''}
-                                    color={sub.id ? subGenreColorMap.get(sub.id) : undefined}
-                                    onNameChange={handleSubGenreNameChange}
-                                />
-                            ))}
-                        </MetadataGroup>
+                            genre={genre}
+                            genreColor={genreColor}
+                            subGenreColorMap={subGenreColorMap}
+                            onRename={handleGenreNameChange}
+                            onDelete={(g) => setGenreToDelete(g)}
+                            pendingSubGenre={pendingSubGenre}
+                            onAddSubGenre={(id) => setPendingSubGenre(id)}
+                            onPendingSubGenreChange={handlePendingSubGenreChange}
+                            onCancelPendingSubGenre={() => setPendingSubGenre(null)}
+                            onSubGenreRename={handleSubGenreNameChange}
+                            setSubGenreToDelete={setSubGenreToDelete}
+                        />
                     )})}
                     {isCreatingGenre && (
                         <Card className="flex flex-col">

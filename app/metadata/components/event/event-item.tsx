@@ -23,9 +23,10 @@ interface EventItemProps {
   categories?: FCategory[]
   availableUsers?: FUser[]
   nextEventNumber?: number
+  onRename?: (id: number, newTitle: string) => void
 }
 
-const EventItem = memo(function EventItem({ event, onRefresh, userIds, userColorMap, categories, availableUsers, nextEventNumber }: EventItemProps) {
+const EventItem = memo(function EventItem({ event, onRefresh, onRename, userIds, userColorMap, categories, availableUsers, nextEventNumber }: EventItemProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   
   const startStr = formatDateToDisplay(event.start_date, "day")
@@ -88,10 +89,17 @@ const EventItem = memo(function EventItem({ event, onRefresh, userIds, userColor
         user_id: userId
       }
 
+      // Optimistic update
+      if (onRename && event.id) {
+        onRename(event.id, newTitle)
+      }
+
       await eventEndpoint.update(event.id, payload)
       showSuccessToast('Event renamed')
       onRefresh()
     } catch (err) {
+      // Rollback
+      onRefresh()
       showErrorToast(err, 'Failed to rename event')
     }
   }

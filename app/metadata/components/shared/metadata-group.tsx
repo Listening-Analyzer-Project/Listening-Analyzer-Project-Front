@@ -16,6 +16,8 @@ interface MetadataGroupProps {
     pendingItem?: ReactNode
     onAddItem: () => void
     addItemLabel: string
+    onMouseEnter?: () => void
+    onMouseLeave?: () => void
 }
 
 export function MetadataGroup({
@@ -25,7 +27,9 @@ export function MetadataGroup({
     children,
     pendingItem,
     onAddItem,
-    addItemLabel
+    addItemLabel,
+    onMouseEnter,
+    onMouseLeave
 }: MetadataGroupProps) {
     const { setNodeRef, isOver } = useDroppable({
         id,
@@ -40,8 +44,10 @@ export function MetadataGroup({
                     ? (groupColor ? `${groupColor}10` : 'hsl(var(--primary) / 0.05)') 
                     : 'transparent' 
             }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
         >
-            <Card className="flex flex-col group transition-colors h-full">
+            <Card className="flex flex-col group transition-colors h-full overflow-hidden">
                 {header}
                 <CardContent className="px-4 pb-4 pt-2">
                     <div className="flex flex-wrap gap-1.5 items-center">

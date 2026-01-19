@@ -15,6 +15,7 @@ import { Plus, Trash2 } from "lucide-react"
 import { tagEndpoint } from "@/lib/api/core/tag-endpoints"
 import { useApi } from "@/lib/hooks"
 
+import { darkenColor } from "@/lib/utils"
 import { buildTagColorMap, getTagGroupColor } from "@/lib/utils/core-service"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
 import { FTag } from "@/types"
@@ -26,9 +27,11 @@ import {
 import { MetadataItem } from "./shared/metadata-item"
 
 export default function TagTab() {
-    const { data: tags, refetch } = useApi<FTag[]>(
+    const { data: tags, refetch, setData: setTags } = useApi<FTag[]>(
         () => tagEndpoint.fetchAll(),
     )
+
+    const [hoveredTrashIdx, setHoveredTrashIdx] = useState<number | null>(null)
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -172,6 +175,9 @@ export default function TagTab() {
             }, 50)
         } else {
              try {
+                // Optimistic Update
+                setTags(prev => prev ? prev.map(t => t.id === tag.id ? { ...t, name: newName } : t) : prev)
+
                 await tagEndpoint.update(tag.id!, {
                     name: newName,
                     color_index: groupId
@@ -179,6 +185,8 @@ export default function TagTab() {
                 showSuccessToast("Tag renamed")
                 refetch()
             } catch (e) {
+                // Rollback on error
+                refetch()
                 showErrorToast(e, "Failed to rename tag")
             }
         }
@@ -284,15 +292,20 @@ export default function TagTab() {
                                 groupColor={color}
                                 header={
                                      <div 
-                                        className="w-full h-1 transition-all duration-300 ease-in-out group-hover:h-9 rounded-t-xl"
+                                        className="w-full h-1 transition-all duration-300 ease-in-out group-hover:h-9"
                                         style={{ backgroundColor: color }}
                                     >
                                          {!isDefault && (
-                                            <div className="flex h-full items-center justify-end px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                             <div className="flex h-full items-center justify-end px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-7 w-7 text-white hover:bg-white/20 hover:text-white"
+                                                    className="h-7 w-7 text-white hover:text-white"
+                                                    style={{ 
+                                                        backgroundColor: hoveredTrashIdx === idx ? darkenColor(color, 10) : 'transparent' 
+                                                    }}
+                                                    onMouseEnter={() => setHoveredTrashIdx(idx)}
+                                                    onMouseLeave={() => setHoveredTrashIdx(null)}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setGroupToDelete(idx);

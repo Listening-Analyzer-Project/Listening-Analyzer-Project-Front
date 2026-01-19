@@ -322,31 +322,29 @@ Manipulation Utils
 
 /**
  * @param color - Any valid color string
- * @param percent - Percentage to darken (0-100)
+ * @param percent - Percentage to darken (scale factor: currentL * (1 - percent/100))
  */
 export function darkenColor(color: string, percent: number, format: ColorFormat = 'hex'): string {
   const rgba = parseToRGBA(color)
-  const newRgba = {
-    ...rgba,
-    r: Math.max(0, Math.floor(rgba.r * (1 - percent / 100))),
-    g: Math.max(0, Math.floor(rgba.g * (1 - percent / 100))),
-    b: Math.max(0, Math.floor(rgba.b * (1 - percent / 100))),
-  }
+  const hsla = rgbaToHSLA(rgba)
+  
+  const newL = Math.max(0, hsla.l * (1 - percent / 100))
+  
+  const newRgba = hslaToRGBA({ ...hsla, l: newL })
   return formatRGBA(newRgba, format)
 }
 
 /**
  * @param color - Any valid color string
- * @param percent - Percentage to lighten (0-100)
+ * @param percent - Percentage to lighten (scale factor: currentL * (1 + percent/100))
  */
 export function lightenColor(color: string, percent: number, format: ColorFormat = 'hex'): string {
   const rgba = parseToRGBA(color)
-  const newRgba = {
-    ...rgba,
-    r: Math.min(255, Math.floor(rgba.r + (255 - rgba.r) * (percent / 100))),
-    g: Math.min(255, Math.floor(rgba.g + (255 - rgba.g) * (percent / 100))),
-    b: Math.min(255, Math.floor(rgba.b + (255 - rgba.b) * (percent / 100))),
-  }
+  const hsla = rgbaToHSLA(rgba)
+  
+  const newL = Math.min(100, hsla.l * (1 + percent / 100))
+  
+  const newRgba = hslaToRGBA({ ...hsla, l: newL })
   return formatRGBA(newRgba, format)
 }
 

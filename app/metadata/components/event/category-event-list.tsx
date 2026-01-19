@@ -24,6 +24,7 @@ interface CategoryEventListProps {
   categories?: FCategory[]
   availableUsers?: FUser[]
   nextEventNumber?: number
+  onEventRename?: (id: number, newTitle: string) => void
 }
 
 const CategoryEventList = memo(function CategoryEventList({
@@ -37,7 +38,8 @@ const CategoryEventList = memo(function CategoryEventList({
   onDelete,
   categories,
   availableUsers,
-  nextEventNumber
+  nextEventNumber,
+  onEventRename
 }: CategoryEventListProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -117,6 +119,7 @@ const CategoryEventList = memo(function CategoryEventList({
                             key={event.id}
                             event={event}
                             onRefresh={onRefresh}
+                            onRename={onEventRename}
                             userIds={userIds}
                             userColorMap={userColorMap}
                             categories={categories}
