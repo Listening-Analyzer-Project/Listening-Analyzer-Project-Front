@@ -1,3 +1,4 @@
+import { showErrorToast } from '@/lib/utils/toasts/toast-handler'
 import { useEffect, useRef, useState } from 'react'
 
 // To use for fetching data from an API
@@ -12,13 +13,15 @@ export function useApi<T>(factory: (signal?: AbortSignal) => Promise<T>, deps: a
     const controller = new AbortController()
     controllerRef.current = controller
     setLoading(true)
-    setData(null)
     setError(null)
     try {
       const result = await factory(controller.signal)
       if (!controller.signal.aborted) setData(result as T)
     } catch (err) {
-      if ((err as any)?.name !== 'AbortError') setError(err)
+      if ((err as any)?.name !== 'AbortError') {
+        setError(err)
+        showErrorToast(err, 'Erreur lors du chargement des données')
+      }
     } finally {
       if (!controllerRef.current?.signal.aborted) setLoading(false)
     }
@@ -32,5 +35,5 @@ export function useApi<T>(factory: (signal?: AbortSignal) => Promise<T>, deps: a
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
 
-  return { data, loading, error, refetch: execute } as const
+  return { data, loading, error, refetch: execute, setData } as const
 }

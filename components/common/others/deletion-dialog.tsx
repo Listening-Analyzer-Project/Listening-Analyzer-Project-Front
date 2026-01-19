@@ -1,14 +1,14 @@
 'use client'
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 
@@ -16,14 +16,18 @@ export default function DeletionDialog({
   open,
   onOpenChange,
   onConfirm,
-  title = 'Supprimer ?',
-  description = 'Cette action est irréversible. Voulez-vous continuer ?',
+  title = 'Delete?',
+  description = 'This action is irreversible. Do you want to continue?',
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   onConfirm: () => Promise<void> | void
   title?: string
-  description?: string
+  description?: React.ReactNode
+  confirmLabel?: string
+  cancelLabel?: string
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -35,7 +39,7 @@ export default function DeletionDialog({
 
         <AlertDialogFooter className="flex justify-end gap-2">
           <AlertDialogCancel asChild>
-            <Button variant="outline">Annuler</Button>
+            <Button variant="outline">{cancelLabel}</Button>
           </AlertDialogCancel>
 
           <AlertDialogAction asChild>
@@ -46,7 +50,7 @@ export default function DeletionDialog({
                 onOpenChange(false)
               }}
             >
-              Supprimer
+              {confirmLabel}
             </Button>
           </AlertDialogAction>
         </AlertDialogFooter>

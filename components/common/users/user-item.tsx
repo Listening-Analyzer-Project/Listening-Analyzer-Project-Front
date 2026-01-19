@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { userService } from '@/lib/api'
+import { userEndpoint } from '@/lib/api'
 import { showErrorToast } from '@/lib/utils'
 import type { FUser, ViewItem } from '@/types'
 import { useRouter } from 'next/navigation'
@@ -104,7 +104,7 @@ export default function UserItem({
 
         if (!existingUser) {
           try {
-            existingUser = await userService.fetchById(item.userId)
+            existingUser = await userEndpoint.fetchById(item.userId)
           } catch (fetchErr) {
             showErrorToast(fetchErr, 'Could not fetch full user, proceeding with minimal payload')
           }
@@ -119,7 +119,7 @@ export default function UserItem({
           payload = { name: trimmed }
         }
 
-        await userService.update(item.userId, payload)
+        await userEndpoint.update(item.userId, payload)
 
         if (onAfterUserRename) await onAfterUserRename()
       } catch (err: any) {

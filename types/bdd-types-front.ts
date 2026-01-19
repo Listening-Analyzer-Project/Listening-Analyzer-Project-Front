@@ -56,9 +56,14 @@ export interface FGenre {
   name: string
 }
 
+export interface FGenreWithSubGenres extends FGenre {
+  sub_genres: FSubGenre[]
+}
+
 export interface FTag {
   id?: number
   name: string
+  color_index: number
 }
 
 export interface FCountry {
@@ -105,6 +110,17 @@ export interface FEvent {
   description?: string
   category?: FCategory
   user?: FUser
+}
+
+export interface FEventWithCategory {
+  id?: number
+  title: string
+  start_date: string
+  end_date: string
+  description?: string
+  user_name?: string
+  category_id?: number
+  category_name?: string
 }
 
 export interface FCategory {

@@ -1,4 +1,4 @@
-import { BarChart, Home, LineChart, Music, Palette, Table, Upload } from 'lucide-react'
+import { BarChart, BookOpenText, Home, LineChart, Music, Palette, Table } from 'lucide-react'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import Link from 'next/link'
@@ -44,18 +44,18 @@ export default function RootLayout({
                   Accueil
                 </Link>
                 <Link
-                  href="/upload"
-                  className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
-                >
-                  <Upload className="h-5 w-5" />
-                  Upload
-                </Link>
-                <Link
                   href="/data"
                   className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
                 >
                   <Table className="h-5 w-5" />
                   Données
+                </Link>
+                <Link
+                  href="/metadata"
+                  className="flex flex-col items-center text-sm hover:text-green-600 transition-colors"
+                >
+                  <BookOpenText className="h-5 w-5" />
+                  Metadata
                 </Link>
                 <Link
                   href="/update"

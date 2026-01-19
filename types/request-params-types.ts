@@ -31,6 +31,13 @@ export interface ColumnOption {
     defaultVisible?: boolean // Si true ou undefined, la colonne est visible par défaut
 }
 
+export interface EventParams {
+    user_ids?: string
+    category_id?: string
+    limit?: number
+    offset?: number
+}
+
 export type ViewType = 'listens' | 'tracks' | 'artists' | 'albums'
 export type SortDirection = 'asc' | 'desc'
 export type RenderType = 'timestamp' | 'date' | 'title' | 'text' | 'rank' | 'duration' | 'badge' | 'boolean' | 'number' | 'validListens' | 'invalidListens'

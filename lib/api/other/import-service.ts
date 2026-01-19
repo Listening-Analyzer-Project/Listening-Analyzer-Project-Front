@@ -1,4 +1,4 @@
-import { userService } from '@/lib/api'
+import { userEndpoint } from '@/lib/api'
 import { USER_UPDATED_EVENT } from '@/lib/events'
 import { showErrorToast } from '@/lib/utils'
 import { parseAndBatch } from '@/lib/utils/importer/streamers/unified-streamer'
@@ -25,7 +25,7 @@ export const importService = {
     }
 
     if (user.syncro_status !== 0) {
-      await userService.remove(user.id?.toString() || '', false)
+      await userEndpoint.remove(user.id?.toString() || '', false)
     }
 
     const payload = {
@@ -34,7 +34,7 @@ export const importService = {
       isadmin: user.isadmin,
       syncro_status: 1,
     }
-    await userService.update(user.id?.toString() || '', payload)
+    await userEndpoint.update(user.id?.toString() || '', payload)
     window.dispatchEvent(new Event(USER_UPDATED_EVENT))
 
     const cumulativeResult = {
@@ -79,7 +79,7 @@ export const importService = {
     }
 
     payload.syncro_status = 2
-    await userService.update(user.id?.toString() || '', payload)
+    await userEndpoint.update(user.id?.toString() || '', payload)
     window.dispatchEvent(new Event(USER_UPDATED_EVENT))
 
     await importService.restoreIndexes()

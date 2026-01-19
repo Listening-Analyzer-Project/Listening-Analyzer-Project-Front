@@ -1,7 +1,7 @@
 import { FUser } from '@/types'
 import apiClient from '../api-clients'
 
-export const userService = {
+export const userEndpoint = {
   fetchAll: (opts?: { signal?: AbortSignal }) =>
     apiClient.get<FUser[]>('/api/users', { cache: true, signal: opts?.signal }),
 
@@ -30,4 +30,4 @@ export const userService = {
   },
 }
 
-export default userService
+export default userEndpoint

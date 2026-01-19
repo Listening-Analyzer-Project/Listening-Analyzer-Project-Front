@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-import { userService } from '@/lib/api'
+import { userEndpoint } from '@/lib/api'
 import { USER_UPDATED_EVENT } from '@/lib/events'
 import type { FUser } from '@/types'
 import UploadArea from './components/upload-area'
@@ -43,7 +43,7 @@ export default function UserSettingsPage() {
 
   async function loadUser() {
     try {
-      const u = await userService.fetchById(id)
+      const u = await userEndpoint.fetchById(id)
       setUser(u)
       form.reset({
         name: u.name,
@@ -61,7 +61,7 @@ export default function UserSettingsPage() {
   }, [id])
 
   async function handleSave(data: Omit<FUser, 'id'>) {
-    await userService.update(id, data)
+    await userEndpoint.update(id, data)
     window.dispatchEvent(new Event(USER_UPDATED_EVENT))
     router.refresh()
   }

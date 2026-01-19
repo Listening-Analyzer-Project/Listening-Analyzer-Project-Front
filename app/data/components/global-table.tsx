@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, HelpCircle } from 'lucide-react'
 
+import { Card } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -17,12 +18,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Card } from '@/components/ui/card'
 
-import { ColumnOption, ViewType, SortDirection, RenderType } from '@/types'
-import { formatDateToDisplay } from '@/lib/utils/format-date'
 import { cn } from '@/lib/cn'
 import { COLUMN_CELL_STYLES, COLUMN_FIELD_MAPPINGS, COLUMN_RENDER_TYPES, COLUMNS_BY_VIEW } from '@/lib/constants'
+import { formatDateToDisplay } from '@/lib/utils/format-date'
+import { ColumnOption, RenderType, SortDirection, ViewType } from '@/types'
 
 interface GlobalTableProps {
   data: any[]
@@ -119,11 +119,30 @@ export default function GlobalTable({
     
     duration: (value) => `${Math.floor(value / 1000)}s`,
     
-    badge: (value) => (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
-        {value}
-      </span>
-    ),
+    badge: (value) => {
+      const renderSingleBadge = (val: any, key?: any) => {
+        if (!val) return null
+        
+        // Handle both simple strings and tag objects
+        const label = typeof val === 'object' && val !== null && 'name' in val ? val.name : val
+
+        return (
+          <span key={key} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
+            {label}
+          </span>
+        )
+      }
+
+      if (Array.isArray(value)) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {value.map((item, idx) => renderSingleBadge(item, idx))}
+          </div>
+        )
+      }
+
+      return renderSingleBadge(value)
+    },
     
     boolean: (value) => (
       <span className={cn(
