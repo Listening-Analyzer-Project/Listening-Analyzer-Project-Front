@@ -100,12 +100,10 @@ export default function GenreTab() {
 
         const genreMap = new Map(genres.map(g => [g.id, g]))
         
-        // 1. Process known genres in preserved order
         const orderedGenres = displayOrder.genreIds
             .map(id => genreMap.get(id))
             .filter((g): g is FGenreWithSubGenres => !!g)
 
-        // 2. Identify new genres (added since last refresh)
         const knownGenreIds = new Set(displayOrder.genreIds)
         const newGenres = genres.filter(g => !knownGenreIds.has(g.id!))
         
@@ -115,12 +113,10 @@ export default function GenreTab() {
             const preservedSubIds = displayOrder.subGenreIdsByGenre[genre.id!] || []
             const subMap = new Map(genre.sub_genres?.map(s => [s.id, s]) || [])
             
-            // a. Preserved sub-genres in order
             const orderedSubs = preservedSubIds
                 .map(id => subMap.get(id))
                 .filter((s): s is FSubGenre => !!s)
                 
-            // b. New sub-genres (added or moved here)
             const knownSubIds = new Set(preservedSubIds)
             const newSubs = (genre.sub_genres || []).filter(s => !knownSubIds.has(s.id!))
 

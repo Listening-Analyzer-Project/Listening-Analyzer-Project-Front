@@ -49,7 +49,13 @@ export default function EventTab() {
     () => eventEndpoint.count(),
     []
   )
+  
+  const events = eventsRaw || []
+  const categories = categoriesRaw || []
+  const users = usersRaw || []
 
+  const nextCategoryNumber = categories.length + 1
+  
   // Robust parsing of count (might be number, {count: X}, or [{count: X}])
   const safeEventCount = useMemo(() => {
     if (typeof eventCount === 'number') return eventCount
@@ -63,11 +69,6 @@ export default function EventTab() {
     return 0
   }, [eventCount])
 
-  const events = eventsRaw || []
-  const categories = categoriesRaw || []
-  const users = usersRaw || []
-
-  const nextCategoryNumber = categories.length + 1
 
   useEffect(() => {
     setUserIds(resolveUserIds(selectionState.selectedIds))
