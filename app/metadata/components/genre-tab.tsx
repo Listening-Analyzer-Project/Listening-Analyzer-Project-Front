@@ -20,8 +20,8 @@ import { genreEndpoint } from "@/lib/api/core/genre-endpoint"
 import { subGenreEndpoint } from "@/lib/api/core/sub-genre-endpoint"
 import { useApi } from "@/lib/hooks"
 
-import { getCyclicColor } from "@/lib/utils"
-import { buildGenreColorMap } from "@/lib/utils/core-service"
+import { useColorStore } from "@/lib/store/colors/colors-store"
+import { SYNC_GENRES_EVENT } from "@/lib/sync-signals"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
 
 import { FGenreWithSubGenres, FSubGenre } from "@/types"
@@ -30,9 +30,6 @@ import EditableText from "@/components/common/editable-text"
 import DeletionDialog from "@/components/common/others/deletion-dialog"
 import { GenreItem } from "./genre-item"
 
-const BASE_COLOR_HEX = '#16A34A'
-const EQU_DIST_COUNT = 8
-const LUMINANCE_PRESET = 'shortList'
 
 export default function GenreTab() {
     const { data: genres, refetch, setData: setGenres } = useApi<FGenreWithSubGenres[]>(
@@ -65,6 +62,12 @@ export default function GenreTab() {
 
     // Calculate next numbers for default names
     const nextGenreNumber = (genres?.length || 0) + 1
+
+    useEffect(() => {
+        const handleGenreUpdate = () => refetch()
+        window.addEventListener(SYNC_GENRES_EVENT, handleGenreUpdate)
+        return () => window.removeEventListener(SYNC_GENRES_EVENT, handleGenreUpdate)
+    }, [refetch])
 
     useEffect(() => {
         if (!genres || displayOrder) return
@@ -127,10 +130,13 @@ export default function GenreTab() {
         })
     }, [genres, displayOrder])
 
-    // Build the color map for sub-genres
-    const subGenreColorMap = useMemo(() => {
-        return buildGenreColorMap(sortedGenres, BASE_COLOR_HEX, EQU_DIST_COUNT, LUMINANCE_PRESET)
-    }, [sortedGenres])
+    const { genreColors, subGenreColors } = useColorStore()
+
+    // Function to notify global synchronizer
+    const notifyGenresUpdated = () => {
+        window.dispatchEvent(new Event(SYNC_GENRES_EVENT))
+    }
+
 
     const handleStartCreateGenre = () => {
         setIsCreatingGenre(true)
@@ -144,7 +150,7 @@ export default function GenreTab() {
         try {
             await genreEndpoint.create({ name: newName })
             showSuccessToast("Genre created")
-            refetch()
+            notifyGenresUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to create genre")
         }
@@ -162,7 +168,7 @@ export default function GenreTab() {
                 genre_id: genreId
             })
             showSuccessToast("Sub-genre created")
-            refetch()
+            notifyGenresUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to create sub-genre")
         }
@@ -180,7 +186,7 @@ export default function GenreTab() {
 
                 await genreEndpoint.update(genre.id!, { name: newName })
                 showSuccessToast("Genre renamed")
-                refetch()
+                notifyGenresUpdated()
             } catch (e) {
                 // Rollback on error
                 refetch()
@@ -195,7 +201,7 @@ export default function GenreTab() {
             await genreEndpoint.remove(genreToDelete.id!, {})
             showSuccessToast("Genre deleted")
             setGenreToDelete(null)
-            refetch()
+            notifyGenresUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to delete genre")
         }
@@ -225,7 +231,7 @@ export default function GenreTab() {
                     genre_id: genreId
                 })
                 showSuccessToast("Sub-genre renamed")
-                refetch()
+                notifyGenresUpdated()
             } catch (e) {
                 // Rollback on error
                 refetch()
@@ -240,7 +246,7 @@ export default function GenreTab() {
             await subGenreEndpoint.remove(subGenreToDelete.id)
             showSuccessToast("Sub-genre deleted")
             setSubGenreToDelete(null)
-            refetch()
+            notifyGenresUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to delete sub-genre")
         }
@@ -262,7 +268,7 @@ export default function GenreTab() {
                     name: item.name // Keep name same, endpoint might require it or it's good practice
                 })
                 showSuccessToast(`${item.name} moved`)
-                refetch()
+                notifyGenresUpdated()
             } catch (e) {
                 showErrorToast(e, "Failed to move sub-genre")
             }
@@ -285,14 +291,14 @@ export default function GenreTab() {
             >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start" style={{ overflowAnchor: 'none' }}>
                     {sortedGenres.map((genre, idx) => {
-                        const genreColor = getCyclicColor(BASE_COLOR_HEX, EQU_DIST_COUNT, LUMINANCE_PRESET, idx + 1)
+                        const genreColor = genre.name ? genreColors.get(genre.name) : undefined
                         
                         return (
                         <GenreItem
                             key={genre.id}
                             genre={genre}
-                            genreColor={genreColor}
-                            subGenreColorMap={subGenreColorMap}
+                            genreColor={genreColor || '#9CA3AF'}
+                            subGenreColorMap={subGenreColors}
                             onRename={handleGenreNameChange}
                             onDelete={(g) => setGenreToDelete(g)}
                             pendingSubGenre={pendingSubGenre}

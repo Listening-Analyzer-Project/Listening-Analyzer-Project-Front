@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { userEndpoint } from '@/lib/api'
-import { USER_UPDATED_EVENT } from '@/lib/events'
+import { SYNC_USER_EVENT } from '@/lib/sync-signals'
 import type { FUser } from '@/types'
 import UploadArea from './components/upload-area'
 
@@ -62,7 +62,7 @@ export default function UserSettingsPage() {
 
   async function handleSave(data: Omit<FUser, 'id'>) {
     await userEndpoint.update(id, data)
-    window.dispatchEvent(new Event(USER_UPDATED_EVENT))
+    window.dispatchEvent(new Event(SYNC_USER_EVENT))
     router.refresh()
   }
 

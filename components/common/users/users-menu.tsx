@@ -2,37 +2,38 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { USER_UPDATED_EVENT } from '@/lib/events'
+import { SYNC_USER_EVENT } from '@/lib/sync-signals'
 
 // dnd-kit
 import {
-    closestCorners,
-    DndContext,
-    DragEndEvent,
-    DragStartEvent,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors
+  closestCorners,
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
 } from '@dnd-kit/core'
 import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 
 import { Button } from '@/components/ui/button'
 import { userEndpoint } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
+import { useColorStore } from '@/lib/store/colors/colors-store'
 import { useUsersViewStore } from '@/lib/store/users/users-provider'
 import {
-    buildRestoredPayload,
-    loadPersistedPayload,
-    reconcileViewStateWithUsers
+  buildRestoredPayload,
+  loadPersistedPayload,
+  reconcileViewStateWithUsers
 } from '@/lib/store/users/users-view-persistence'
 import { showErrorToast } from '@/lib/utils'
-import { buildUserColorMap, isGroup, isItem } from '@/lib/utils/core-service'
+import { isGroup, isItem } from '@/lib/utils/core-service'
 import type { FUser, ViewState } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
@@ -40,10 +41,6 @@ import AvatarStack from './avatar-stack'
 import SortableItem from './sortable-user-item'
 import UserCreateDialog from './user-create-dialog'
 import UserItem from './user-item'
-
-const BASE_COLOR_HEX = '#16A34A'
-const EQU_DIST_COUNT = 8
-const LUMINANCE_PRESET = 'shortList' as const
 
 function findParentId(viewState: ViewState, targetId: string): string | null {
   for (const id of viewState.order) {
@@ -79,10 +76,9 @@ export default function UsersMenu() {
       refetch()
     }
 
-    window.addEventListener(USER_UPDATED_EVENT, handleUserUpdate)
-
+    window.addEventListener(SYNC_USER_EVENT, handleUserUpdate)
     return () => {
-      window.removeEventListener(USER_UPDATED_EVENT, handleUserUpdate)
+      window.removeEventListener(SYNC_USER_EVENT, handleUserUpdate)
     }
   }, [refetch])
 
@@ -210,19 +206,19 @@ export default function UsersMenu() {
     
     restoreViewState(reconciled)
   }, [usersRaw, viewInitialized, restoreViewState])
-
+  
   const usersById = new Map(
     usersRaw
-      ?.filter((u): u is FUser & { id: number } => u.id !== undefined && u.id !== null)
-      .map(u => [u.id, u]) ?? []
+    ?.filter((u): u is FUser & { id: number } => u.id !== undefined && u.id !== null)
+    .map(u => [u.id, u]) ?? []
   )
-
-  const colorMap = buildUserColorMap(
-    viewState,
-    BASE_COLOR_HEX,
-    EQU_DIST_COUNT,
-    LUMINANCE_PRESET
-  )
+  
+  // Sync colors is now handled globally in Layout/DataSynchronizer
+  const { userColors } = useColorStore()
+  
+  const notifyUserUpdate = () => {
+    window.dispatchEvent(new Event(SYNC_USER_EVENT))
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -312,8 +308,8 @@ export default function UsersMenu() {
   const handleCreateUser = async (payload: Partial<FUser>) => {
     try {
       await userEndpoint.create(payload)
-      await refetch()
       setDialogOpen(false)
+      notifyUserUpdate()
     } catch (err) {
       showErrorToast(err, 'User creation failed')
     }
@@ -350,7 +346,7 @@ export default function UsersMenu() {
       const newSelection = selectionState.selectedIds.filter(selId => !idsToRemove.has(selId))
       setSelection(newSelection)
       
-      await refetch()
+      notifyUserUpdate()
     } catch (err) {
       showErrorToast(err, 'User deletion failed')
     }
@@ -372,6 +368,7 @@ export default function UsersMenu() {
       setDeleteDialogOpen(false)
       setToDeleteId(null)
       setToDeleteType(null)
+      notifyUserUpdate()
     }
   }
 
@@ -388,6 +385,7 @@ export default function UsersMenu() {
       } else {
         createAlias(userId)
       }
+      notifyUserUpdate()
     } catch (err) {
       showErrorToast(err, 'Alias creation failed')
     }
@@ -474,10 +472,14 @@ export default function UsersMenu() {
           selected={isSelected}
           onToggleSelect={toggleSelection}
           onDelete={handleDeleteClick}
-          onAfterUserRename={refetch}
+          onAfterUserRename={async () => {
+            notifyUserUpdate()
+          }}
           onCreateAlias={handleCreateAlias}
-          color={colorMap.get(id) ?? colorMap.get(String(item.userId))}
-          onCloseMenu={() => setMenuOpen(false)}
+          color={(() => {
+            const user = usersById.get(item.userId)
+            return user?.name ? userColors.get(user.name) : undefined
+          })()}          onCloseMenu={() => setMenuOpen(false)}
         />
       )
     } else if (isGroup(item)) {
@@ -492,7 +494,7 @@ export default function UsersMenu() {
             onToggleCollapse={toggleCollapse}
             collapsed={isCollapsed}
             onDelete={handleDeleteClick}
-            color={colorMap.get(id)}
+            color={item.name ? userColors.get(item.name) : undefined}
           />
           {!isCollapsed && (
             <SortableContext
@@ -534,7 +536,7 @@ export default function UsersMenu() {
             selectedIds={selectionState.selectedIds}
             viewState={viewState}
             usersById={usersById}
-            colorMap={colorMap}
+            colorMap={userColors}
             max={3}
             size={34}
           />

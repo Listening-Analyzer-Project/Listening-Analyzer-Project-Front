@@ -15,12 +15,14 @@ import { Plus, Trash2 } from "lucide-react"
 import { tagEndpoint } from "@/lib/api/core/tag-endpoints"
 import { useApi } from "@/lib/hooks"
 
+import { getTagGroupColor } from "@/lib/store/colors/colors-generators"
+import { useColorStore } from "@/lib/store/colors/colors-store"
 import { darkenColor } from "@/lib/utils"
-import { buildTagColorMap, getTagGroupColor } from "@/lib/utils/core-service"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
 import { FTag } from "@/types"
 
 import DeletionDialog from "@/components/common/others/deletion-dialog"
+import { SYNC_TAGS_EVENT } from "@/lib/sync-signals"
 import {
     MetadataGroup
 } from "./shared/metadata-group"
@@ -54,6 +56,12 @@ export default function TagTab() {
     const [pendingCreateIn, setPendingCreateIn] = useState<number | null>(null)
     const [tagToDelete, setTagToDelete] = useState<FTag | null>(null)
     const [groupToDelete, setGroupToDelete] = useState<number | null>(null)
+    
+    useEffect(() => {
+        const handleTagUpdate = () => refetch()
+        window.addEventListener(SYNC_TAGS_EVENT, handleTagUpdate)
+        return () => window.removeEventListener(SYNC_TAGS_EVENT, handleTagUpdate)
+    }, [refetch])
 
     useEffect(() => {
         if (!tags || displayOrder) return
@@ -132,9 +140,13 @@ export default function TagTab() {
          return groups
     }, [tags, displayOrder])
 
-    const tagColorMap = useMemo(() => {
-        return buildTagColorMap(groupedTags)
-    }, [groupedTags])
+    // Colors are synced globally
+    const { tagColors } = useColorStore()
+
+    // Function to notify global synchronizer
+    const notifyTagsUpdated = () => {
+        window.dispatchEvent(new Event(SYNC_TAGS_EVENT))
+    }
 
     // List of indices to render
     const indices = useMemo(() => {
@@ -160,7 +172,7 @@ export default function TagTab() {
                 color_index: index
             })
             showSuccessToast("Tag created")
-            refetch()
+            notifyTagsUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to create tag")
         }
@@ -183,7 +195,7 @@ export default function TagTab() {
                     color_index: groupId
                 })
                 showSuccessToast("Tag renamed")
-                refetch()
+                notifyTagsUpdated()
             } catch (e) {
                 // Rollback on error
                 refetch()
@@ -198,7 +210,7 @@ export default function TagTab() {
             await tagEndpoint.remove(tagToDelete.id!)
             showSuccessToast("Tag deleted")
             setTagToDelete(null)
-            refetch()
+            notifyTagsUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to delete tag")
         }
@@ -235,8 +247,7 @@ export default function TagTab() {
                  setMaxVisibleIndex(prev => Math.max(0, prev - 1))
             }
             
-            refetch()
-
+            notifyTagsUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to delete group")
         }
@@ -258,7 +269,7 @@ export default function TagTab() {
                     name: item.name 
                 })
                 showSuccessToast("Tag moved")
-                refetch()
+                notifyTagsUpdated()
             } catch (e) {
                 showErrorToast(e, "Failed to move tag")
             }
@@ -340,7 +351,7 @@ export default function TagTab() {
                                         item={tag}
                                         groupId={idx}
                                         groupName={isDefault ? 'Uncategorized' : `Group ${idx}`}
-                                        color={tag.id ? tagColorMap.get(tag.id) : undefined}
+                                        color={tag.name ? tagColors.get(tag.name) : undefined}
                                         onNameChange={handleTagNameChange}
                                     />
                                 ))}
