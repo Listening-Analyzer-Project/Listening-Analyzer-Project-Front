@@ -13,8 +13,7 @@ export type ParsedFileResult = {
 
 export const importService = {
   /**
-   * Upload et parse les fichiers côté front, envoie batch par batch au serveur,
-   * attend la réponse pour chaque batch, et cumule les résultats.
+   * Parse files client-side and upload in batches, aggregating the results.
    */
   uploadAndParse: async (files: File[], user: FUser, onProgress?: (percent: number) => void) => {
     if (files.length === 0) return null

@@ -26,12 +26,7 @@ import { Button } from '@/components/ui/button'
 import { userEndpoint } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
 import { useColorStore } from '@/lib/store/colors/colors-store'
-import { useUsersViewStore } from '@/lib/store/users/users-provider'
-import {
-  buildRestoredPayload,
-  loadPersistedPayload,
-  reconcileViewStateWithUsers
-} from '@/lib/store/users/users-view-persistence'
+import { useUsersStore } from '@/lib/store/users/users-store'
 import { showErrorToast } from '@/lib/utils'
 import { isGroup, isItem } from '@/lib/utils/core-service'
 import type { FUser, ViewState } from '@/types'
@@ -97,10 +92,11 @@ export default function UsersMenu() {
     addChildrenToGroup,
     removeChildrenFromGroup,
     mergeGroups,
-    restoreViewState,
     setSelection,
     createAlias,
-  } = useUsersViewStore()
+    reconcile,
+    syncSelection
+  } = useUsersStore()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -109,7 +105,7 @@ export default function UsersMenu() {
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [preCollapseMap, setPreCollapseMap] = useState<Record<string, boolean> | null>(null)
-  const [viewInitialized, setViewInitialized] = useState(false)
+
 
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -159,53 +155,11 @@ export default function UsersMenu() {
     return 'Créer groupe'
   }, [isSingleChildRemoval, selectedGroups.length, selectedUsers.length])
 
- useEffect(() => {
-    // Safety check: don't run if no users or already initialized
-    if (!usersRaw || viewInitialized) return
-    
-    const doRestore = () => {
-      try {
-        let loaded
-        
-        try {
-            loaded = loadPersistedPayload()
-        } catch (e) {
-            console.warn('[UsersMenu] LocalStorage corrupted, resetting view.', e)
-            throw e 
-        }
-
-        const restored = buildRestoredPayload(loaded, usersRaw)
-        restoreViewState(restored.viewState)
-        setSelection(restored.selectionState.selectedIds)
-        setViewInitialized(true)
-        
-      } catch (err) {
-        console.error('[UsersMenu] Restoration failed, initializing from scratch', err)
-        
-        // Fallback: Initialize standard view if storage is broken
-        initFromUsers(usersRaw)
-        setViewInitialized(true)
-      }
-    }
-    
-    doRestore()
-  }, [usersRaw, restoreViewState, setSelection, initFromUsers, viewInitialized])
-
-  // Keep a ref to viewState to access it in the effect below without triggering re-runs
-  const viewStateRef = useRef(viewState)
+  // Reconcile Loop
   useEffect(() => {
-    viewStateRef.current = viewState
-  }, [viewState])
-
-  // Reconcile viewState when usersRaw changes (e.g. after create/delete)
-  useEffect(() => {
-    if (!viewInitialized || !usersRaw) return
-    
-    const currentViewState = viewStateRef.current
-    const reconciled = reconcileViewStateWithUsers(currentViewState, usersRaw)
-    
-    restoreViewState(reconciled)
-  }, [usersRaw, viewInitialized, restoreViewState])
+    if (!usersRaw || usersRaw.length === 0) return
+    reconcile(usersRaw)
+  }, [usersRaw, reconcile])
   
   const usersById = new Map(
     usersRaw
@@ -563,7 +517,7 @@ export default function UsersMenu() {
           >
             <div className="px-4 pt-4 pb-4">
               {(() => {
-                const showLoading = !usersRaw || loading || !viewInitialized
+                  const showLoading = !usersRaw || loading
                 const orderLength = viewState.order.length
                 
                 if (showLoading) {

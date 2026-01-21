@@ -7,7 +7,7 @@ import { tagEndpoint } from '@/lib/api/core/tag-endpoints'
 import { userEndpoint } from '@/lib/api/core/user-endpoint'
 import { useApi } from '@/lib/hooks'
 import { useColorStore } from '@/lib/store/colors/colors-store'
-import { useUsersViewStore } from '@/lib/store/users/users-provider'
+import { useUsersStore } from '@/lib/store/users/users-store'
 import {
   SYNC_GENRES_EVENT,
   SYNC_TAGS_EVENT,
@@ -17,7 +17,7 @@ import type { FGenreWithSubGenres, FTag, FUser } from '@/types'
 
 export default function DataSynchronizer() {
   const { syncUserColors, syncTagColors, syncGenreColors } = useColorStore()
-  const { viewState } = useUsersViewStore()
+  const { viewState } = useUsersStore()
 
   // --- Users Fetching ---
   const { data: users, refetch: refetchUsers } = useApi<FUser[]>(

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 
-import { getOrderedSelection } from '@/lib/store'
+import { getOrderedSelection } from '@/lib/store/users/users-store'
 import { isGroup, isItem } from '@/lib/utils/core-service'
 import type { FUser, ViewState } from '@/types'
 

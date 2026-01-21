@@ -7,7 +7,6 @@ import type React from 'react'
 import DataSynchronizer from '@/components/common/data-synchronizer'
 import UsersMenu from '@/components/common/users/users-menu'
 import { Toaster } from '@/components/ui/toaster'
-import { UserViewProvider } from '@/lib/store/users/users-provider'
 import '../styles/globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -26,7 +25,6 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={inter.className}>
-        <UserViewProvider>
           <DataSynchronizer />
           <div className="flex flex-col min-h-screen bg-[#F0FDF4]">
             <header className="bg-white text-gray-800 py-4 px-6 flex items-center justify-between shadow-sm">
@@ -85,7 +83,6 @@ export default function RootLayout({
             <main className="flex-1 p-6">{children}</main>
           </div>
           <Toaster />
-        </UserViewProvider>
       </body>
     </html>
   )

@@ -10,8 +10,8 @@ import { userEndpoint } from '@/lib/api'
 import { categoryEndpoint } from '@/lib/api/core/category-endpoint'
 import { eventEndpoint } from '@/lib/api/core/event-endpoint'
 import { useApi } from '@/lib/hooks'
-import { useUsersViewStore } from '@/lib/store'
 import { useColorStore } from '@/lib/store/colors/colors-store'
+import { useUsersStore } from '@/lib/store/users/users-store'
 import { SYNC_USER_EVENT } from '@/lib/sync-signals'
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toasts/toast-handler'
 import { FCategory, FEventWithCategory, FUser } from '@/types'
@@ -21,7 +21,7 @@ import EventDialog from './event/event-dialog'
 
 
 export default function EventTab() {
-  const { selectionState, viewState } = useUsersViewStore()
+  const { selectionState, viewState } = useUsersStore()
   const [userIds, setUserIds] = useState<string[]>([])
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
 
