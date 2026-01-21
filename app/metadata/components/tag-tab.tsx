@@ -1,10 +1,12 @@
 import {
-    closestCorners,
     DndContext,
     DragEndEvent,
+    DragOverlay,
+    DragStartEvent,
     PointerSensor,
+    pointerWithin,
     useSensor,
-    useSensors
+    useSensors,
 } from "@dnd-kit/core"
 import { useEffect, useMemo, useState } from "react"
 
@@ -23,6 +25,7 @@ import { FTag } from "@/types"
 
 import DeletionDialog from "@/components/common/others/deletion-dialog"
 import { SYNC_TAGS_EVENT } from "@/lib/sync-signals"
+import { snapCenterToCursor } from "@/lib/utils/draggable-modifiers"
 import {
     MetadataGroup
 } from "./shared/metadata-group"
@@ -56,6 +59,14 @@ export default function TagTab() {
     const [pendingCreateIn, setPendingCreateIn] = useState<number | null>(null)
     const [tagToDelete, setTagToDelete] = useState<FTag | null>(null)
     const [groupToDelete, setGroupToDelete] = useState<number | null>(null)
+
+    // State for drag preview
+    const [activeItem, setActiveItem] = useState<{
+        item: FTag,
+        groupId: number,
+        groupName: string,
+        color?: string
+    } | null>(null)
     
     useEffect(() => {
         const handleTagUpdate = () => refetch()
@@ -253,7 +264,22 @@ export default function TagTab() {
         }
     }
 
+    const handleDragStart = (event: DragStartEvent) => {
+        const { active } = event
+        const data = active.data.current
+        if (data && data.item) {
+            const isDefault = data.originalGroupId === 0
+            setActiveItem({
+                item: data.item,
+                groupId: data.originalGroupId,
+                groupName: isDefault ? 'Uncategorized' : `Group ${data.originalGroupId}`,
+                color: data.item.name ? tagColors.get(data.item.name) : undefined
+            })
+        }
+    }
+
     const handleDragEnd = async (event: DragEndEvent) => {
+        setActiveItem(null)
         const { active, over } = event
         if (!over) return
 
@@ -287,8 +313,10 @@ export default function TagTab() {
 
              <DndContext 
                 sensors={sensors} 
-                collisionDetection={closestCorners} 
+                collisionDetection={pointerWithin} 
+                onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onDragCancel={() => setActiveItem(null)}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start" style={{ overflowAnchor: 'none' }}>
                     {indices.map(idx => {
@@ -366,6 +394,21 @@ export default function TagTab() {
                         </CardContent>
                     </Card>
                 </div>
+
+                <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]} style={{ cursor: 'grabbing' }}>
+                    {activeItem ? (
+                        <div style={{ cursor: 'grabbing' }}>
+                            <MetadataItem
+                                type="tag"
+                                item={activeItem.item}
+                                groupId={activeItem.groupId}
+                                groupName={activeItem.groupName}
+                                color={activeItem.color}
+                                isOverlay={true}
+                            />
+                        </div>
+                    ) : null}
+                </DragOverlay>
             </DndContext>
 
             <DeletionDialog 

@@ -1,8 +1,10 @@
 "use client"
 
+import { cn } from "@/lib/utils"
+import React from "react"
+
 import EditableText from "@/components/common/editable-text"
 import { useDraggable } from "@dnd-kit/core"
-import React from "react"
 
 export interface MetadataItemProps {
     item?: { id?: number; name: string }
@@ -11,13 +13,14 @@ export interface MetadataItemProps {
     color?: string
     darkTextColor?: string
     lightTextColor?: string
-    onNameChange: (item: { id?: number; name: string }, groupId: number, groupName: string, newName: string) => Promise<void>
+    onNameChange?: (item: { id?: number; name: string }, groupId: number, groupName: string, newName: string) => Promise<void>
     type: 'sub' | 'tag' // To distinguish in drag events
     // Pending mode props
     isPending?: boolean
     onCancel?: () => void
     placeholder?: string
     defaultValue?: string
+    isOverlay?: boolean
 }
 
 const SOFT_DARK_TEXT_COLOR = '#374151'
@@ -35,11 +38,12 @@ export function MetadataItem({
     isPending = false,
     onCancel,
     placeholder,
-    defaultValue
+    defaultValue,
+    isOverlay = false
 }: MetadataItemProps) {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: isPending ? `pending-${type}-${groupId}` : `${type}:${item?.id}`,
-        disabled: isPending,
+        disabled: isPending || isOverlay,
         data: {
             item,
             originalGroupId: groupId,
@@ -47,13 +51,10 @@ export function MetadataItem({
         },
     })
 
-    // We use CSS transform for the dragging effect
-    const style: React.CSSProperties = transform ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        opacity: isDragging ? 0.6 : 1,
-        zIndex: isDragging ? 1000 : 1,
-        position: isDragging ? 'relative' : undefined,
-    } : {}
+    const style: React.CSSProperties = {
+        opacity: isDragging ? 0.3 : 1,
+        cursor: isDragging || isOverlay ? 'grabbing' : 'grab',
+    }
 
     return (
         <div 
@@ -61,11 +62,14 @@ export function MetadataItem({
             style={style} 
             {...listeners} 
             {...attributes} 
-            className="touch-none select-none"
+            className={cn(
+                "touch-none select-none flex w-fit",
+                isOverlay && "pointer-events-none"
+            )}
         >
             <EditableText
                 value={item?.name || defaultValue || ''}
-                onChange={(newName) => onNameChange(item || { name: '' }, groupId, groupName, newName)}
+                onChange={(newName) => onNameChange?.(item || { name: '' }, groupId, groupName, newName)}
                 onCancel={onCancel}
                 mode="button"
                 rounded={true}

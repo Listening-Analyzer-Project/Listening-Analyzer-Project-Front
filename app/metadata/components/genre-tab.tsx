@@ -1,10 +1,12 @@
 import {
-    closestCorners,
     DndContext,
     DragEndEvent,
+    DragOverlay,
+    DragStartEvent,
     PointerSensor,
+    pointerWithin,
     useSensor,
-    useSensors
+    useSensors,
 } from "@dnd-kit/core"
 import { useEffect, useMemo, useState } from "react"
 
@@ -28,7 +30,9 @@ import { FGenreWithSubGenres, FSubGenre } from "@/types"
 
 import EditableText from "@/components/common/editable-text"
 import DeletionDialog from "@/components/common/others/deletion-dialog"
+import { snapCenterToCursor } from "@/lib/utils/draggable-modifiers"
 import { GenreItem } from "./genre-item"
+import { MetadataItem } from "./shared/metadata-item"
 
 
 export default function GenreTab() {
@@ -59,6 +63,14 @@ export default function GenreTab() {
 
     // State for deleting sub-genre
     const [subGenreToDelete, setSubGenreToDelete] = useState<{ id: number, name: string, genreName: string } | null>(null)
+
+    // State for drag preview
+    const [activeItem, setActiveItem] = useState<{
+        item: FSubGenre,
+        groupId: number,
+        groupName: string,
+        color?: string
+    } | null>(null)
 
     // Calculate next numbers for default names
     const nextGenreNumber = (genres?.length || 0) + 1
@@ -252,7 +264,22 @@ export default function GenreTab() {
         }
     }
 
+    const handleDragStart = (event: DragStartEvent) => {
+        const { active } = event
+        const data = active.data.current
+        if (data && data.item) {
+            const genre = sortedGenres.find(g => g.id === data.originalGroupId)
+            setActiveItem({
+                item: data.item,
+                groupId: data.originalGroupId,
+                groupName: genre?.name || '',
+                color: data.item.id ? subGenreColors.get(data.item.id) : undefined
+            })
+        }
+    }
+
     const handleDragEnd = async (event: DragEndEvent) => {
+        setActiveItem(null)
         const { active, over } = event
         if (!over) return
 
@@ -286,8 +313,10 @@ export default function GenreTab() {
 
             <DndContext 
                 sensors={sensors} 
-                collisionDetection={closestCorners} 
+                collisionDetection={pointerWithin} 
+                onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onDragCancel={() => setActiveItem(null)}
             >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start" style={{ overflowAnchor: 'none' }}>
                     {sortedGenres.map((genre, idx) => {
@@ -345,6 +374,21 @@ export default function GenreTab() {
                         </CardContent>
                     </Card>
                 </div>
+
+                <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]} style={{ cursor: 'grabbing' }}>
+                    {activeItem ? (
+                        <div style={{ cursor: 'grabbing' }}>
+                            <MetadataItem
+                                type="sub"
+                                item={activeItem.item}
+                                groupId={activeItem.groupId}
+                                groupName={activeItem.groupName}
+                                color={activeItem.color}
+                                isOverlay={true}
+                            />
+                        </div>
+                    ) : null}
+                </DragOverlay>
             </DndContext>
 
             <DeletionDialog 
