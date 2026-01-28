@@ -2,37 +2,33 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { USER_UPDATED_EVENT } from '@/lib/events'
+import { SYNC_USER_EVENT } from '@/lib/events/sync-events'
 
 // dnd-kit
 import {
-    closestCorners,
-    DndContext,
-    DragEndEvent,
-    DragStartEvent,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors
+  closestCorners,
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
 } from '@dnd-kit/core'
 import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 
 import { Button } from '@/components/ui/button'
 import { userEndpoint } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
-import { useUsersViewStore } from '@/lib/store/users/users-provider'
-import {
-    buildRestoredPayload,
-    loadPersistedPayload,
-    reconcileViewStateWithUsers
-} from '@/lib/store/users/users-view-persistence'
+import { useColorStore } from '@/lib/store/colors-store'
+import { useUsersStore } from '@/lib/store/users/users-store'
 import { showErrorToast } from '@/lib/utils'
-import { buildUserColorMap, isGroup, isItem } from '@/lib/utils/core-service'
+import { isGroup, isItem } from '@/lib/utils/core-service'
 import type { FUser, ViewState } from '@/types'
 import DeletionDialog from '../others/deletion-dialog'
 import AvatarStack from './avatar-stack'
@@ -40,10 +36,6 @@ import AvatarStack from './avatar-stack'
 import SortableItem from './sortable-user-item'
 import UserCreateDialog from './user-create-dialog'
 import UserItem from './user-item'
-
-const BASE_COLOR_HEX = '#16A34A'
-const EQU_DIST_COUNT = 8
-const LUMINANCE_PRESET = 'shortList' as const
 
 function findParentId(viewState: ViewState, targetId: string): string | null {
   for (const id of viewState.order) {
@@ -54,6 +46,8 @@ function findParentId(viewState: ViewState, targetId: string): string | null {
   return null
 }
 
+import { initGlobalOrchestrator } from '@/lib/store/store-orchestrator'
+
 export default function UsersMenu() {
   const {
     data: usersRaw,
@@ -62,9 +56,14 @@ export default function UsersMenu() {
   } = useApi<FUser[]>(() => userEndpoint.fetchAll(), [])
 
   const [mounted, setMounted] = useState(false)
+  const initialized = useRef(false)
 
   useEffect(() => {
     setMounted(true)
+    if (!initialized.current) {
+        initGlobalOrchestrator()
+        initialized.current = true
+    }
   }, [])
 
   // Failsafe: If mounted, no data, and not loading -> Force fetch
@@ -79,10 +78,9 @@ export default function UsersMenu() {
       refetch()
     }
 
-    window.addEventListener(USER_UPDATED_EVENT, handleUserUpdate)
-
+    window.addEventListener(SYNC_USER_EVENT, handleUserUpdate)
     return () => {
-      window.removeEventListener(USER_UPDATED_EVENT, handleUserUpdate)
+      window.removeEventListener(SYNC_USER_EVENT, handleUserUpdate)
     }
   }, [refetch])
 
@@ -101,10 +99,11 @@ export default function UsersMenu() {
     addChildrenToGroup,
     removeChildrenFromGroup,
     mergeGroups,
-    restoreViewState,
     setSelection,
     createAlias,
-  } = useUsersViewStore()
+    reconcile,
+    syncSelection
+  } = useUsersStore()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -113,7 +112,7 @@ export default function UsersMenu() {
   const [toDeleteType, setToDeleteType] = useState<'user' | 'alias' | 'group' | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [preCollapseMap, setPreCollapseMap] = useState<Record<string, boolean> | null>(null)
-  const [viewInitialized, setViewInitialized] = useState(false)
+
 
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -163,66 +162,24 @@ export default function UsersMenu() {
     return 'Créer groupe'
   }, [isSingleChildRemoval, selectedGroups.length, selectedUsers.length])
 
- useEffect(() => {
-    // Safety check: don't run if no users or already initialized
-    if (!usersRaw || viewInitialized) return
-    
-    const doRestore = () => {
-      try {
-        let loaded
-        
-        try {
-            loaded = loadPersistedPayload()
-        } catch (e) {
-            console.warn('[UsersMenu] LocalStorage corrupted, resetting view.', e)
-            throw e 
-        }
-
-        const restored = buildRestoredPayload(loaded, usersRaw)
-        restoreViewState(restored.viewState)
-        setSelection(restored.selectionState.selectedIds)
-        setViewInitialized(true)
-        
-      } catch (err) {
-        console.error('[UsersMenu] Restoration failed, initializing from scratch', err)
-        
-        // Fallback: Initialize standard view if storage is broken
-        initFromUsers(usersRaw)
-        setViewInitialized(true)
-      }
-    }
-    
-    doRestore()
-  }, [usersRaw, restoreViewState, setSelection, initFromUsers, viewInitialized])
-
-  // Keep a ref to viewState to access it in the effect below without triggering re-runs
-  const viewStateRef = useRef(viewState)
+  // Reconcile Loop
   useEffect(() => {
-    viewStateRef.current = viewState
-  }, [viewState])
-
-  // Reconcile viewState when usersRaw changes (e.g. after create/delete)
-  useEffect(() => {
-    if (!viewInitialized || !usersRaw) return
-    
-    const currentViewState = viewStateRef.current
-    const reconciled = reconcileViewStateWithUsers(currentViewState, usersRaw)
-    
-    restoreViewState(reconciled)
-  }, [usersRaw, viewInitialized, restoreViewState])
-
+    if (!usersRaw || usersRaw.length === 0) return
+    reconcile(usersRaw)
+  }, [usersRaw, reconcile])
+  
   const usersById = new Map(
     usersRaw
-      ?.filter((u): u is FUser & { id: number } => u.id !== undefined && u.id !== null)
-      .map(u => [u.id, u]) ?? []
+    ?.filter((u): u is FUser & { id: number } => u.id !== undefined && u.id !== null)
+    .map(u => [u.id, u]) ?? []
   )
-
-  const colorMap = buildUserColorMap(
-    viewState,
-    BASE_COLOR_HEX,
-    EQU_DIST_COUNT,
-    LUMINANCE_PRESET
-  )
+  
+  // Sync colors is now handled globally in Layout/DataSynchronizer
+  const { userColors } = useColorStore()
+  
+  const notifyUserUpdate = () => {
+    window.dispatchEvent(new Event(SYNC_USER_EVENT))
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -312,8 +269,8 @@ export default function UsersMenu() {
   const handleCreateUser = async (payload: Partial<FUser>) => {
     try {
       await userEndpoint.create(payload)
-      await refetch()
       setDialogOpen(false)
+      notifyUserUpdate()
     } catch (err) {
       showErrorToast(err, 'User creation failed')
     }
@@ -350,7 +307,7 @@ export default function UsersMenu() {
       const newSelection = selectionState.selectedIds.filter(selId => !idsToRemove.has(selId))
       setSelection(newSelection)
       
-      await refetch()
+      notifyUserUpdate()
     } catch (err) {
       showErrorToast(err, 'User deletion failed')
     }
@@ -372,6 +329,7 @@ export default function UsersMenu() {
       setDeleteDialogOpen(false)
       setToDeleteId(null)
       setToDeleteType(null)
+      notifyUserUpdate()
     }
   }
 
@@ -388,6 +346,7 @@ export default function UsersMenu() {
       } else {
         createAlias(userId)
       }
+      notifyUserUpdate()
     } catch (err) {
       showErrorToast(err, 'Alias creation failed')
     }
@@ -474,10 +433,14 @@ export default function UsersMenu() {
           selected={isSelected}
           onToggleSelect={toggleSelection}
           onDelete={handleDeleteClick}
-          onAfterUserRename={refetch}
+          onAfterUserRename={async () => {
+            notifyUserUpdate()
+          }}
           onCreateAlias={handleCreateAlias}
-          color={colorMap.get(id) ?? colorMap.get(String(item.userId))}
-          onCloseMenu={() => setMenuOpen(false)}
+          color={(() => {
+            const user = usersById.get(item.userId)
+            return user?.name ? userColors.get(user.name) : undefined
+          })()}          onCloseMenu={() => setMenuOpen(false)}
         />
       )
     } else if (isGroup(item)) {
@@ -492,7 +455,7 @@ export default function UsersMenu() {
             onToggleCollapse={toggleCollapse}
             collapsed={isCollapsed}
             onDelete={handleDeleteClick}
-            color={colorMap.get(id)}
+            color={item.name ? userColors.get(item.name) : undefined}
           />
           {!isCollapsed && (
             <SortableContext
@@ -534,7 +497,7 @@ export default function UsersMenu() {
             selectedIds={selectionState.selectedIds}
             viewState={viewState}
             usersById={usersById}
-            colorMap={colorMap}
+            colorMap={userColors}
             max={3}
             size={34}
           />
@@ -561,7 +524,7 @@ export default function UsersMenu() {
           >
             <div className="px-4 pt-4 pb-4">
               {(() => {
-                const showLoading = !usersRaw || loading || !viewInitialized
+                  const showLoading = !usersRaw || loading
                 const orderLength = viewState.order.length
                 
                 if (showLoading) {

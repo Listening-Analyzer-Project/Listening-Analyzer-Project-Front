@@ -1,10 +1,12 @@
 import {
-    closestCorners,
     DndContext,
     DragEndEvent,
+    DragOverlay,
+    DragStartEvent,
     PointerSensor,
+    pointerWithin,
     useSensor,
-    useSensors
+    useSensors,
 } from "@dnd-kit/core"
 import { useEffect, useMemo, useState } from "react"
 
@@ -15,18 +17,24 @@ import { Plus, Trash2 } from "lucide-react"
 import { tagEndpoint } from "@/lib/api/core/tag-endpoints"
 import { useApi } from "@/lib/hooks"
 
-import { darkenColor } from "@/lib/utils"
-import { buildTagColorMap, getTagGroupColor } from "@/lib/utils/core-service"
+import { useColorStore } from "@/lib/store/colors-store"
+import { darkenColor, getTagGroupColor } from "@/lib/utils"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
-import { FTag } from "@/types"
+import { FMetadataActiveItem, FTag } from "@/types"
 
 import DeletionDialog from "@/components/common/others/deletion-dialog"
+import { SYNC_TAGS_EVENT } from "@/lib/events/sync-events"
+import { snapCenterToCursor } from "@/lib/utils/draggable-modifiers"
 import {
     MetadataGroup
 } from "./shared/metadata-group"
 import { MetadataItem } from "./shared/metadata-item"
 
 export default function TagTab() {
+
+    // Colors are synced globally
+    const { tagColors } = useColorStore()
+
     const { data: tags, refetch, setData: setTags } = useApi<FTag[]>(
         () => tagEndpoint.fetchAll(),
     )
@@ -54,6 +62,14 @@ export default function TagTab() {
     const [pendingCreateIn, setPendingCreateIn] = useState<number | null>(null)
     const [tagToDelete, setTagToDelete] = useState<FTag | null>(null)
     const [groupToDelete, setGroupToDelete] = useState<number | null>(null)
+
+    const [activeItem, setActiveItem] = useState<FMetadataActiveItem<FTag> | null>(null)
+    
+    useEffect(() => {
+        const handleTagUpdate = () => refetch()
+        window.addEventListener(SYNC_TAGS_EVENT, handleTagUpdate)
+        return () => window.removeEventListener(SYNC_TAGS_EVENT, handleTagUpdate)
+    }, [refetch])
 
     useEffect(() => {
         if (!tags || displayOrder) return
@@ -132,9 +148,10 @@ export default function TagTab() {
          return groups
     }, [tags, displayOrder])
 
-    const tagColorMap = useMemo(() => {
-        return buildTagColorMap(groupedTags)
-    }, [groupedTags])
+    // Function to notify global synchronizer
+    const notifyTagsUpdated = () => {
+        window.dispatchEvent(new Event(SYNC_TAGS_EVENT))
+    }
 
     // List of indices to render
     const indices = useMemo(() => {
@@ -160,7 +177,7 @@ export default function TagTab() {
                 color_index: index
             })
             showSuccessToast("Tag created")
-            refetch()
+            notifyTagsUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to create tag")
         }
@@ -183,7 +200,7 @@ export default function TagTab() {
                     color_index: groupId
                 })
                 showSuccessToast("Tag renamed")
-                refetch()
+                notifyTagsUpdated()
             } catch (e) {
                 // Rollback on error
                 refetch()
@@ -198,7 +215,7 @@ export default function TagTab() {
             await tagEndpoint.remove(tagToDelete.id!)
             showSuccessToast("Tag deleted")
             setTagToDelete(null)
-            refetch()
+            notifyTagsUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to delete tag")
         }
@@ -235,14 +252,28 @@ export default function TagTab() {
                  setMaxVisibleIndex(prev => Math.max(0, prev - 1))
             }
             
-            refetch()
-
+            notifyTagsUpdated()
         } catch (e) {
             showErrorToast(e, "Failed to delete group")
         }
     }
 
+    const handleDragStart = (event: DragStartEvent) => {
+        const { active } = event
+        const data = active.data.current
+        if (data && data.item) {
+            const isDefault = data.originalGroupId === 0
+            setActiveItem({
+                item: data.item,
+                groupId: data.originalGroupId,
+                groupName: isDefault ? 'Uncategorized' : `Group ${data.originalGroupId}`,
+                color: data.item.name ? tagColors.get(data.item.name) : undefined
+            })
+        }
+    }
+
     const handleDragEnd = async (event: DragEndEvent) => {
+        setActiveItem(null)
         const { active, over } = event
         if (!over) return
 
@@ -258,7 +289,7 @@ export default function TagTab() {
                     name: item.name 
                 })
                 showSuccessToast("Tag moved")
-                refetch()
+                notifyTagsUpdated()
             } catch (e) {
                 showErrorToast(e, "Failed to move tag")
             }
@@ -276,8 +307,10 @@ export default function TagTab() {
 
              <DndContext 
                 sensors={sensors} 
-                collisionDetection={closestCorners} 
+                collisionDetection={pointerWithin} 
+                onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onDragCancel={() => setActiveItem(null)}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start" style={{ overflowAnchor: 'none' }}>
                     {indices.map(idx => {
@@ -340,7 +373,7 @@ export default function TagTab() {
                                         item={tag}
                                         groupId={idx}
                                         groupName={isDefault ? 'Uncategorized' : `Group ${idx}`}
-                                        color={tag.id ? tagColorMap.get(tag.id) : undefined}
+                                        color={tag.name ? tagColors.get(tag.name) : undefined}
                                         onNameChange={handleTagNameChange}
                                     />
                                 ))}
@@ -355,6 +388,21 @@ export default function TagTab() {
                         </CardContent>
                     </Card>
                 </div>
+
+                <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]} style={{ cursor: 'grabbing' }}>
+                    {activeItem ? (
+                        <div style={{ cursor: 'grabbing' }}>
+                            <MetadataItem
+                                type="tag"
+                                item={activeItem.item}
+                                groupId={activeItem.groupId}
+                                groupName={activeItem.groupName}
+                                color={activeItem.color}
+                                isOverlay={true}
+                            />
+                        </div>
+                    ) : null}
+                </DragOverlay>
             </DndContext>
 
             <DeletionDialog 

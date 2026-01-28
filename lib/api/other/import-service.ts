@@ -1,5 +1,5 @@
 import { userEndpoint } from '@/lib/api'
-import { USER_UPDATED_EVENT } from '@/lib/events'
+import { SYNC_USER_EVENT } from '@/lib/events/sync-events'
 import { showErrorToast } from '@/lib/utils'
 import { parseAndBatch } from '@/lib/utils/importer/streamers/unified-streamer'
 import { FUser } from '@/types'
@@ -13,8 +13,7 @@ export type ParsedFileResult = {
 
 export const importService = {
   /**
-   * Upload et parse les fichiers côté front, envoie batch par batch au serveur,
-   * attend la réponse pour chaque batch, et cumule les résultats.
+   * Parse files client-side and upload in batches, aggregating the results.
    */
   uploadAndParse: async (files: File[], user: FUser, onProgress?: (percent: number) => void) => {
     if (files.length === 0) return null
@@ -35,7 +34,7 @@ export const importService = {
       syncro_status: 1,
     }
     await userEndpoint.update(user.id?.toString() || '', payload)
-    window.dispatchEvent(new Event(USER_UPDATED_EVENT))
+    window.dispatchEvent(new Event(SYNC_USER_EVENT))
 
     const cumulativeResult = {
       totalListens: 0,
@@ -80,7 +79,7 @@ export const importService = {
 
     payload.syncro_status = 2
     await userEndpoint.update(user.id?.toString() || '', payload)
-    window.dispatchEvent(new Event(USER_UPDATED_EVENT))
+    window.dispatchEvent(new Event(SYNC_USER_EVENT))
 
     await importService.restoreIndexes()
 

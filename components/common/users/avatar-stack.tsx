@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 
-import { getOrderedSelection } from '@/lib/store'
+import { getOrderedSelection } from '@/lib/store/users/users-store'
 import { isGroup, isItem } from '@/lib/utils/core-service'
 import type { FUser, ViewState } from '@/types'
 
@@ -48,13 +48,13 @@ export default function AvatarStack({
       const user = usersById.get(it.userId)
       itemsToShow.push({
         name: user?.name ?? 'User',
-        color: colorMap?.get(id) ?? colorMap?.get(String(it.userId)),
+        color: user?.name ? colorMap?.get(user.name) : undefined,
         id: id
       })
     } else if (isGroup(it)) {
       itemsToShow.push({
         name: it.name ?? 'Group',
-        color: colorMap?.get(id),
+        color: it.name ? colorMap?.get(it.name) : undefined,
         id: id
       })
     }

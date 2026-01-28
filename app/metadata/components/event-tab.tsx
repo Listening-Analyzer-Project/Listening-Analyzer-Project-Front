@@ -9,20 +9,19 @@ import { Button } from '@/components/ui/button'
 import { userEndpoint } from '@/lib/api'
 import { categoryEndpoint } from '@/lib/api/core/category-endpoint'
 import { eventEndpoint } from '@/lib/api/core/event-endpoint'
+import { SYNC_USER_EVENT } from '@/lib/events/sync-events'
 import { useApi } from '@/lib/hooks'
-import { useUsersViewStore } from '@/lib/store'
-import { buildUserColorMap, makeUserViewId } from '@/lib/utils/core-service'
+import { useColorStore } from '@/lib/store/colors-store'
+import { useUsersStore } from '@/lib/store/users/users-store'
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toasts/toast-handler'
 import { FCategory, FEventWithCategory, FUser } from '@/types'
 import CategoryEventList from './event/category-event-list'
 import EventDialog from './event/event-dialog'
 
-const BASE_COLOR_HEX = '#16A34A' as const
-const EQU_DIST_COUNT = 8 as const
-const LUMINANCE_PRESET = 'shortList' as const
+
 
 export default function EventTab() {
-  const { selectionState, viewState } = useUsersViewStore()
+  const { selectionState, viewState } = useUsersStore()
   const [userIds, setUserIds] = useState<string[]>([])
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
 
@@ -39,10 +38,16 @@ export default function EventTab() {
   )
 
   // Fetch Users (needed to map user names to colors if user_id is missing in event)
-  const { data: usersRaw } = useApi<FUser[]>(
+  const { data: usersRaw, refetch: refetchUsers } = useApi<FUser[]>(
     () => userEndpoint.fetchAll(),
     []
   )
+
+  useEffect(() => {
+    const handleUserUpdate = () => refetchUsers()
+    window.addEventListener(SYNC_USER_EVENT, handleUserUpdate)
+    return () => window.removeEventListener(SYNC_USER_EVENT, handleUserUpdate)
+  }, [refetchUsers])
 
   // Fetch Total Global Event Count for default title naming
   const { data: eventCount, refetch: refetchEventCount } = useApi<any>(
@@ -74,23 +79,21 @@ export default function EventTab() {
     setUserIds(resolveUserIds(selectionState.selectedIds))
   }, [selectionState.selectedIds])
 
-  // Build a map of UserName -> Color
+  const { userColors } = useColorStore()
+
+   const usersById = useMemo(() => {
+     return new Map(users.map(u => [u.id!, u]))
+   }, [users])
+
+
+  // Build a map of UserName -> Color using the STORE
   const userColorMap = useMemo(() => {
     const map = new Map<string, string>()
-    
-    // 1. Generate base color map from viewState (keys are view IDs like u:1, g:1, etc.)
-    const baseColorMap = buildUserColorMap(
-      viewState,
-      BASE_COLOR_HEX,
-      EQU_DIST_COUNT,
-      LUMINANCE_PRESET
-    )
 
-    // 2. Map user names to their colors
     users.forEach(u => {
         if (u.id && u.name) {
-            const viewId = makeUserViewId(u.id)
-            const color = baseColorMap.get(viewId)
+            // Retrieve from store using NAME
+            const color = userColors.get(u.name)
             if (color) {
                 map.set(u.name, color)
             }
@@ -98,7 +101,7 @@ export default function EventTab() {
     })
 
     return map
-  }, [viewState, users])
+  }, [userColors, users])
 
   const { groupedEvents, uncategorizedEvents } = useMemo(() => {
     const map = new Map<number, FEventWithCategory[]>()

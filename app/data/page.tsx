@@ -1,8 +1,7 @@
 'use client'
 
 import { Download } from 'lucide-react'
-import type React from 'react'
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import TableNavigation from '@/components/common/tables/table-navigation'
 import TableToolbar from '@/components/common/tables/table-toolbar'
@@ -10,11 +9,12 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Checkbox } from '@/components/ui/checkbox'
 import GlobalTable from './components/global-table'
 
-import type { ListensParams, TablesBaseParams, ViewType } from '@/types'
 import { analyticsService } from '@/lib/api'
 import { COLUMNS_BY_VIEW } from '@/lib/constants'
-import { useColumnVisibility, useUsersViewStore } from '@/lib/store'
 import { useApi } from '@/lib/hooks'
+import { useColumnVisibility } from '@/lib/store'
+import { useUsersStore } from '@/lib/store/users/users-store'
+import type { ListensParams, TablesBaseParams, ViewType } from '@/types'
 
 export default function DataPage() {
   const [viewType, setViewType] = useState<ViewType>('listens')
@@ -27,7 +27,7 @@ export default function DataPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   const { visibleColumns, updateVisibleColumns } = useColumnVisibility()
-  const { selectionState, viewState } = useUsersViewStore()
+  const { selectionState, viewState } = useUsersStore()
   const handleVisibleColumnsChange = (columns: string[]) => {
     updateVisibleColumns(viewType, columns)
   }
