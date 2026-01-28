@@ -57,23 +57,23 @@ export function ColumnSelector({
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Columns className="h-4 w-4" />
-          Colonnes
+          Columns
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-56" align="start">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-sm">Colonnes visibles</h4>
+            <h4 className="font-semibold text-sm">Visible Columns</h4>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleToggleAll}
               className="h-auto p-1 text-xs"
             >
-              {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+              {allSelected ? 'Deselect all' : 'Select all'}
             </Button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[225px] overflow-y-auto pr-1">
             {availableColumns.map((column) => {
               const isVisible = visibleColumns.includes(column.key)
               const isLastVisible = visibleColumns.length === 1 && isVisible

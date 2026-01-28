@@ -87,7 +87,7 @@ export default function DataPage() {
     setCurrentPage(1)
   }
 
-  const resolveUserIds = (ids: string[]): string[] => {
+  const resolveUserIds = useCallback((ids: string[]): string[] => {
     const uniqueUserIds = new Set<string>()
     
     const visit = (id: string) => {
@@ -103,7 +103,33 @@ export default function DataPage() {
     
     ids.forEach(visit)
     return Array.from(uniqueUserIds)
-  }
+  }, [viewState.items])
+
+  // Logic for dynamic User column visibility
+  useEffect(() => {
+    if (viewType !== 'listens') return
+
+    const selectedUserIds = resolveUserIds(selectionState.selectedIds)
+    const allUserIds = new Set<number>()
+    Object.values(viewState.items).forEach(item => {
+      if ('userId' in item) {
+        allUserIds.add(item.userId)
+      }
+    })
+
+    const shouldShowUserColumn = selectedUserIds.length > 1 || (selectedUserIds.length === 0 && allUserIds.size > 1)
+    
+    const currentVisible = visibleColumns[viewType] || []
+    const isCurrentlyVisible = currentVisible.includes('user_name')
+
+    if (shouldShowUserColumn && !isCurrentlyVisible) {
+      // Add user_name at the beginning
+      updateVisibleColumns(viewType, ['user_name', ...currentVisible])
+    } else if (!shouldShowUserColumn && isCurrentlyVisible) {
+      // Remove user_name
+      updateVisibleColumns(viewType, currentVisible.filter(col => col !== 'user_name'))
+    }
+  }, [viewType, selectionState.selectedIds, viewState.items, visibleColumns, updateVisibleColumns, resolveUserIds])
 
   const handleSearch = (query: string) => {
     setEffectiveSearchQuery(query) 
@@ -121,7 +147,7 @@ export default function DataPage() {
       const result = await analyticsService.getSearchSuggestions({ search: query, view_type: viewType })
       setSuggestions(result.suggestions)
     } catch (err) {
-      console.error("Erreur lors de la récupération des suggestions:", err)
+      console.error("Error while fetching suggestions:", err)
       setSuggestions([])
     } finally {
       setSuggestionsLoading(false)
@@ -141,16 +167,16 @@ export default function DataPage() {
   const toIndex = Math.min((currentPage - 1) * rowsPerPage + rowsPerPage, totalItems)
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto">
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div className="flex flex-col">
             <CardTitle className="text-2xl font-bold flex items-center gap-2">
               <Download className="h-6 w-6 text-gray-800" />
-              Analyse des Données
+              Data Analysis
             </CardTitle>
             <CardDescription className="text-gray-500 ml-[32px] mt-1">
-              Explorez vos données par catégorie.
+              Explore your data by category.
             </CardDescription>
           </div>
           <div className="flex items-center gap-4">
@@ -162,9 +188,9 @@ export default function DataPage() {
                     setViewType(newType)
                 }}
             >
-                <option value="listens">Historique d'écoutes</option>
-                <option value="tracks">Titres</option>
-                <option value="artists">Artistes</option>
+                <option value="listens">Listening History</option>
+                <option value="tracks">Tracks</option>
+                <option value="artists">Artists</option>
                 <option value="albums">Albums</option>
             </select>
           </div>
@@ -194,7 +220,7 @@ export default function DataPage() {
                   disabled={loading}
               />
               <label htmlFor="show-invalid-rows" className="text-sm font-medium leading-none">
-                  Afficher les écoutes {'< 30s'}
+                  Show listens {'< 30s'}
               </label>
               </div>
             )}
@@ -205,9 +231,9 @@ export default function DataPage() {
         onVisibleColumnsChange={handleVisibleColumnsChange}
       />
 
-      <div className="overflow-x-auto mt-4 mb-20 border rounded-md">
+      <div className="overflow-x-auto mt-6 mb-12 border rounded-md">
         {error ? (
-          <div className="p-4 text-center text-red-500">Erreur: {String(error)}</div>
+          <div className="p-4 text-center text-red-500">Error: {String(error)}</div>
         ) : (
           <GlobalTable 
             data={data} 
@@ -232,6 +258,7 @@ export default function DataPage() {
         onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
         onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
         onLast={() => setCurrentPage(totalPages)}
+        onPageChange={setCurrentPage}
       />
     </div>
   )

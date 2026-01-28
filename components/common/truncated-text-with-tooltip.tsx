@@ -12,7 +12,7 @@ export function TruncatedTextWithTooltip({ text, className }: TruncatedTextWithT
   const textRef = useRef<HTMLDivElement>(null)
   const [isTruncated, setIsTruncated] = useState(false)
 
-  const content = text || 'N/A'
+  const content = text || ''
 
   useEffect(() => {
     const element = textRef.current

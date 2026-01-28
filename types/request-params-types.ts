@@ -40,4 +40,4 @@ export interface EventParams {
 
 export type ViewType = 'listens' | 'tracks' | 'artists' | 'albums'
 export type SortDirection = 'asc' | 'desc'
-export type RenderType = 'timestamp' | 'date' | 'title' | 'text' | 'rank' | 'duration' | 'badge' | 'boolean' | 'number' | 'validListens' | 'invalidListens'
+export type RenderType = 'timestamp' | 'date' | 'title' | 'text' | 'album' | 'rank' | 'duration' | 'badges' | 'boolean' | 'number' | 'validListens' | 'invalidListens'

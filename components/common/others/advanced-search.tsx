@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { X, Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -143,7 +143,7 @@ export function AdvancedSearch({
             <div className="relative flex-1">
               <Input
                 type="text"
-                placeholder="Rechercher par titre, artiste..."
+                placeholder="Search by title, artist..."
                 value={localQuery}
                 onChange={e => setLocalQuery(e.target.value)}
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -181,7 +181,7 @@ export function AdvancedSearch({
           className="bg-gray-800 text-white hover:bg-gray-700 rounded-md px-4 py-2 flex-shrink-0"
           disabled={loading || !localQuery.trim()}
         >
-          Ajouter
+          Add
         </Button>
 
         {(localQuery || searchTerms.length > 0) && (
@@ -206,7 +206,7 @@ export function AdvancedSearch({
                 <button
                   onClick={() => removeSearchTerm(index)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity ml-1"
-                  title="Supprimer"
+                  title="Remove"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -216,7 +216,7 @@ export function AdvancedSearch({
                 <button
                   onClick={() => toggleOperator(index)}
                   className="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs font-semibold text-gray-700 transition-colors"
-                  title="Cliquer pour changer l'opérateur"
+                  title="Click to change operator"
                 >
                   {operators[index] === 'and' ? 'AND' : 'OR'}
                 </button>
