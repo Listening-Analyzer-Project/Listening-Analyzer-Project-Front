@@ -27,7 +27,8 @@ export const createViewModule: StateCreator<
     ViewModule
 > = (set, get) => ({
     viewState: initialViewState,
-
+    
+    /** Initial setup of the tree from a simple flat list of users. */
     initFromUsers: (users) => {
         set((state) => {
             const items: Record<string, ViewItem> = {}
@@ -43,6 +44,7 @@ export const createViewModule: StateCreator<
         })
     },
 
+    /** Synchronizes local state with backend users: removes deleted items, adds new ones, and prunes dead groups. */
     reconcile: (users) => {
         set((state) => {
             const userViewIds = new Set(users.filter(u => u.id != null).map(u => makeUserViewId(u.id!)))
@@ -53,17 +55,14 @@ export const createViewModule: StateCreator<
             for (const [id, it] of Object.entries(stored.items)) {
                 const item = it as ViewItem
                 if (isGroup(item)) {
-                    // Keep groups for now, we'll filter their children
                     itemsCopy[id] = { ...item, children: [...item.children] }
                 } else if (isItem(item)) {
                     if (item.isAlias) {
-                        // Keep alias if user still exists
                         const userViewId = makeUserViewId(item.userId)
                         if (userViewIds.has(userViewId)) {
                             itemsCopy[id] = { ...item }
                         }
                     } else {
-                        // Keep normal user item if it exists in new list
                         if (userViewIds.has(id)) {
                             itemsCopy[id] = { ...item }
                         }
@@ -107,18 +106,17 @@ export const createViewModule: StateCreator<
                 collapseMap: stored.collapseMap ?? {}
             }
         })
-        
-        // Auto-sync selection after reconcile
-        // Accessing the store via get() allows calling actions from other slices
         get().syncSelection(false)
     },
 
+    /** Updates the top-level drag-and-drop order. */
     reorder: (newOrder) => {
         set((state) => {
             state.viewState.order = newOrder
         })
     },
 
+    /** Creates a duplicate reference (alias) for a user at a specific position. */
     createAlias: (userId, index) => {
         set((state) => {
             const local = state.viewState.nextId
@@ -134,9 +132,9 @@ export const createViewModule: StateCreator<
         })
     },
 
+    /** Creates a new group with the specified members and inserts it into the order. */
     createGroup: (memberIds, index, name) => {
         set((state) => {
-            // Check for nested groups
             for (const m of memberIds) {
                 const item = state.viewState.items[m] as ViewItem | undefined
                 if (isGroup(item)) {
@@ -148,11 +146,9 @@ export const createViewModule: StateCreator<
             const local = state.viewState.nextId
             const gid = makeGroupViewId(local)
             
-            // Remove members from their current positions
             let items = state.viewState.items
             let order = state.viewState.order
 
-            // Remove members from their current groups and top-level order
             order = order.filter((o: string) => !memberIds.includes(o))
             for (const [pid, val] of Object.entries(items)) {
                 const it = val as ViewItem
@@ -163,12 +159,10 @@ export const createViewModule: StateCreator<
                 }
             }
 
-            // Kill groups
             const killed = killGroups(items, order)
             items = killed.items
             order = killed.order
 
-            // Determine Name
             let groupName = name
             if (!groupName) {
                 const usedNumbers = new Set<number>()
@@ -205,12 +199,12 @@ export const createViewModule: StateCreator<
         })
     },
 
+    /** Moves existing items inside a specific group. */
     addChildrenToGroup: (groupId, childIds, index) => {
         set((state) => {
             const group = state.viewState.items[groupId]
             if (!isGroup(group)) return
 
-            // Validate
             for (const cid of childIds) {
                 const item = state.viewState.items[cid] as ViewItem | undefined
                 if (isGroup(item)) {
@@ -219,7 +213,6 @@ export const createViewModule: StateCreator<
                 }
             }
 
-            // Remove from existing
             let { items, order } = state.viewState
             for (const cid of childIds) {
                 const removed = removeIdFromAll(items, order, cid)
@@ -227,7 +220,6 @@ export const createViewModule: StateCreator<
                 order = removed.order
             }
             
-            // Add to target
             const tgt = items[groupId]
             if (!isGroup(tgt)) return // Should not happen
 
@@ -236,7 +228,6 @@ export const createViewModule: StateCreator<
             newChildren.splice(pos, 0, ...childIds)
             tgt.children = newChildren
 
-            // Kill empty groups
             const killed = killGroups(items, order)
             
             state.viewState.items = killed.items
@@ -244,6 +235,7 @@ export const createViewModule: StateCreator<
         })
     },
 
+    /** Moves items out of their group back to the top-level list. */
     removeChildrenFromGroup: (childIds) => {
         set((state) => {
             let parentGroupId: string | null = null
@@ -286,6 +278,7 @@ export const createViewModule: StateCreator<
         })
     },
 
+    /** Merges multiple source groups into a single target group. */
     mergeGroups: (targetGroupId, sourceGroupIds) => {
         set((state) => {
             const targetGroup = state.viewState.items[targetGroupId]
@@ -310,6 +303,7 @@ export const createViewModule: StateCreator<
         })
     },
 
+    /** Permanently removes a user and all its references (aliases, group children). */
     deleteUser: (userId) => {
         set((state) => {
             const userViewId = makeUserViewId(userId)
@@ -322,7 +316,6 @@ export const createViewModule: StateCreator<
             const removed = removeIds(state.viewState.items, state.viewState.order, idsToRemove)
             const killed = killGroups(removed.items, removed.order)
             
-            // Clean collapse map
             const collapseMap: Record<string, boolean> = {}
             for (const k of Object.keys(state.viewState.collapseMap)) {
                 if (killed.items[k]) collapseMap[k] = state.viewState.collapseMap[k]
@@ -332,11 +325,11 @@ export const createViewModule: StateCreator<
             state.viewState.order = killed.order
             state.viewState.collapseMap = collapseMap
             
-            // Clean selection - CROSS SLICE MODIFICATION
             state.selectionState.selectedIds = state.selectionState.selectedIds.filter((id: string) => !idsToRemove.includes(id))
         })
     },
 
+    /** Removes a specific alias from the tree. */
     deleteAlias: (id) => {
         set((state) => {
             const removed = removeIds(state.viewState.items, state.viewState.order, [id])
@@ -350,11 +343,11 @@ export const createViewModule: StateCreator<
             state.viewState.items = killed.items
             state.viewState.order = killed.order
             state.viewState.collapseMap = collapseMap
-            // Clean selection - CROSS SLICE MODIFICATION
             state.selectionState.selectedIds = state.selectionState.selectedIds.filter((sel: string) => sel !== id)
         })
     },
     
+    /** Dissolves a group and moves its children to the top level. */
     deleteGroup: (id) => {
         set((state) => {
             const group = state.viewState.items[id]
@@ -381,11 +374,11 @@ export const createViewModule: StateCreator<
             state.viewState.items = killed.items
             state.viewState.order = killed.order
             state.viewState.collapseMap = collapseMap
-            // Clean selection - CROSS SLICE MODIFICATION
             state.selectionState.selectedIds = state.selectionState.selectedIds.filter((sel: string) => sel !== id)
         })
     },
 
+    /** Updates a group's display name. */
     renameGroup: (id, name) => {
         set((state) => {
             const it = state.viewState.items[id]
@@ -395,6 +388,7 @@ export const createViewModule: StateCreator<
         })
     },
 
+    /** Toggles the expanded/collapsed state of a group in the UI. */
     toggleCollapse: (id) => {
         set((state) => {
             state.viewState.collapseMap[id] = !state.viewState.collapseMap[id]
