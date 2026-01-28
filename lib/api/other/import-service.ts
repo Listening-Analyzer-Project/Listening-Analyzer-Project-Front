@@ -1,5 +1,5 @@
 import { userEndpoint } from '@/lib/api'
-import { SYNC_USER_EVENT } from '@/lib/sync-signals'
+import { SYNC_USER_EVENT } from '@/lib/events/sync-events'
 import { showErrorToast } from '@/lib/utils'
 import { parseAndBatch } from '@/lib/utils/importer/streamers/unified-streamer'
 import { FUser } from '@/types'

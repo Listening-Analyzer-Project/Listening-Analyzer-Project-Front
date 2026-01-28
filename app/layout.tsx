@@ -4,7 +4,6 @@ import { Inter } from 'next/font/google'
 import Link from 'next/link'
 import type React from 'react'
 
-import DataSynchronizer from '@/components/common/data-synchronizer'
 import UsersMenu from '@/components/common/users/users-menu'
 import { Toaster } from '@/components/ui/toaster'
 import '../styles/globals.css'
@@ -25,7 +24,6 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={inter.className}>
-          <DataSynchronizer />
           <div className="flex flex-col min-h-screen bg-[#F0FDF4]">
             <header className="bg-white text-gray-800 py-4 px-6 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-6">

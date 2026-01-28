@@ -127,3 +127,11 @@ export interface FCategory {
   id?: number
   name: string
 }
+
+export interface FMetadataActiveItem<T> {
+  item: T
+  groupId: number
+  groupName: string
+  color?: string
+}
+

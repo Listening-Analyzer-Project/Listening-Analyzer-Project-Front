@@ -17,14 +17,13 @@ import { Plus, Trash2 } from "lucide-react"
 import { tagEndpoint } from "@/lib/api/core/tag-endpoints"
 import { useApi } from "@/lib/hooks"
 
-import { getTagGroupColor } from "@/lib/store/colors/colors-generators"
-import { useColorStore } from "@/lib/store/colors/colors-store"
-import { darkenColor } from "@/lib/utils"
+import { useColorStore } from "@/lib/store/colors-store"
+import { darkenColor, getTagGroupColor } from "@/lib/utils"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
-import { FTag } from "@/types"
+import { FMetadataActiveItem, FTag } from "@/types"
 
 import DeletionDialog from "@/components/common/others/deletion-dialog"
-import { SYNC_TAGS_EVENT } from "@/lib/sync-signals"
+import { SYNC_TAGS_EVENT } from "@/lib/events/sync-events"
 import { snapCenterToCursor } from "@/lib/utils/draggable-modifiers"
 import {
     MetadataGroup
@@ -32,6 +31,10 @@ import {
 import { MetadataItem } from "./shared/metadata-item"
 
 export default function TagTab() {
+
+    // Colors are synced globally
+    const { tagColors } = useColorStore()
+
     const { data: tags, refetch, setData: setTags } = useApi<FTag[]>(
         () => tagEndpoint.fetchAll(),
     )
@@ -60,13 +63,7 @@ export default function TagTab() {
     const [tagToDelete, setTagToDelete] = useState<FTag | null>(null)
     const [groupToDelete, setGroupToDelete] = useState<number | null>(null)
 
-    // State for drag preview
-    const [activeItem, setActiveItem] = useState<{
-        item: FTag,
-        groupId: number,
-        groupName: string,
-        color?: string
-    } | null>(null)
+    const [activeItem, setActiveItem] = useState<FMetadataActiveItem<FTag> | null>(null)
     
     useEffect(() => {
         const handleTagUpdate = () => refetch()
@@ -150,9 +147,6 @@ export default function TagTab() {
 
          return groups
     }, [tags, displayOrder])
-
-    // Colors are synced globally
-    const { tagColors } = useColorStore()
 
     // Function to notify global synchronizer
     const notifyTagsUpdated = () => {

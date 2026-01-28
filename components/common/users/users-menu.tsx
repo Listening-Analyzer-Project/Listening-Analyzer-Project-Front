@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { SYNC_USER_EVENT } from '@/lib/sync-signals'
+import { SYNC_USER_EVENT } from '@/lib/events/sync-events'
 
 // dnd-kit
 import {
@@ -25,7 +25,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { userEndpoint } from '@/lib/api'
 import { useApi } from '@/lib/hooks'
-import { useColorStore } from '@/lib/store/colors/colors-store'
+import { useColorStore } from '@/lib/store/colors-store'
 import { useUsersStore } from '@/lib/store/users/users-store'
 import { showErrorToast } from '@/lib/utils'
 import { isGroup, isItem } from '@/lib/utils/core-service'
@@ -46,6 +46,8 @@ function findParentId(viewState: ViewState, targetId: string): string | null {
   return null
 }
 
+import { initGlobalOrchestrator } from '@/lib/store/store-orchestrator'
+
 export default function UsersMenu() {
   const {
     data: usersRaw,
@@ -54,9 +56,14 @@ export default function UsersMenu() {
   } = useApi<FUser[]>(() => userEndpoint.fetchAll(), [])
 
   const [mounted, setMounted] = useState(false)
+  const initialized = useRef(false)
 
   useEffect(() => {
     setMounted(true)
+    if (!initialized.current) {
+        initGlobalOrchestrator()
+        initialized.current = true
+    }
   }, [])
 
   // Failsafe: If mounted, no data, and not loading -> Force fetch

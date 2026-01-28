@@ -5,8 +5,8 @@ import { immer } from 'zustand/middleware/immer'
 import { buildStructuralOrder } from '@/lib/utils/core-service'
 import type { ViewState } from '@/types'
 import type { UsersStore } from '@/types/users-store-types'
-import { createSelectionModule } from './modules/selection-module'
-import { createViewModule } from './modules/view-module'
+import { createSelectionModule } from './modules/users-selection-module'
+import { createViewModule } from './modules/users-view-module'
 
 /* -------------------------------------------------------------------------- */
 /*                                    Store                                   */

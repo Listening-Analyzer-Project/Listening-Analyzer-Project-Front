@@ -1,12 +1,11 @@
-
 import { create } from 'zustand'
 
-import { FGenreWithSubGenres, FTag, FUser, ViewState } from '@/types'
 import {
     buildGenreColorMap,
     buildTagColorMap,
     buildUserColorMap
-} from './colors-generators'
+} from '@/lib/utils'
+import { FGenreWithSubGenres, FTag, FUser, ViewState } from '@/types'
 
 interface ColorState {
     userColors: Map<string, string> // Key: User Name or Group Name
@@ -14,10 +13,12 @@ interface ColorState {
     genreColors: Map<string, string> // Key: Genre Name
     subGenreColors: Map<number, string> // Key: SubGenre ID
 
+    // -- Sync Actions (Called by Orchestrator) --
     syncUserColors: (viewState: ViewState, usersById: Map<number, FUser>) => void
     syncTagColors: (groupedTags: Map<number, FTag[]>) => void
     syncGenreColors: (genres: FGenreWithSubGenres[]) => void
 
+    // Getters
     getUserColor: (name: string) => string | undefined
     getTagColor: (name: string) => string | undefined
     getGenreColor: (name: string) => string | undefined

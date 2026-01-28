@@ -22,11 +22,11 @@ import { genreEndpoint } from "@/lib/api/core/genre-endpoint"
 import { subGenreEndpoint } from "@/lib/api/core/sub-genre-endpoint"
 import { useApi } from "@/lib/hooks"
 
-import { useColorStore } from "@/lib/store/colors/colors-store"
-import { SYNC_GENRES_EVENT } from "@/lib/sync-signals"
+import { SYNC_GENRES_EVENT } from "@/lib/events/sync-events"
+import { useColorStore } from "@/lib/store/colors-store"
 import { showErrorToast, showSuccessToast } from "@/lib/utils/toasts/toast-handler"
 
-import { FGenreWithSubGenres, FSubGenre } from "@/types"
+import { FGenreWithSubGenres, FMetadataActiveItem, FSubGenre } from "@/types"
 
 import EditableText from "@/components/common/editable-text"
 import DeletionDialog from "@/components/common/others/deletion-dialog"
@@ -64,13 +64,7 @@ export default function GenreTab() {
     // State for deleting sub-genre
     const [subGenreToDelete, setSubGenreToDelete] = useState<{ id: number, name: string, genreName: string } | null>(null)
 
-    // State for drag preview
-    const [activeItem, setActiveItem] = useState<{
-        item: FSubGenre,
-        groupId: number,
-        groupName: string,
-        color?: string
-    } | null>(null)
+    const [activeItem, setActiveItem] = useState<FMetadataActiveItem<FSubGenre> | null>(null)
 
     // Calculate next numbers for default names
     const nextGenreNumber = (genres?.length || 0) + 1

@@ -1,17 +1,17 @@
 
 import {
-    generateLuminancePalette,
-    getCyclicColor,
-} from '@/lib/utils'
-import { isGroup, isItem } from '@/lib/utils/core-service'
-import { FGenreWithSubGenres, FTag, FUser, ViewState } from '@/types'
-import {
     BASE_COLOR_HEX,
     DEFAULT_COLOR,
     EQU_DIST_COUNT,
     LUMINANCE_PRESET,
     TAG_COLORS
-} from '../../constants/colors-constants'
+} from '@/lib/constants/colors-constants'
+import {
+    generateLuminancePalette,
+    getCyclicColor,
+} from '@/lib/utils'
+import { isGroup, isItem } from '@/lib/utils/core-service'
+import { FGenreWithSubGenres, FTag, FUser, ViewState } from '@/types'
 
 /**
  * GENERATOR: Users & Groups

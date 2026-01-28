@@ -1,7 +1,6 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import React from "react"
 
 import EditableText from "@/components/common/editable-text"
 import { useDraggable } from "@dnd-kit/core"
@@ -51,19 +50,15 @@ export function MetadataItem({
         },
     })
 
-    const style: React.CSSProperties = {
-        opacity: isDragging ? 0.3 : 1,
-        cursor: isDragging || isOverlay ? 'grabbing' : 'grab',
-    }
-
     return (
         <div 
             ref={setNodeRef} 
-            style={style} 
             {...listeners} 
             {...attributes} 
             className={cn(
-                "touch-none select-none flex w-fit",
+                "touch-none select-none flex w-fit transition-opacity duration-200",
+                (isDragging || isOverlay) ? "cursor-grabbing" : "cursor-grab",
+                isDragging && "opacity-30",
                 isOverlay && "pointer-events-none"
             )}
         >

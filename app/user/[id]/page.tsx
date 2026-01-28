@@ -6,17 +6,17 @@ import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardFooter,
+    CardHeader,
+    CardTitle,
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { userEndpoint } from '@/lib/api'
-import { SYNC_USER_EVENT } from '@/lib/sync-signals'
+import { SYNC_USER_EVENT } from '@/lib/events/sync-events'
 import type { FUser } from '@/types'
 import UploadArea from './components/upload-area'
 
