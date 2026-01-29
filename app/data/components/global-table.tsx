@@ -19,9 +19,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
+import { RoundedBadge } from '@/components/common/rounded-badge'
 import { TruncatedTextWithTooltip } from '@/components/common/truncated-text-with-tooltip'
 import { cn } from '@/lib/cn'
-import { COLUMN_CELL_STYLES, COLUMN_FIELD_MAPPINGS, COLUMN_RENDER_TYPES, COLUMNS_BY_VIEW } from '@/lib/constants'
+import { COLUMN_BADGE_CONTEXT, COLUMN_CELL_STYLES, COLUMN_FIELD_MAPPINGS, COLUMN_RENDER_TYPES, COLUMNS_BY_VIEW } from '@/lib/constants'
+import { useColorStore } from '@/lib/store/colors-store'
+import { getTextColorForBackground } from '@/lib/utils'
 import { formatDateToDisplay } from '@/lib/utils/format-date'
 import { ColumnOption, RenderType, SortDirection, ViewType } from '@/types'
 
@@ -110,8 +113,65 @@ export default function GlobalTable({
     </TableRow>
   )
 
+  // 1. Get color getters from store
+  const { getUserColor, getTagColor, getGenreColor, getSubGenreColor } = useColorStore()
+
+  // Shared badge renderer logic
+  const renderBadges = (value: any, item?: any, columnKey?: string) => {
+      // Handle comma-separated strings by converting them to arrays
+      let values = value
+      if (typeof value === 'string' && value.includes(',')) {
+        values = value.split(',').map(v => v.trim()).filter(v => v !== '')
+      }
+
+      const renderSingleBadge = (val: any, key?: any) => {
+        if (!val) return null
+        
+        // Handle both simple strings and tag objects
+        const label = typeof val === 'object' && val !== null && 'name' in val ? val.name : val
+        const badgeContext = columnKey ? COLUMN_BADGE_CONTEXT[columnKey] : undefined
+        
+        let color: string | undefined
+        // Determine color based on context
+        if (badgeContext === 'user') {
+            color = getUserColor(label)
+        } else if (badgeContext === 'tag') {
+            color = getTagColor(label)
+        } else if (badgeContext === 'genre') {
+            color = getGenreColor(label)
+        } else if (badgeContext === 'sub_genre') {
+            color = getSubGenreColor(item.sub_genre_id)
+        }
+
+        const textColor = color ? getTextColorForBackground(color, '#000000', '#ffffff') : '#374151'
+        const backgroundColor = color || '#e5e7eb'
+
+        return (
+          <RoundedBadge
+            key={key}
+            value={label}
+            fontSize={12}
+            fontSizeRatio={0.5}
+            fontWeight="500"
+            mainColor={backgroundColor}
+            darkTextColor={textColor}
+          />
+        )
+      }
+
+      if (Array.isArray(values)) {
+        return (
+          <div className="flex flex-wrap gap-1 w-max max-w-full">
+            {values.map((item, idx) => renderSingleBadge(item, idx))}
+          </div>
+        )
+      }
+
+      return renderSingleBadge(values)
+  }
+
   // Renderers: rendering functions for each type
-  const cellRenderers: Record<RenderType, (value: any) => React.ReactNode> = {
+  const cellRenderers: Record<RenderType, (value: any, item?: any, columnKey?: string) => React.ReactNode> = {
     timestamp: (value) => formatDateToDisplay(value, 'minute', '/', true),
     
     date: (value) => formatDateToDisplay(value, 'day', '/', true),
@@ -131,30 +191,7 @@ export default function GlobalTable({
       return `${minutes}:${seconds.toString().padStart(2, '0')}`
     },
     
-    badges: (value) => {
-      const renderSingleBadge = (val: any, key?: any) => {
-        if (!val) return null
-        
-        // Handle both simple strings and tag objects
-        const label = typeof val === 'object' && val !== null && 'name' in val ? val.name : val
-
-        return (
-          <span key={key} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
-            {label}
-          </span>
-        )
-      }
-
-      if (Array.isArray(value)) {
-        return (
-          <div className="flex flex-wrap gap-1">
-            {value.map((item, idx) => renderSingleBadge(item, idx))}
-          </div>
-        )
-      }
-
-      return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground whitespace-nowrap">{renderSingleBadge(value)}</span>
-    },
+    badges: renderBadges,
     
     boolean: (value) => (
       <span className={cn(
@@ -208,7 +245,7 @@ export default function GlobalTable({
           const cellStyle = COLUMN_CELL_STYLES[renderType]
           return (
             <TableCell key={col.key} className={cellStyle}>
-              {renderer(value)}
+              {renderer(value, item, col.key)}
             </TableCell>
           )
         })}

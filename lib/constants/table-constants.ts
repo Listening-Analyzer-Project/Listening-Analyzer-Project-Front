@@ -140,6 +140,7 @@ export const COLUMN_FIELD_MAPPINGS: Record<ViewType, Record<string, string | ((i
 
 export const COLUMN_RENDER_TYPES: Record<string, RenderType> = {
     // Listens
+    user_name: 'badges',
     ts: 'timestamp',
     title: 'title',
     artist: 'text',
@@ -148,7 +149,6 @@ export const COLUMN_RENDER_TYPES: Record<string, RenderType> = {
     reason_end: 'text',
     is_valid: 'boolean',
     platform: 'text',
-    user_name: 'text',
     track_duration: 'duration',
     explicit: 'boolean',
     track_popularity: 'number',
@@ -173,7 +173,14 @@ export const COLUMN_RENDER_TYPES: Record<string, RenderType> = {
     release_date: 'date',
     valid_listens: 'validListens',
     invalid_listens: 'invalidListens',
-    sub_genres: 'text',
+    sub_genres: 'text', 
+}
+
+export const COLUMN_BADGE_CONTEXT: Record<string, 'user' | 'genre' | 'sub_genre' | 'tag'> = {
+    user_name: 'user',
+    genre_name: 'genre',
+    sub_genre_name: 'sub_genre',
+    all_tags: 'tag',
 }
 
 // Configuration: styles CSS pour chaque type de rendu
@@ -185,7 +192,7 @@ export const COLUMN_CELL_STYLES: Record<RenderType, string> = {
     album: 'max-w-[160px]',
     rank: 'font-bold text-muted-foreground w-16 text-center',
     duration: 'text-right tabular-nums',
-    badges: '',
+    badges: 'min-w-[120px] max-w-[500px]',
     boolean: '',
     number: 'text-right tabular-nums',
     validListens: 'text-right font-medium text-green-600 dark:text-green-400 tabular-nums',
