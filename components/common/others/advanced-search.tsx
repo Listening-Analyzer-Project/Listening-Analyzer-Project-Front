@@ -113,6 +113,7 @@ export function AdvancedSearch({
     onSearchChange(queryString)
   }
 
+  // TO DO ?
   const truncateSuggestion = (suggestion: string): string => {
     const index = suggestion.indexOf('] ')
     return index !== -1 ? suggestion.substring(index + 2) : suggestion
@@ -138,7 +139,7 @@ export function AdvancedSearch({
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center gap-2">
-        <Popover open={isPopoverOpen && suggestions.length > 0}>
+        <Popover open={isPopoverOpen && suggestions.length > 0} modal={false}>
           <PopoverTrigger asChild>
             <div className="relative flex-1">
               <Input
@@ -160,7 +161,10 @@ export function AdvancedSearch({
             </div>
           </PopoverTrigger>
 
-          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-50">
+          <PopoverContent 
+            className="w-[var(--radix-popover-trigger-width)] p-0 z-50"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
             <div className="max-h-60 overflow-y-auto">
               {Array.isArray(suggestions) && suggestions.map((suggestion, index) => (
                 <div

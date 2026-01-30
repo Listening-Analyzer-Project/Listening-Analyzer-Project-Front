@@ -7,6 +7,9 @@ export interface TablesBaseParams {
     limit?: number
     offset?: number
     user_ids?: string
+    track_title?: string
+    artist_name?: string
+    album_title?: string
 }
 
 export interface ListensParams extends TablesBaseParams {

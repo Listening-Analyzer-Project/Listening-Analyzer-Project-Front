@@ -238,6 +238,15 @@ export default function GlobalTable({
           } else {
             value = item[mapping as string]
           }
+
+          // Filter out primary artist from featurings to avoid redundancy
+          if (col.key === 'featurings' && typeof value === 'string' && item.primary_artist_name) {
+            const main = item.primary_artist_name.toLowerCase().trim()
+            value = value.split(',')
+                .map((a: string) => a.trim())
+                .filter((a: string) => a.toLowerCase() !== main)
+                .join(', ')
+          }
           
           // Get the render type and renderer function
           const renderType = COLUMN_RENDER_TYPES[col.key] || 'text'

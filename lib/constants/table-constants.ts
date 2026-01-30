@@ -4,10 +4,10 @@ export const COLUMNS_BY_VIEW: Record<string, ColumnOption[]> = {
     listens: [
         { key: 'user_name', label: 'User', description: 'User name', sortable: true, defaultVisible: false },
         { key: 'ts', label: 'Date & Time', description: 'Date and time of the listen', sortable: true, defaultVisible: true },
-        { key: 'title', label: 'Title', description: 'Song title', sortable: true, defaultVisible: true },
+        { key: 'title', label: 'Track', description: 'Song title', sortable: true, defaultVisible: true },
         { key: 'explicit', label: 'Explicit', description: 'Explicit content', sortable: true, defaultVisible: false },
         { key: 'artist', label: 'Artist', description: 'Main artist', sortable: true, defaultVisible: true },
-        { key: 'other_artists', label: 'Other Artists', description: 'List of other artists on the track', sortable: false, defaultVisible: false },
+        { key: 'featurings', label: 'Featurings', description: 'List of other artists on the track', sortable: false, defaultVisible: false },
         { key: 'album', label: 'Album', description: 'Album title', sortable: true, defaultVisible: true },
         { key: 'album_release_date', label: 'Release Date', description: 'Album release date', sortable: true, defaultVisible: false },
         { key: 'ms_played', label: 'Listening time', description: 'For how long the song was played', sortable: true, defaultVisible: true },
@@ -28,8 +28,9 @@ export const COLUMNS_BY_VIEW: Record<string, ColumnOption[]> = {
         { key: 'rank_num', label: 'Rank', description: 'Ranking based on number of listens', sortable: true, defaultVisible: true },
         { key: 'valid_listens', label: 'Valid listens', description: 'Total amount of listens for this track', sortable: true, defaultVisible: true },
         { key: 'invalid_listens', label: 'Invalid listens', description: 'Amount of listens under 30s', sortable: true, defaultVisible: true },
-        { key: 'track_title', label: 'Title', description: 'Song title', sortable: true, defaultVisible: true },
-        { key: 'all_artists', label: 'Artists', description: 'All participating artists', sortable: true, defaultVisible: true },
+        { key: 'track_title', label: 'Track', description: 'Song title', sortable: true, defaultVisible: true },
+        { key: 'artist', label: 'Artist', description: 'Main artist', sortable: true, defaultVisible: true },
+        { key: 'featurings', label: 'Featurings', description: 'All participating artists', sortable: true, defaultVisible: false },
         { key: 'album_title', label: 'Album', description: 'Album title', sortable: true, defaultVisible: true },
         { key: 'genre_name', label: 'Genre', description: 'Main musical genre', sortable: true, defaultVisible: true },
         { key: 'sub_genre_name', label: 'Sub-genre', description: 'Musical sub-genre', sortable: true, defaultVisible: true },
@@ -62,15 +63,7 @@ export const COLUMN_FIELD_MAPPINGS: Record<ViewType, Record<string, string | ((i
         title: 'track_title',
         explicit: 'explicit',
         artist: 'primary_artist_name',
-        allArtists: 'all_artists',
-        other_artists: (item: any) => {
-             if (!item.primary_artist_name || !item.all_artists) return item.all_artists
-             const main = item.primary_artist_name.toLowerCase().trim()
-             return item.all_artists.split(',')
-                 .map((a: string) => a.trim())
-                 .filter((a: string) => a.toLowerCase() !== main)
-                 .join(', ')
-        },
+        featurings: 'all_artists',
         album: 'album_title',
         album_release_date: 'album_release_date',
         ms_played: 'ms_played',
@@ -93,7 +86,8 @@ export const COLUMN_FIELD_MAPPINGS: Record<ViewType, Record<string, string | ((i
         invalid_listens: 'invalid_listens',
         track_title: 'track_title',
         // explicit: 'explicit',
-        all_artists: 'all_artists',
+        artist: 'primary_artist_name',
+        featurings: 'all_artists',
         album_title: 'album_title',
         genre_name: 'genre_name',
         sub_genre_name: 'sub_genre_name',
@@ -155,7 +149,7 @@ export const COLUMN_RENDER_TYPES: Record<string, RenderType> = {
     album_release_date: 'date',
     album_popularity: 'number',
     primary_artist_popularity: 'number',
-    other_artists: 'text',
+    featurings: 'text',
 
     // Listens, Tracks, Artists, Album communs
     country_name: 'text',
@@ -190,11 +184,11 @@ export const COLUMN_CELL_STYLES: Record<RenderType, string> = {
     title: 'font-semibold text-foreground max-w-[200px]',
     text: 'max-w-[150px]',
     album: 'max-w-[160px]',
-    rank: 'font-bold text-muted-foreground w-16 text-center',
-    duration: 'text-right tabular-nums',
+    rank: 'font-bold text-muted-foreground w-16',
+    duration: 'tabular-nums',
     badges: 'min-w-[120px] max-w-[500px]',
     boolean: '',
-    number: 'text-right tabular-nums',
-    validListens: 'text-right font-medium text-green-600 dark:text-green-400 tabular-nums',
-    invalidListens: 'text-right text-muted-foreground tabular-nums',
+    number: 'tabular-nums',
+    validListens: 'font-medium text-green-600 dark:text-green-400 tabular-nums',
+    invalidListens: 'text-muted-foreground tabular-nums',
 }

@@ -131,10 +131,29 @@ export default function DataPage() {
     }
   }, [viewType, selectionState.selectedIds, viewState.items, visibleColumns, updateVisibleColumns, resolveUserIds])
 
-  const handleSearch = (query: string) => {
+  // Logic for dynamic Is Valid column visibility
+  useEffect(() => {
+    if (viewType !== 'listens') return
+
+    const currentVisible = visibleColumns[viewType] || []
+    const isCurrentlyVisible = currentVisible.includes('is_valid')
+
+    if (showInvalidRows && !isCurrentlyVisible) {
+      updateVisibleColumns(viewType, [...currentVisible, 'is_valid'])
+    } else if (!showInvalidRows && isCurrentlyVisible) {
+      updateVisibleColumns(viewType, currentVisible.filter(col => col !== 'is_valid'))
+    }
+  }, [viewType, showInvalidRows, visibleColumns, updateVisibleColumns])
+
+  const handleSearch = useCallback((query: string) => {
     setEffectiveSearchQuery(query) 
     setCurrentPage(1) 
-  }
+  }, [])
+
+  const handleRowsPerPageChange = useCallback((n: number) => {
+    setRowsPerPage(n)
+    setCurrentPage(1)
+  }, [])
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -168,31 +187,43 @@ export default function DataPage() {
 
   return (
     <div className="container mx-auto">
-      <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex flex-col">
-            <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              <Download className="h-6 w-6 text-gray-800" />
-              Data Analysis
-            </CardTitle>
-            <CardDescription className="text-gray-500 ml-[32px] mt-1">
-              Explore your data by category.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-4">
-            <select 
-                className="p-2 border rounded-md"
-                value={viewType}
-                onChange={(e) => {
-                    const newType = e.target.value as any
-                    setViewType(newType)
-                }}
-            >
-                <option value="listens">Listening History</option>
-                <option value="tracks">Tracks</option>
-                <option value="artists">Artists</option>
-                <option value="albums">Albums</option>
-            </select>
+      <Card className="mb-6 overflow-hidden">
+        <CardHeader className="pb-6">
+          <div className="flex flex-row items-center justify-between gap-8">
+            <div className="flex flex-col gap-1 flex-shrink-0">
+              <CardTitle className="text-2xl font-bold flex items-center gap-2 text-gray-900">
+                <Download className="h-6 w-6 text-gray-800" />
+                Data Analysis
+              </CardTitle>
+              <CardDescription className="text-gray-500 ml-8">
+                Explore your data by category.
+              </CardDescription>
+            </div>
+
+            <div className="flex-1 flex justify-end">
+              <div className="flex p-1 bg-gray-100/80 rounded-sm border border-gray-200/50 w-fit">
+                {[
+                  { id: 'listens', label: 'Listening History' },
+                  { id: 'tracks', label: 'Tracks' },
+                  { id: 'artists', label: 'Artists' },
+                  { id: 'albums', label: 'Albums' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setViewType(tab.id as ViewType)}
+                    className={`
+                      px-6 py-2 text-sm font-medium transition-all duration-200
+                      ${viewType === tab.id 
+                        ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200/50 rounded-sm' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50 rounded-sm mx-0.5'
+                      }
+                    `}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -200,14 +231,12 @@ export default function DataPage() {
       <TableToolbar
         onSearch={handleSearch} 
         rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={n => {
-          setRowsPerPage(n)
-          setCurrentPage(1)
-        }}
+        onRowsPerPageChange={handleRowsPerPageChange}
         loading={loading}
         onSuggestionQueryChange={fetchSuggestions} 
         suggestions={suggestions}
         suggestionsLoading={suggestionsLoading}
+        resetKey={viewType}
 
         optionalSlot={
           <div className="flex items-center gap-2">
@@ -226,7 +255,7 @@ export default function DataPage() {
             )}
           </div>
         }
-        availableColumns={COLUMNS_BY_VIEW[viewType]}
+        availableColumns={COLUMNS_BY_VIEW[viewType]?.filter(col => col.key !== 'user_name' && col.key !== 'is_valid')}
         visibleColumns={visibleColumns[viewType]}
         onVisibleColumnsChange={handleVisibleColumnsChange}
       />

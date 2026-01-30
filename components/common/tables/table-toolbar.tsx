@@ -3,11 +3,11 @@
 import React from 'react'
 
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import { ColumnOption } from '@/types'
 import AdvancedSearch from '../others/advanced-search'
@@ -25,6 +25,7 @@ interface TableToolbarProps {
   onSuggestionQueryChange: (query: string) => void
   suggestions: string[]
   suggestionsLoading: boolean
+  resetKey?: string | number
 }
 
 export function TableToolbar({
@@ -38,7 +39,8 @@ export function TableToolbar({
   onVisibleColumnsChange,
   onSuggestionQueryChange,
   suggestions,
-  suggestionsLoading
+  suggestionsLoading,
+  resetKey
 }: TableToolbarProps) {
   const showColumnSelector = availableColumns && visibleColumns && onVisibleColumnsChange
 
@@ -47,6 +49,7 @@ export function TableToolbar({
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <AdvancedSearch 
+            key={resetKey}
             onSearchChange={onSearch}
             onSuggestionQueryChange={onSuggestionQueryChange}
             suggestions={suggestions}
