@@ -87,7 +87,7 @@ export default function DataPage() {
     setCurrentPage(1)
   }
 
-  const resolveUserIds = (ids: string[]): string[] => {
+  const resolveUserIds = useCallback((ids: string[]): string[] => {
     const uniqueUserIds = new Set<string>()
     
     const visit = (id: string) => {
@@ -103,12 +103,57 @@ export default function DataPage() {
     
     ids.forEach(visit)
     return Array.from(uniqueUserIds)
-  }
+  }, [viewState.items])
 
-  const handleSearch = (query: string) => {
+  // Logic for dynamic User column visibility
+  useEffect(() => {
+    if (viewType !== 'listens') return
+
+    const selectedUserIds = resolveUserIds(selectionState.selectedIds)
+    const allUserIds = new Set<number>()
+    Object.values(viewState.items).forEach(item => {
+      if ('userId' in item) {
+        allUserIds.add(item.userId)
+      }
+    })
+
+    const shouldShowUserColumn = selectedUserIds.length > 1 || (selectedUserIds.length === 0 && allUserIds.size > 1)
+    
+    const currentVisible = visibleColumns[viewType] || []
+    const isCurrentlyVisible = currentVisible.includes('user_name')
+
+    if (shouldShowUserColumn && !isCurrentlyVisible) {
+      // Add user_name at the beginning
+      updateVisibleColumns(viewType, ['user_name', ...currentVisible])
+    } else if (!shouldShowUserColumn && isCurrentlyVisible) {
+      // Remove user_name
+      updateVisibleColumns(viewType, currentVisible.filter(col => col !== 'user_name'))
+    }
+  }, [viewType, selectionState.selectedIds, viewState.items, visibleColumns, updateVisibleColumns, resolveUserIds])
+
+  // Logic for dynamic Is Valid column visibility
+  useEffect(() => {
+    if (viewType !== 'listens') return
+
+    const currentVisible = visibleColumns[viewType] || []
+    const isCurrentlyVisible = currentVisible.includes('is_valid')
+
+    if (showInvalidRows && !isCurrentlyVisible) {
+      updateVisibleColumns(viewType, [...currentVisible, 'is_valid'])
+    } else if (!showInvalidRows && isCurrentlyVisible) {
+      updateVisibleColumns(viewType, currentVisible.filter(col => col !== 'is_valid'))
+    }
+  }, [viewType, showInvalidRows, visibleColumns, updateVisibleColumns])
+
+  const handleSearch = useCallback((query: string) => {
     setEffectiveSearchQuery(query) 
     setCurrentPage(1) 
-  }
+  }, [])
+
+  const handleRowsPerPageChange = useCallback((n: number) => {
+    setRowsPerPage(n)
+    setCurrentPage(1)
+  }, [])
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -121,7 +166,7 @@ export default function DataPage() {
       const result = await analyticsService.getSearchSuggestions({ search: query, view_type: viewType })
       setSuggestions(result.suggestions)
     } catch (err) {
-      console.error("Erreur lors de la récupération des suggestions:", err)
+      console.error("Error while fetching suggestions:", err)
       setSuggestions([])
     } finally {
       setSuggestionsLoading(false)
@@ -141,32 +186,44 @@ export default function DataPage() {
   const toIndex = Math.min((currentPage - 1) * rowsPerPage + rowsPerPage, totalItems)
 
   return (
-    <div className="container mx-auto py-8">
-      <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex flex-col">
-            <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              <Download className="h-6 w-6 text-gray-800" />
-              Analyse des Données
-            </CardTitle>
-            <CardDescription className="text-gray-500 ml-[32px] mt-1">
-              Explorez vos données par catégorie.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-4">
-            <select 
-                className="p-2 border rounded-md"
-                value={viewType}
-                onChange={(e) => {
-                    const newType = e.target.value as any
-                    setViewType(newType)
-                }}
-            >
-                <option value="listens">Historique d'écoutes</option>
-                <option value="tracks">Titres</option>
-                <option value="artists">Artistes</option>
-                <option value="albums">Albums</option>
-            </select>
+    <div className="container mx-auto">
+      <Card className="mb-6 overflow-hidden">
+        <CardHeader className="pb-6">
+          <div className="flex flex-row items-center justify-between gap-8">
+            <div className="flex flex-col gap-1 flex-shrink-0">
+              <CardTitle className="text-2xl font-bold flex items-center gap-2 text-gray-900">
+                <Download className="h-6 w-6 text-gray-800" />
+                Data Analysis
+              </CardTitle>
+              <CardDescription className="text-gray-500 ml-8">
+                Explore your data by category.
+              </CardDescription>
+            </div>
+
+            <div className="flex-1 flex justify-end">
+              <div className="flex p-1 bg-gray-100/80 rounded-sm border border-gray-200/50 w-fit">
+                {[
+                  { id: 'listens', label: 'Listening History' },
+                  { id: 'tracks', label: 'Tracks' },
+                  { id: 'artists', label: 'Artists' },
+                  { id: 'albums', label: 'Albums' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setViewType(tab.id as ViewType)}
+                    className={`
+                      px-6 py-2 text-sm font-medium transition-all duration-200
+                      ${viewType === tab.id 
+                        ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200/50 rounded-sm' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50 rounded-sm mx-0.5'
+                      }
+                    `}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -174,14 +231,12 @@ export default function DataPage() {
       <TableToolbar
         onSearch={handleSearch} 
         rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={n => {
-          setRowsPerPage(n)
-          setCurrentPage(1)
-        }}
+        onRowsPerPageChange={handleRowsPerPageChange}
         loading={loading}
         onSuggestionQueryChange={fetchSuggestions} 
         suggestions={suggestions}
         suggestionsLoading={suggestionsLoading}
+        resetKey={viewType}
 
         optionalSlot={
           <div className="flex items-center gap-2">
@@ -194,20 +249,20 @@ export default function DataPage() {
                   disabled={loading}
               />
               <label htmlFor="show-invalid-rows" className="text-sm font-medium leading-none">
-                  Afficher les écoutes {'< 30s'}
+                  Show listens {'< 30s'}
               </label>
               </div>
             )}
           </div>
         }
-        availableColumns={COLUMNS_BY_VIEW[viewType]}
+        availableColumns={COLUMNS_BY_VIEW[viewType]?.filter(col => col.key !== 'user_name' && col.key !== 'is_valid')}
         visibleColumns={visibleColumns[viewType]}
         onVisibleColumnsChange={handleVisibleColumnsChange}
       />
 
-      <div className="overflow-x-auto mt-4 mb-20 border rounded-md">
+      <div className="overflow-x-auto mt-6 mb-12 border rounded-md">
         {error ? (
-          <div className="p-4 text-center text-red-500">Erreur: {String(error)}</div>
+          <div className="p-4 text-center text-red-500">Error: {String(error)}</div>
         ) : (
           <GlobalTable 
             data={data} 
@@ -232,6 +287,7 @@ export default function DataPage() {
         onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
         onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
         onLast={() => setCurrentPage(totalPages)}
+        onPageChange={setCurrentPage}
       />
     </div>
   )

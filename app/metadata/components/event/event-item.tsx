@@ -2,6 +2,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { memo, useState } from 'react'
 
 import EditableText from '@/components/common/editable-text'
+import { RoundedBadge } from '@/components/common/rounded-badge'
 import { Button } from '@/components/ui/button'
 
 import DeletionDialog from '@/components/common/others/deletion-dialog'
@@ -124,16 +125,14 @@ const EventItem = memo(function EventItem({ event, onRefresh, onRename, userIds,
                {dateStr}
              </span>
 
-             <span 
-               className="inline-block px-1.5 py-0.5 text-[10px] rounded-full leading-none whitespace-nowrap"
-               style={{ 
-                 backgroundColor: event.user_name ? (userColor || '#e5e7eb') : '#e5e7eb',
-                 color: event.user_name ? (textColor || '#374151') : '#374151',
-                 border: (event.user_name && userColor) ? 'none' : '1px solid #d1d5db'
-               }}
-             >
-               {event.user_name || 'All users'}
-             </span>
+             <RoundedBadge
+               value={event.user_name || 'All users'}
+               fontSize={12}
+               fontSizeRatio={0.5}
+               fontWeight="500"
+               mainColor={event.user_name ? (userColor || '#e5e7eb') : '#e5e7eb'}
+               darkTextColor={event.user_name ? (textColor || '#374151') : '#374151'}
+             />
         </div>
         
         {event.description && (

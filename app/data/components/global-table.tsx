@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, HelpCircle } from 'lucide-react'
+import React, { useEffect } from 'react'
 
 import { Card } from '@/components/ui/card'
 import {
@@ -19,8 +19,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
+import { RoundedBadge } from '@/components/common/rounded-badge'
+import { TruncatedTextWithTooltip } from '@/components/common/truncated-text-with-tooltip'
 import { cn } from '@/lib/cn'
-import { COLUMN_CELL_STYLES, COLUMN_FIELD_MAPPINGS, COLUMN_RENDER_TYPES, COLUMNS_BY_VIEW } from '@/lib/constants'
+import { COLUMN_BADGE_CONTEXT, COLUMN_CELL_STYLES, COLUMN_FIELD_MAPPINGS, COLUMN_RENDER_TYPES, COLUMNS_BY_VIEW } from '@/lib/constants'
+import { useColorStore } from '@/lib/store/colors-store'
+import { getTextColorForBackground } from '@/lib/utils'
 import { formatDateToDisplay } from '@/lib/utils/format-date'
 import { ColumnOption, RenderType, SortDirection, ViewType } from '@/types'
 
@@ -67,15 +71,18 @@ export default function GlobalTable({
 
   const renderHeader = () => (
     <TableRow className="hover:bg-transparent border-b border-border/50">
-      {displayedColumns.map((col) => (
-        <TableHead key={col.key} className="h-12">
+      {displayedColumns.map((col) => {
+        const renderType = COLUMN_RENDER_TYPES[col.key] || 'text'
+        const cellStyle = COLUMN_CELL_STYLES[renderType]
+        return (
+        <TableHead key={col.key} className={cn("h-12", cellStyle)}>
           <div className="flex items-center gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div 
                     className={cn(
-                      "flex items-center gap-1 font-semibold text-foreground/80 hover:text-foreground transition-colors cursor-pointer select-none group",
+                      "flex items-center gap-1 font-semibold text-foreground/80 hover:text-foreground transition-colors cursor-pointer select-none group whitespace-nowrap",
                       !col.sortable && "cursor-default"
                     )}
                     onClick={() => col.sortable && onSort && onSort(col.key)}
@@ -101,48 +108,90 @@ export default function GlobalTable({
             </TooltipProvider>
           </div>
         </TableHead>
-      ))}
+        )
+      })}
     </TableRow>
   )
 
-  // Renderers: fonctions de rendu pour chaque type
-  const cellRenderers: Record<RenderType, (value: any) => React.ReactNode> = {
-    timestamp: (value) => formatDateToDisplay(value, 'minute', '/', true),
-    
-    date: (value) => formatDateToDisplay(value, 'day', '/', true),
-    
-    title: (value) => value,
-    
-    text: (value) => value,
-    
-    rank: (value) => `#${value}`,
-    
-    duration: (value) => `${Math.floor(value / 1000)}s`,
-    
-    badge: (value) => {
+  // 1. Get color getters from store
+  const { getUserColor, getTagColor, getGenreColor, getSubGenreColor } = useColorStore()
+
+  // Shared badge renderer logic
+  const renderBadges = (value: any, item?: any, columnKey?: string) => {
+      // Handle comma-separated strings by converting them to arrays
+      let values = value
+      if (typeof value === 'string' && value.includes(',')) {
+        values = value.split(',').map(v => v.trim()).filter(v => v !== '')
+      }
+
       const renderSingleBadge = (val: any, key?: any) => {
         if (!val) return null
         
         // Handle both simple strings and tag objects
         const label = typeof val === 'object' && val !== null && 'name' in val ? val.name : val
+        const badgeContext = columnKey ? COLUMN_BADGE_CONTEXT[columnKey] : undefined
+        
+        let color: string | undefined
+        // Determine color based on context
+        if (badgeContext === 'user') {
+            color = getUserColor(label)
+        } else if (badgeContext === 'tag') {
+            color = getTagColor(label)
+        } else if (badgeContext === 'genre') {
+            color = getGenreColor(label)
+        } else if (badgeContext === 'sub_genre') {
+            color = getSubGenreColor(item.sub_genre_id)
+        }
+
+        const textColor = color ? getTextColorForBackground(color, '#000000', '#ffffff') : '#374151'
+        const backgroundColor = color || '#e5e7eb'
 
         return (
-          <span key={key} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground">
-            {label}
-          </span>
+          <RoundedBadge
+            key={key}
+            value={label}
+            fontSize={12}
+            fontSizeRatio={0.5}
+            fontWeight="500"
+            mainColor={backgroundColor}
+            darkTextColor={textColor}
+          />
         )
       }
 
-      if (Array.isArray(value)) {
+      if (Array.isArray(values)) {
         return (
-          <div className="flex flex-wrap gap-1">
-            {value.map((item, idx) => renderSingleBadge(item, idx))}
+          <div className="flex flex-wrap gap-1 w-max max-w-full">
+            {values.map((item, idx) => renderSingleBadge(item, idx))}
           </div>
         )
       }
 
-      return renderSingleBadge(value)
+      return renderSingleBadge(values)
+  }
+
+  // Renderers: rendering functions for each type
+  const cellRenderers: Record<RenderType, (value: any, item?: any, columnKey?: string) => React.ReactNode> = {
+    timestamp: (value) => formatDateToDisplay(value, 'minute', '/', true),
+    
+    date: (value) => formatDateToDisplay(value, 'day', '/', true),
+    
+    title: (value) => <TruncatedTextWithTooltip text={value} />,
+    
+    text: (value) => <TruncatedTextWithTooltip text={value} />,
+    
+    album: (value) => <TruncatedTextWithTooltip text={value} className="w-[160px]" />,
+    
+    rank: (value) => `#${value}`,
+    
+    duration: (value) => {
+      const totalSeconds = Math.floor(value / 1000)
+      const minutes = Math.floor(totalSeconds / 60)
+      const seconds = totalSeconds % 60
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`
     },
+    
+    badges: renderBadges,
     
     boolean: (value) => (
       <span className={cn(
@@ -151,18 +200,21 @@ export default function GlobalTable({
           ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
           : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
       )}>
-        {value ? 'Oui' : 'Non'}
+        {value ? 'Yes' : 'No'}
       </span>
     ),
     
-    number: (value) => value,
+    number: (value) => {
+      if (typeof value === 'boolean') return value ? 1 : 0
+      return (value !== null && value !== undefined && value !== '') ? value : 0
+    },
     
-    validListens: (value) => value,
+    validListens: (value) => (value !== null && value !== undefined && value !== '') ? value : 0,
     
-    invalidListens: (value) => value
+    invalidListens: (value) => (value !== null && value !== undefined && value !== '') ? value : 0
   }
 
-  // Fonction pour obtenir l'ID unique d'une ligne selon le type
+  // Function to get a unique record ID based on view type
   const getRowKey = (item: any): string => {
     const keyFields: Record<ViewType, string> = {
       listens: 'listen_id',
@@ -177,17 +229,32 @@ export default function GlobalTable({
     return (
       <TableRow key={key} className="hover:bg-muted/50 transition-colors">
         {displayedColumns.map((col) => {
-          // Récupérer le nom du champ dans les données
-          const fieldName = COLUMN_FIELD_MAPPINGS[type][col.key] || col.key
-          const value = item[fieldName]
+          // Get the field name or function from the data mapping
+          const mapping = COLUMN_FIELD_MAPPINGS[type][col.key] || col.key
           
-          // Récupérer le type de rendu et le renderer
+          let value
+          if (typeof mapping === 'function') {
+            value = mapping(item)
+          } else {
+            value = item[mapping as string]
+          }
+
+          // Filter out primary artist from featurings to avoid redundancy
+          if (col.key === 'featurings' && typeof value === 'string' && item.primary_artist_name) {
+            const main = item.primary_artist_name.toLowerCase().trim()
+            value = value.split(',')
+                .map((a: string) => a.trim())
+                .filter((a: string) => a.toLowerCase() !== main)
+                .join(', ')
+          }
+          
+          // Get the render type and renderer function
           const renderType = COLUMN_RENDER_TYPES[col.key] || 'text'
           const renderer = cellRenderers[renderType]
           const cellStyle = COLUMN_CELL_STYLES[renderType]
           return (
             <TableCell key={col.key} className={cellStyle}>
-              {renderer(value)}
+              {renderer(value, item, col.key)}
             </TableCell>
           )
         })}
@@ -208,7 +275,7 @@ export default function GlobalTable({
                 <TableCell colSpan={displayedColumns.length} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground animate-pulse py-8">
                     <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
-                    <p>Chargement des données...</p>
+                    <p>Loading data...</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -217,8 +284,8 @@ export default function GlobalTable({
                 <TableCell colSpan={displayedColumns.length} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground py-8">
                     <HelpCircle className="h-12 w-12 mb-4 opacity-20" />
-                    <p className="text-lg font-medium">Aucune donnée disponible</p>
-                    <p className="text-sm mt-1">Essayez de modifier vos filtres ou d'importer des données.</p>
+                    <p className="text-lg font-medium">No data available</p>
+                    <p className="text-sm mt-1">Try modifying your filters or importing data.</p>
                   </div>
                 </TableCell>
               </TableRow>

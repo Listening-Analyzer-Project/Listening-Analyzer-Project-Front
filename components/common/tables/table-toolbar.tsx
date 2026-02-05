@@ -9,9 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import ColumnSelector from './column-selector'
 import { ColumnOption } from '@/types'
 import AdvancedSearch from '../others/advanced-search'
+import ColumnSelector from './column-selector'
 
 interface TableToolbarProps {
   onSearch: (query: string) => void 
@@ -25,6 +25,7 @@ interface TableToolbarProps {
   onSuggestionQueryChange: (query: string) => void
   suggestions: string[]
   suggestionsLoading: boolean
+  resetKey?: string | number
 }
 
 export function TableToolbar({
@@ -38,7 +39,8 @@ export function TableToolbar({
   onVisibleColumnsChange,
   onSuggestionQueryChange,
   suggestions,
-  suggestionsLoading
+  suggestionsLoading,
+  resetKey
 }: TableToolbarProps) {
   const showColumnSelector = availableColumns && visibleColumns && onVisibleColumnsChange
 
@@ -47,6 +49,7 @@ export function TableToolbar({
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <AdvancedSearch 
+            key={resetKey}
             onSearchChange={onSearch}
             onSuggestionQueryChange={onSuggestionQueryChange}
             suggestions={suggestions}
@@ -60,12 +63,12 @@ export function TableToolbar({
             disabled={loading}
           >
             <SelectTrigger className="w-[150px] rounded-md flex-shrink-0">
-              <SelectValue placeholder={`${rowsPerPage} par page`} />
+              <SelectValue placeholder={`${rowsPerPage} per page`} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="100">100 par page</SelectItem>
-              <SelectItem value="500">500 par page</SelectItem>
-              <SelectItem value="1000">1000 par page</SelectItem>
+              <SelectItem value="100">100 per page</SelectItem>
+              <SelectItem value="500">500 per page</SelectItem>
+              <SelectItem value="1000">1000 per page</SelectItem>
             </SelectContent>
           </Select>
         </div>
